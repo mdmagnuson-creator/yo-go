@@ -7,11 +7,11 @@ A comprehensive collection of AI agents, skills, templates, and scaffolds for au
 | Directory | Description |
 |-----------|-------------|
 | [`agents/`](#agents) | 63 autonomous agents for development, testing, reviewing, and orchestration |
-| [`skills/`](#skills) | 30 reusable skills for PRDs, screenshots, scaffolding, and more |
+| [`skills/`](#skills) | 31 reusable skills for PRDs, screenshots, scaffolding, and more |
 | [`agent-templates/`](#agent-templates) | Templates for generating project-specific agents |
 | [`scaffolds/`](#scaffolds) | Full project starters (Next.js + Supabase, Next.js + Prisma, Go + Chi) |
 | [`templates/`](#templates) | Coding convention templates per language/framework |
-| [`mcp/`](#mcp-server) | MCP server for ticket management, CI/CD, and code search |
+| `opencode.json` | Optional MCP integrations (Context7, Playwright, GitHub) |
 | [`automations/`](#github-actions) | GitHub Actions for CI triage and PRD automation |
 
 ## Quick Start
@@ -185,6 +185,7 @@ Skills are loadable instruction sets that provide specialized workflows. Agents 
 | **product-screenshots** | Maintain marketing/support screenshots |
 | **marketing-copy** | Generate marketing text from PRDs |
 | **public-page** | Build landing pages, legal pages, error pages |
+| **cve** | Assess CVEs for exposure, exploitability, and remediation |
 | **merge-conflicts** | Resolve git merge conflicts |
 | **spec-analyzer** | Analyze project specs and dependencies |
 | **stack-advisor** | Recommend technology stacks |
@@ -280,34 +281,21 @@ templates/
 
 ---
 
-## MCP Server
+## Optional MCP Integrations
 
-The `mcp/` directory contains a Go-based MCP (Model Context Protocol) server that provides tools for:
+The base toolkit does not require MCP to function. If you want external integrations, configure optional MCP servers in `opencode.json`.
 
-- **Ticket management** — Fetch and update GitHub issues
-- **Code search** — Semantic search across repositories
-- **GitHub operations** — PR management, review fetching
-
-### Setup
-
-Add to your `opencode.json`:
+Example:
 
 ```json
 {
   "mcp": {
-    "server": {
-      "type": "sse",
-      "url": "http://localhost:4242/mcp"
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
     }
   }
 }
-```
-
-Or run the server locally:
-
-```bash
-cd mcp
-go run main.go
 ```
 
 ---

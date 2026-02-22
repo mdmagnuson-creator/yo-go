@@ -599,7 +599,7 @@ COMPLETED PRDs (recent)
 
 - E2E tests — `e2e`, `e2e-write`
 - Visual verification — `visual-verify`
-- Any sub-agent using Playwright MCP tools
+- Any sub-agent using browser automation tooling (Playwright, browser-use, or equivalent)
 
 ### Dev Server Lifecycle
 

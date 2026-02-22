@@ -98,19 +98,23 @@ Create/update `docs/e2e-areas.json` with this structure:
 
 ### Step 3: Navigate and Verify Each Area
 
-> ⚠️ **CRITICAL: Always read port from project registry**
+> ⚠️ **Required: Resolve dev port from project registry before navigation**
 >
 > The canonical dev port for each project is stored in `~/.config/opencode/projects.json` under `projects[].devPort`.
 > This is the **single source of truth** for which port each project uses.
+>
+> **Trigger:** Before navigating any page in this workflow.
 >
 > **BEFORE** navigating to any pages:
 > 1. Read `~/.config/opencode/projects.json`
 > 2. Find the project entry by `id` or `path`
 > 3. Use `http://localhost:{devPort}` as your base URL
 >
-> Do NOT hardcode port numbers. Do NOT assume port 3000. Always read it from the registry.
+> **Evidence:** Note the resolved `devPort` in your findings output.
+>
+> **Failure behavior:** If no project entry or `devPort` is found, stop navigation and report the missing registry data.
 
-Use Playwright MCP tools to:
+Use Playwright/browser automation tools to:
 
 1. **Verify dev server is running** — Builder ensures this when invoking you. If running standalone, check that the server is up at the port specified in `~/.config/opencode/projects.json` → `projects[].devPort`
 2. **Authenticate** if needed (use test credentials or storage state)
@@ -216,7 +220,7 @@ Reply with a summary of findings and:
 
 ## Important Notes
 
-- **DO** use Playwright MCP tools to actually navigate the application
+- **DO** use available Playwright/browser automation tools to actually navigate the application
 - **DO** take real screenshots as evidence
 - **DO** check the browser console for JavaScript errors
 - **DO NOT** write E2E test files yourself (that's @e2e-playwright's job)

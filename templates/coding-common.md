@@ -8,7 +8,7 @@
 
 ## Library Usage
 
-When writing code that uses external libraries, use the `context7` MCP tool to look up current documentation before calling library APIs. Do not rely on training data for API signatures, method names, or parameter types. Look them up. This avoids hallucinating deprecated or nonexistent methods.
+When writing code that uses external libraries, use a documentation lookup tool if available (for example Context7) before calling library APIs. If a docs tool is unavailable, use official upstream docs and local source references. Do not rely only on memory for API signatures, method names, or parameter types.
 
 ## AWS CLI
 

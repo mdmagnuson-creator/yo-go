@@ -1,10 +1,12 @@
 # Tool Usage
 
-## Code Search
+## Cross-Service Blast Radius Search
 
-Use the `code_search` MCP tool to discover how projects and services communicate with each other. This is critical for understanding the downstream and upstream consequences of changes.
+Use semantic code search tooling when available to discover how projects and services communicate. This is critical for understanding downstream and upstream consequences.
 
-Before modifying any of the following, run `code_search` to find all affected services:
+If semantic search tooling is unavailable, fall back to repository-native search (`grep`, project indexes, dependency maps).
+
+Before modifying any of the following, run a blast-radius search to find all affected services:
 
 - API endpoints or request/response schemas
 - Event schemas and message formats

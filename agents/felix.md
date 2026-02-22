@@ -134,13 +134,13 @@ Only update AGENTS.md if you have **genuinely reusable knowledge** that would he
 
 ## Browser Testing (If Available)
 
-For any story that changes UI, verify it works in the browser with Playwright MCP server and the dev-browser tools:
+For any story that changes UI, verify it works in the browser with available Playwright/browser tools:
 
 1. Navigate to the relevant page
 2. Verify the UI changes work as expected
 3. Take a screenshot if helpful for the progress log
 
-If no browser tools are available, note in your progress report that manual browser verification is needed.
+If automation browser tools are unavailable, note in your progress report that manual browser verification is needed.
 
 ## Important
 

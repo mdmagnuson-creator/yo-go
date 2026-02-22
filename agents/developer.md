@@ -308,10 +308,12 @@ APPEND to `docs/progress.txt` (never replace):
 
 ## Browser Testing (If Available)
 
-For UI stories, verify in browser with Playwright MCP server:
+For UI stories, verify in browser with available Playwright tooling:
 1. Navigate to relevant page
 2. Verify UI changes work
 3. Take screenshot if helpful
+
+If Playwright automation tools are unavailable, run local Playwright tests/screenshots or note manual browser verification needed.
 
 ---
 

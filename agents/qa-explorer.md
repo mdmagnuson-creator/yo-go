@@ -36,9 +36,9 @@ You receive from the QA coordinator:
 
 Your job is to systematically test the target application following the testing methodology below, document any bugs or issues you find, and report your findings.
 
-> ⚠️ **CRITICAL: Dev Server Port**
+> ⚠️ **Required: Resolve dev server port from project registry**
 >
-> **NEVER hardcode ports** (3000, 4000, 5001, etc.). Each project has its own port.
+> **Trigger:** Before opening target URLs for exploration.
 >
 > **Get the correct port:**
 > 1. Read `~/.config/opencode/projects.json`
@@ -50,7 +50,9 @@ Your job is to systematically test the target application following the testing 
 > jq '.projects[] | select(.path | contains("project-name")) | .devPort' ~/.config/opencode/projects.json
 > ```
 >
-> The QA coordinator should provide the correct URL with port, but if you need to construct URLs yourself, always read the port from the registry.
+> **Evidence:** Include resolved `devPort` in your findings metadata or run log.
+>
+> **Failure behavior:** If `devPort` cannot be resolved, stop and report the missing registry mapping; do not guess default ports.
 
 ## Browser Interaction
 
@@ -70,7 +72,7 @@ browser-use close                # Close browser (ALWAYS run at the end)
 
 **Critical:** Run `browser-use state` after EVERY interaction to verify what happened and see available elements for the next action.
 
-**Fallback:** If browser-use cannot accomplish a specific interaction, fall back to Playwright MCP server tools (playwright\*).
+**Fallback:** If browser-use cannot accomplish a specific interaction, fall back to available Playwright/browser automation tooling.
 
 ## Testing Methodology
 

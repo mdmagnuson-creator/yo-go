@@ -76,15 +76,17 @@ Handle SSH failures gracefully: if the connection fails, note it in your diagnos
 
 ### 4. Semantic Code Search
 
-Use the `code_search` MCP tool to find relevant code:
+Use semantic code search tooling to find relevant code when available:
 - Derive search queries from ticket context, error messages, and log findings
 - Search for: error messages, endpoint paths, function names, class names, exception types
 - Run 3-5 targeted searches to cover different aspects of the issue
 - Record which files and functions are returned
 
+If semantic code search tooling is unavailable, fall back to repository-native search (`grep`, dependency files, and targeted file scans).
+
 ### 5. Trace Call Chains
 
-For each file identified in code search:
+For each file identified in search:
 - Read the file using the read tool
 - Identify the suspect function(s)
 - Follow imports to find dependencies
