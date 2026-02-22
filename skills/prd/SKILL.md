@@ -41,6 +41,7 @@ If `docs/project.json` exists, extract key information:
 | `testing.e2e.framework` | Know if E2E is available |
 | `linting.enabled` | Add "Lint passes" criteria |
 | `features` | Understand what capabilities exist |
+| `planning.considerations` | Project-specific scope concerns to pass through (permissions, docs, AI tools, compliance, etc.) |
 | `agents.browserVerification` | Whether to require visual verification |
 
 **Store this context for use when generating acceptance criteria.**
@@ -61,6 +62,13 @@ Ask only critical questions where the initial prompt is ambiguous. Focus on:
 - **Core Functionality:** What are the key actions?
 - **Scope/Boundaries:** What should it NOT do?
 - **Success Criteria:** How do we know it's done?
+
+Also review `planning.considerations` from `project.json` (if present) and ask follow-up questions only for considerations that appear relevant to the requested feature.
+
+Examples:
+- Permissions consideration -> ask role/scope/deny-path questions
+- Support docs consideration -> ask if user-visible behavior changed
+- AI tools consideration -> ask whether chat access is required
 
 ### Format Questions Like This:
 
@@ -109,6 +117,7 @@ Each story needs:
 - **Acceptance Criteria:** Verifiable checklist of what "done" means (stack-aware!)
 - **Documentation Required:** Whether this story needs support documentation (see below)
 - **Tools Required:** Whether this story needs AI chatbot tools (see below)
+- **Considerations:** Which project-level considerations this story addresses
 
 Each story should be small enough to implement in one focused session.
 
@@ -122,6 +131,8 @@ Each story should be small enough to implement in one focused session.
 **Documentation:** Yes/No (+ article slug if updating existing)
 
 **Tools:** Yes/No (+ tool name if updating existing)
+
+**Considerations:** [comma-separated ids from `planning.considerations`, or `none`]
 
 **Acceptance Criteria:**
 
@@ -202,6 +213,32 @@ For a data processing story:
 ---
 
 ## Identifying User-Facing Stories
+
+## Project Scope Considerations (from `planning.considerations`)
+
+If `project.json` has `planning.considerations`, include a short section in the PRD named `## Scope Considerations`.
+
+For each consideration:
+- State whether it is relevant to this PRD (`relevant`/`not relevant`)
+- If relevant, add 1-3 concrete scope notes using `scopeQuestions`
+- If relevant and the consideration has `acceptanceCriteriaHints`, map those hints into applicable story acceptance criteria
+
+Example:
+
+```markdown
+## Scope Considerations
+
+- permissions (required): relevant
+  - Roles affected: owner, admin, member
+  - Unauthorized behavior: return 403 with audit log
+  - Story coverage: US-002, US-004
+
+- support-docs: relevant
+  - User-facing settings flow changed; update docs
+  - Story coverage: US-003
+
+- ai-tools: not relevant
+```
 
 A story requires documentation if it affects anything users see or interact with:
 
@@ -468,6 +505,9 @@ Before saving the PRD:
 - [ ] User-facing stories have Documentation field set (if `capabilities.supportDocs`)
 - [ ] UI stories include dark mode verification (if `styling.darkMode.enabled`)
 - [ ] Chat-accessible stories have Tools field set (if `capabilities.ai`)
+- [ ] `planning.considerations` reviewed and relevant items reflected in PRD scope
+- [ ] PRD includes `## Scope Considerations` section when considerations exist
+- [ ] Relevant stories include `Considerations` field with mapped ids
 - [ ] Saved to `docs/drafts/prd-[feature-name].md`
 
 ## Automatic Post-Completion Tasks

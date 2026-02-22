@@ -39,6 +39,7 @@ If `docs/project.json` exists, extract key information for criteria generation:
 | `capabilities.supportDocs` | Enable documentation flag detection |
 | `capabilities.ai` | Enable tools flag detection |
 | `capabilities.marketing` | Enable marketing flag detection |
+| `planning.considerations` | Enable project-specific scope consideration review |
 | `apps` | Find artifact locations for auto-detection |
 | `commands` | Reference correct command names |
 
@@ -78,7 +79,8 @@ If no `project.json` exists, note this and use defaults:
       "relatedMarketingPages": [],
       "toolsRequired": false,
       "toolsType": null,
-      "relatedToolNames": []
+      "relatedToolNames": [],
+      "considerations": []
     }
   ]
 }
@@ -185,6 +187,7 @@ Before presenting the PRD for approval, **automatically detect** the flag values
 | `capabilities.ai: true` | AI tools detection |
 | `capabilities.marketing: true` | Marketing detection |
 | `testing.e2e.framework` exists | E2E detection |
+| `planning.considerations` has entries | Consideration detection |
 
 **If a capability is disabled, skip that detection and set flags to false.**
 
@@ -265,6 +268,18 @@ Assign a baseline `testIntensity` for every story:
 
 Add optional `testIntensityReason` (1 short sentence) when the choice is not obvious.
 
+#### Project Considerations Detection (if `planning.considerations` exists)
+
+For each story, map relevant consideration IDs from `project.json` into a working review field named `considerations`.
+
+Detection guidance:
+- If consideration id/label contains `permission`, `authz`, `rbac`, `role` and story touches auth, API access, admin operations, or tenant boundaries -> include it
+- If consideration id/label contains `support-doc` and story is user-facing -> include it
+- If consideration id/label contains `ai`, `tools`, `chat` and story changes chat-accessible data/actions -> include it
+- Otherwise include only when story title/criteria clearly match the consideration label or `appliesWhen` tags
+
+If uncertain, mark consideration mapping as `⚠` and ask the user to confirm.
+
 ### Step 4: Mark Uncertain Detections
 
 When detection is ambiguous, mark the flag as **uncertain** using `⚠` in the review table.
@@ -274,6 +289,7 @@ Uncertain cases:
 - Story modifies API but unclear if AI tools use it
 - Story is visible but unclear if marketing-worthy
 - Story risk is unclear between `medium` and `high` (or `high` and `critical`)
+- Story may require a project consideration but mapping is unclear (for example `permissions`)
 
 ---
 
@@ -293,15 +309,15 @@ Project: Example Scheduler
 Stack: TypeScript / Next.js 16 / Supabase
 Features: ✅ Docs  ✅ E2E  ✅ Marketing  ✅ AI Tools
 
-┌─────────┬──────────────────────────────────────┬──────┬──────┬──────┬───────┬───────────┐
-│ Story   │ Title                                │ Docs │ E2E  │ Mktg │ Tools │ Intensity │
-├─────────┼──────────────────────────────────────┼──────┼──────┼──────┼───────┼───────────┤
-│ US-001  │ Add time_slots table                 │  -   │  -   │  -   │   -   │   low     │
-│ US-002  │ Seed default 'All Day' slot          │  -   │  -   │  -   │   -   │   low     │
-│ US-003  │ Time slot selector in event form     │  ✓   │  ✓   │  -   │   -   │  medium   │
-│ US-004  │ Render time slots on calendar        │  ✓   │  ✓   │  ⚠   │   -   │  medium   │
-│ US-005  │ Manage time slots in settings        │  ✓   │  ✓   │  -   │  ⚠   │    ⚠      │
-└─────────┴──────────────────────────────────────┴──────┴──────┴──────┴───────┴───────────┘
+┌─────────┬──────────────────────────────────────┬──────┬──────┬──────┬───────┬───────────┬────────────────┐
+│ Story   │ Title                                │ Docs │ E2E  │ Mktg │ Tools │ Intensity │ Considerations │
+├─────────┼──────────────────────────────────────┼──────┼──────┼──────┼───────┼───────────┼────────────────┤
+│ US-001  │ Add time_slots table                 │  -   │  -   │  -   │   -   │   low     │       -        │
+│ US-002  │ Seed default 'All Day' slot          │  -   │  -   │  -   │   -   │   low     │       -        │
+│ US-003  │ Time slot selector in event form     │  ✓   │  ✓   │  -   │   -   │  medium   │  support-docs  │
+│ US-004  │ Render time slots on calendar        │  ✓   │  ✓   │  ⚠   │   -   │  medium   │  support-docs  │
+│ US-005  │ Manage time slots in settings        │  ✓   │  ✓   │  -   │  ⚠   │    ⚠      │ permissions ⚠  │
+└─────────┴──────────────────────────────────────┴──────┴──────┴──────┴───────┴───────────┴────────────────┘
 
 Legend: ✓ = yes, - = no, ⚠ = uncertain (requires confirmation)
 
@@ -318,7 +334,7 @@ Stack-specific criteria that will be added:
 If any flags are marked `⚠` (uncertain), **block until user confirms**:
 
 ```
-⚠ 2 flags require confirmation before proceeding:
+⚠ 3 flags require confirmation before proceeding:
 
 1. US-004 (Render time slots on calendar) → Marketing
    Reason: Major UI change that could be a headline feature
@@ -333,6 +349,11 @@ If any flags are marked `⚠` (uncertain), **block until user confirms**:
 3. US-005 (Manage time slots in settings) → Test Intensity
    Reason: Could impact authentication/session boundaries
    [L] low  [M] medium  [H] high  [C] critical
+   > _
+
+4. US-005 (Manage time slots in settings) → Considerations
+   Reason: Might need `permissions` consideration based on admin access scope
+   [Y] Include `permissions`  [N] Do not include
    > _
 ```
 
@@ -359,6 +380,7 @@ All flags confirmed. Final PRD summary:
   Marketing updates: 1 story
   AI tools updates: 1 story
   Story test intensity mix: 2 low, 2 medium, 1 high
+  Consideration mappings: permissions (1), support-docs (3)
 
 [A] Approve and write prd.json
 [E] Edit individual story flags
@@ -441,6 +463,18 @@ Each user story includes marketing website tracking fields:
 - Major new features → `marketingRequired: true, marketingType: "update", relatedMarketingPages: ["features", "changelog"]`
 - `Marketing: No` → `marketingRequired: false, marketingType: null, relatedMarketingPages: []`
 - `Marketing: Yes (update: page)` → `marketingRequired: true, marketingType: "update", relatedMarketingPages: ["page"]`
+
+### Consideration Fields
+
+Each user story can include project-level consideration mapping:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `considerations` | string[] | IDs from `project.json` `planning.considerations[]` that this story must address |
+
+Guidance:
+- If no project considerations exist, set `considerations: []`
+- If mapping is uncertain, confirm before finalizing
 
 ---
 
@@ -583,6 +617,7 @@ Before writing prd.json, verify:
 - [ ] Every story has `testIntensity` (`low|medium|high|critical`)
 - [ ] Promotable features have `marketingRequired: true` (if `capabilities.marketing`)
 - [ ] Chat-accessible stories have `toolsRequired: true` (if `capabilities.ai`)
+- [ ] `planning.considerations` mapped to relevant stories (when present)
 - [ ] Acceptance criteria are verifiable (not vague)
 - [ ] No story depends on a later story
 - [ ] **All uncertain (⚠) flags have been confirmed by user**

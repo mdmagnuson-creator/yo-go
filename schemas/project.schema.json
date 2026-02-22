@@ -342,6 +342,78 @@
       "additionalProperties": { "type": "boolean" }
     },
 
+    "planning": {
+      "type": "object",
+      "description": "Planner-specific scope guidance that should be considered for every PRD and story.",
+      "properties": {
+        "considerations": {
+          "type": "array",
+          "description": "Project-specific considerations Planner should pass through when writing PRDs (for example permissions, support docs, AI tools, compliance).",
+          "items": {
+            "type": "object",
+            "required": ["id", "label"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Stable key for the consideration (kebab-case recommended)."
+              },
+              "label": {
+                "type": "string",
+                "description": "Human-readable consideration name shown in PRD review tables."
+              },
+              "required": {
+                "type": "boolean",
+                "default": false,
+                "description": "Whether this consideration must be explicitly addressed in relevant PRD stories."
+              },
+              "appliesWhen": {
+                "type": "array",
+                "description": "Optional tags describing when this consideration applies (e.g., api, admin-ui, data-access, auth).",
+                "items": { "type": "string" }
+              },
+              "scopeQuestions": {
+                "type": "array",
+                "description": "Questions Planner should answer during scope writing.",
+                "items": { "type": "string" }
+              },
+              "acceptanceCriteriaHints": {
+                "type": "array",
+                "description": "Suggested acceptance criteria snippets to include when this consideration applies.",
+                "items": { "type": "string" }
+              },
+              "defaultStoryFields": {
+                "type": "object",
+                "description": "Optional per-story defaults that downstream tools can map into story metadata.",
+                "additionalProperties": {
+                  "oneOf": [
+                    { "type": "boolean" },
+                    { "type": "string" },
+                    { "type": "number" },
+                    {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          { "type": "boolean" },
+                          { "type": "string" },
+                          { "type": "number" }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "notes": {
+                "type": "string",
+                "description": "Optional project-specific implementation or policy notes for this consideration."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
     "workflows": {
       "type": "object",
       "description": "Project-specific workflow overrides. If not defined, defaults are read from ~/.config/opencode/data/workflow-defaults.json. See that file for current defaults and available steps.",

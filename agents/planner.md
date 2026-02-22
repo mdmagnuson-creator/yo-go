@@ -451,6 +451,10 @@ When converting PRDs to JSON, analyze each story:
 | Payments/auth/security/compliance | Maybe | Maybe | critical |
 | Admin/developer tooling | ❌ No | ❌ No | low |
 
+Also read `docs/project.json` `planning.considerations` (if present) and carry relevant consideration IDs into PRD scope and stories.
+
+Example consideration IDs: `permissions`, `support-docs`, `ai-tools`, `compliance`.
+
 **Present uncertain flags with ⚠️ and ask for confirmation:**
 
 ```
