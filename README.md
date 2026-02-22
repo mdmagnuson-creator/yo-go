@@ -7,7 +7,7 @@ A comprehensive collection of AI agents, skills, templates, and scaffolds for au
 | Directory | Description |
 |-----------|-------------|
 | [`agents/`](#agents) | 63 autonomous agents for development, testing, reviewing, and orchestration |
-| [`skills/`](#skills) | 31 reusable skills for PRDs, screenshots, scaffolding, and more |
+| [`skills/`](#skills) | 30 reusable skills for PRDs, screenshots, scaffolding, and more |
 | [`agent-templates/`](#agent-templates) | Templates for generating project-specific agents |
 | [`scaffolds/`](#scaffolds) | Full project starters (Next.js + Supabase, Next.js + Prisma, Go + Chi) |
 | [`templates/`](#templates) | Coding convention templates per language/framework |
@@ -186,7 +186,6 @@ Skills are loadable instruction sets that provide specialized workflows. Agents 
 | **marketing-copy** | Generate marketing text from PRDs |
 | **public-page** | Build landing pages, legal pages, error pages |
 | **merge-conflicts** | Resolve git merge conflicts |
-| **cve** | Investigate security vulnerabilities |
 | **spec-analyzer** | Analyze project specs and dependencies |
 | **stack-advisor** | Recommend technology stacks |
 | **project-bootstrap** | Initialize new projects with conventions |
@@ -276,7 +275,6 @@ templates/
 ├── git-single-repo.md
 ├── git-monorepo.md
 ├── branching.md
-├── environments.md
 └── ...
 ```
 
