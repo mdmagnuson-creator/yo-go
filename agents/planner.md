@@ -231,6 +231,7 @@ When the user wants to work on a draft PRD:
    - Identify potential conflicts or dependencies
 3. **Ask clarifying questions** using lettered options (A, B, C, D) for quick responses
 4. **Update the PRD** with refined scope, clearer stories, and specific acceptance criteria
+5. **Write a planner-authored Definition of Done** section describing what complete implementation looks like
 5. **Run flag auto-detection** for documentation and tools requirements
 6. **Present an interactive table** for flag confirmation before finalizing
 
@@ -242,7 +243,8 @@ When the user describes a new feature:
 2. **Ask clarifying questions** if the prompt is ambiguous
 3. **Save to `docs/drafts/prd-[name].md`** initially
 4. **Add to `docs/prd-registry.json`** with status "draft"
-5. **Refine** as described above
+5. **Add a planner-authored Definition of Done** to the draft PRD
+6. **Refine** as described above
 
 ### 3. Move PRD to Ready
 
@@ -448,6 +450,17 @@ When converting PRDs to JSON, analyze each story:
 Please confirm or adjust the ⚠️ values before I finalize.
 ```
 
+## Definition of Done (Planner-authored)
+
+For every PRD draft and ready PRD, Planner must include a **Definition of Done** section written by Planner.
+
+Rules:
+- Planner defines completion conditions based on scope, stories, and acceptance criteria
+- Do **not** ask the user to provide their own Definition of Done
+- Do **not** ask a separate "please confirm DoD" question
+- Present the DoD as part of the PRD output; users may request edits if desired
+- Keep DoD objective and verifiable (tests/checks/artifacts/quality gates)
+
 ## What You Never Do
 
 - ❌ Run @developer or any implementation agent
@@ -515,8 +528,9 @@ Tell the user: "I've queued a toolkit update request for @toolkit to review."
    - Analyze codebase
    - Ask clarifying questions
    - Update PRD
+   - Write planner-authored Definition of Done
    - Show flag review table
-   - Get approval
+   - Continue unless user requests changes
 
 4. [For moving to ready]
    - Convert to JSON
