@@ -1,0 +1,1150 @@
+{
+  "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
+  "version": "1.0.0",
+  "generatedAt": "2026-02-22T00:52:00Z",
+  "repository": "https://github.com/<your-org>/ai-toolkit",
+  "agents": {
+    "total": 63,
+    "categories": {
+      "primary": {
+        "description": "Entry points you invoke directly",
+        "agents": [
+          {
+            "name": "builder",
+            "file": "agents/builder.md",
+            "description": "Builds features from PRDs or ad-hoc requests by orchestrating implementation agents"
+          },
+          {
+            "name": "planner",
+            "file": "agents/planner.md",
+            "description": "Refine draft PRDs and prepare them for implementation"
+          },
+          {
+            "name": "toolkit",
+            "file": "agents/toolkit.md",
+            "description": "Maintains the AI toolkit - agents, skills, templates, and scaffolds"
+          }
+        ]
+      },
+      "implementation": {
+        "description": "Agents that write code",
+        "agents": [
+          {
+            "name": "aws-dev",
+            "file": "agents/aws-dev.md",
+            "description": "Implements CloudFormation infrastructure tasks"
+          },
+          {
+            "name": "developer",
+            "file": "agents/developer.md",
+            "description": "Implements one task how the project wants"
+          },
+          {
+            "name": "docker-dev",
+            "file": "agents/docker-dev.md",
+            "description": "Implements Docker image and container configuration tasks"
+          },
+          {
+            "name": "go-dev",
+            "file": "agents/go-dev.md",
+            "description": "Implements Go tasks specializing in web services and AWS interactions"
+          },
+          {
+            "name": "hammer",
+            "file": "agents/hammer.md",
+            "description": "Implements one task to fix issues with pull requests"
+          },
+          {
+            "name": "java-dev",
+            "file": "agents/java-dev.md",
+            "description": "Implements Java tasks specializing in Netty and low-level networking"
+          },
+          {
+            "name": "overlord",
+            "file": "agents/overlord.md",
+            "description": "Implements one task how the project wants"
+          },
+          {
+            "name": "playwright-dev",
+            "file": "agents/playwright-dev.md",
+            "description": "Implements Playwright test automation tasks"
+          },
+          {
+            "name": "public-page-dev",
+            "file": "agents/public-page-dev.md",
+            "description": "Implements public-facing pages (marketing, legal, error) following brand guidelines and conversion best practices"
+          },
+          {
+            "name": "python-dev",
+            "file": "agents/python-dev.md",
+            "description": "Implements Python tasks specializing in LangChain and AI/ML pipelines"
+          },
+          {
+            "name": "react-dev",
+            "file": "agents/react-dev.md",
+            "description": "Implements React tasks specializing in UI consistency, Tailwind CSS, and TypeScript"
+          },
+          {
+            "name": "terraform-dev",
+            "file": "agents/terraform-dev.md",
+            "description": "Implements Terraform infrastructure tasks"
+          }
+        ]
+      },
+      "testing": {
+        "description": "Test generation and orchestration",
+        "agents": [
+          {
+            "name": "e2e-playwright",
+            "file": "agents/e2e-playwright.md",
+            "description": "Writes Playwright E2E tests for identified UI areas"
+          },
+          {
+            "name": "e2e-reviewer",
+            "file": "agents/e2e-reviewer.md",
+            "description": "Reviews UI changes and identifies all modified areas for E2E testing"
+          },
+          {
+            "name": "go-tester",
+            "file": "agents/go-tester.md",
+            "description": "Writes Go tests using testify and httptest for comprehensive test coverage"
+          },
+          {
+            "name": "jest-tester",
+            "file": "agents/jest-tester.md",
+            "description": "Writes backend Jest tests in TypeScript for comprehensive test coverage"
+          },
+          {
+            "name": "qa",
+            "file": "agents/qa.md",
+            "description": "Coordinates QA testing by dispatching explorer and browser-tester subagents"
+          },
+          {
+            "name": "qa-browser-tester",
+            "file": "agents/qa-browser-tester.md",
+            "description": "Writes Playwright tests for QA findings by inspecting pages and delegating to playwright-dev"
+          },
+          {
+            "name": "qa-explorer",
+            "file": "agents/qa-explorer.md",
+            "description": "Explores web applications to find bugs through adversarial testing"
+          },
+          {
+            "name": "react-tester",
+            "file": "agents/react-tester.md",
+            "description": "Writes Jest tests for React components using React Testing Library and TypeScript"
+          },
+          {
+            "name": "tester",
+            "file": "agents/tester.md",
+            "description": "Orchestrates test writing by routing to specialist testing agents"
+          }
+        ]
+      },
+      "critics": {
+        "description": "Code review specialists",
+        "agents": [
+          {
+            "name": "aesthetic-critic",
+            "file": "agents/aesthetic-critic.md",
+            "description": "Reviews UI styling changes against the project's design system for visual consistency and dark mode correctness"
+          },
+          {
+            "name": "ansible-critic",
+            "file": "agents/ansible-critic.md",
+            "description": "Reviews Ansible roles and playbooks for idempotency, security, and best practices"
+          },
+          {
+            "name": "api-critic",
+            "file": "agents/api-critic.md",
+            "description": "Reviews API design for usability \u2014 confusing endpoints, inconsistent conventions, missing pagination, poor error responses"
+          },
+          {
+            "name": "backend-aws-critic",
+            "file": "agents/backend-aws-critic.md",
+            "description": "Reviews code calling AWS services for unhandled failure modes, missing permissions, and SDK misuse"
+          },
+          {
+            "name": "backend-critic-go",
+            "file": "agents/backend-critic-go.md",
+            "description": "Reviews backend Go code for API design, concurrency, error handling, and best practices (Gin, Lambda)"
+          },
+          {
+            "name": "backend-critic-java",
+            "file": "agents/backend-critic-java.md",
+            "description": "Reviews backend Java code for API design, concurrency, error handling, and best practices (Netty, Lambda)"
+          },
+          {
+            "name": "backend-critic-ts",
+            "file": "agents/backend-critic-ts.md",
+            "description": "Reviews backend TypeScript code for API design, async patterns, error handling, and best practices (Express, Lambda)"
+          },
+          {
+            "name": "cloudformation-critic",
+            "file": "agents/cloudformation-critic.md",
+            "description": "Reviews CloudFormation templates for security, best practices, and operational safety"
+          },
+          {
+            "name": "comment-critic",
+            "file": "agents/comment-critic.md",
+            "description": "Reviews comments and removes noise \u2014 flags obvious comments that just restate the code"
+          },
+          {
+            "name": "copy-critic",
+            "file": "agents/copy-critic.md",
+            "description": "Reviews marketing copy for clarity, target market fit, feature accuracy, and brand voice consistency"
+          },
+          {
+            "name": "critic",
+            "file": "agents/critic.md",
+            "description": "Routes code review to the appropriate specialist critic(s) based on file types and content"
+          },
+          {
+            "name": "dx-critic",
+            "file": "agents/dx-critic.md",
+            "description": "Reviews exported/public package APIs for testability, consistency, and developer experience"
+          },
+          {
+            "name": "exploit-critic",
+            "file": "agents/exploit-critic.md",
+            "description": "Adversarial review that attempts to exploit code \u2014 finds injection, auth bypass, privilege escalation, and data exfiltration paths"
+          },
+          {
+            "name": "frontend-critic",
+            "file": "agents/frontend-critic.md",
+            "description": "Reviews frontend code for component design, performance, styling, and best practices"
+          },
+          {
+            "name": "handoff-contract-critic",
+            "file": "agents/handoff-contract-critic.md",
+            "description": "Checks builder/planner/toolkit routing contracts for ownership contradictions and scope drift"
+          },
+          {
+            "name": "network-critic",
+            "file": "agents/network-critic.md",
+            "description": "Reviews code making network requests for resilience, blocking behavior, and lock-during-IO problems"
+          },
+          {
+            "name": "oddball-critic",
+            "file": "agents/oddball-critic.md",
+            "description": "Reviews code for consistency with the existing codebase \u2014 flags patterns that look different from established conventions"
+          },
+          {
+            "name": "policy-testability-critic",
+            "file": "agents/policy-testability-critic.md",
+            "description": "Flags non-testable MUST/CRITICAL/NEVER rules and suggests enforceable rewrites"
+          },
+          {
+            "name": "prompt-critic",
+            "file": "agents/prompt-critic.md",
+            "description": "Reviews AI agent prompts, MCP server definitions, and tool configurations for clarity, ambiguity, and failure modes"
+          },
+          {
+            "name": "public-page-critic",
+            "file": "agents/public-page-critic.md",
+            "description": "Reviews public-facing pages for conversion optimization, accessibility, mobile UX, and brand consistency"
+          },
+          {
+            "name": "quality-critic",
+            "file": "agents/quality-critic.md",
+            "description": "Reviews UI for quality beyond correctness \u2014 visual regression, CLS, accessibility, and performance"
+          },
+          {
+            "name": "requirements-critic",
+            "file": "agents/requirements-critic.md",
+            "description": "Reviews code for decisions that will complicate or conflict with implementing remaining requirements"
+          },
+          {
+            "name": "security-critic",
+            "file": "agents/security-critic.md",
+            "description": "Reviews code for security scan findings \u2014 CSP, CORS, XSRF, SSRF, dependency CVEs, and compliance issues"
+          },
+          {
+            "name": "semantic-critic",
+            "file": "agents/semantic-critic.md",
+            "description": "Reviews diagrams, flows, and sequential content for logical coherence between visual and textual elements"
+          },
+          {
+            "name": "seo-critic",
+            "file": "agents/seo-critic.md",
+            "description": "Reviews public pages for SEO - meta tags, headings, structured data, page speed, and search engine best practices"
+          },
+          {
+            "name": "tailwind-critic",
+            "file": "agents/tailwind-critic.md",
+            "description": "Reviews Tailwind CSS usage for project-specific design system patterns and dark mode conventions"
+          },
+          {
+            "name": "update-schema-critic",
+            "file": "agents/update-schema-critic.md",
+            "description": "Validates project-updates file structure, required frontmatter, and required workflow sections"
+          },
+          {
+            "name": "workflow-enforcement-critic",
+            "file": "agents/workflow-enforcement-critic.md",
+            "description": "Verifies mandatory toolkit post-change workflow artifacts and completion reporting"
+          }
+        ]
+      },
+      "operational": {
+        "description": "CI/CD, cleanup, documentation, and monitoring",
+        "agents": [
+          {
+            "name": "debugger",
+            "file": "agents/debugger.md",
+            "description": "Investigates production issues by pulling ticket context, searching logs, and identifying likely defect areas"
+          },
+          {
+            "name": "docs-writer",
+            "file": "agents/docs-writer.md",
+            "description": "Creates and updates support documentation for user-facing features"
+          },
+          {
+            "name": "felix",
+            "file": "agents/felix.md",
+            "description": "Watches a PR for feedback and build failures."
+          },
+          {
+            "name": "merge-coordinator",
+            "file": "agents/merge-coordinator.md",
+            "description": "Processes the merge queue - rebases, tests, and merges PRs from parallel sessions"
+          },
+          {
+            "name": "prd",
+            "file": "agents/prd.md",
+            "description": "Augments a ticket with a dev plan"
+          },
+          {
+            "name": "prd-impact-analyzer",
+            "file": "agents/prd-impact-analyzer.md",
+            "description": "Analyzes impact of completed PRDs on other PRDs in the backlog"
+          },
+          {
+            "name": "screenshot-maintainer",
+            "file": "agents/screenshot-maintainer.md",
+            "description": "Maintains product screenshots used in marketing pages and support articles, auto-updating when UI changes"
+          },
+          {
+            "name": "session-status",
+            "file": "agents/session-status.md",
+            "description": "Display session status dashboard with conflict analysis"
+          },
+          {
+            "name": "support-article-writer",
+            "file": "agents/support-article-writer.md",
+            "description": "Writes and updates support articles with screenshots for product documentation"
+          },
+          {
+            "name": "tools-writer",
+            "file": "agents/tools-writer.md",
+            "description": "Creates and updates AI agent tools when features change"
+          },
+          {
+            "name": "wall-e",
+            "file": "agents/wall-e.md",
+            "description": "Cleans up a workspace"
+          }
+        ]
+      }
+    }
+  },
+  "skills": {
+    "total": 31,
+    "categories": {
+      "workflow": {
+        "description": "PRD and ad-hoc workflow management",
+        "skills": [
+          {
+            "name": "adhoc-workflow",
+            "path": "skills/adhoc-workflow/",
+            "description": "Ad-hoc mode workflow for Builder. Use when handling direct requests without a PRD, quick fixes, or one-off tasks."
+          },
+          {
+            "name": "builder-state",
+            "path": "skills/builder-state/",
+            "description": "Manage builder session state for resumability. Use when reading/writing builder-state.json, updating heartbeat, or resuming sessions."
+          },
+          {
+            "name": "multi-session",
+            "path": "skills/multi-session/",
+            "description": "Multi-session coordination for parallel AI sessions. Provides session locks, heartbeat, and merge queue management."
+          },
+          {
+            "name": "post-completion",
+            "path": "skills/post-completion/",
+            "description": "Post-completion polish steps for Developer. Use when all PRD stories pass but before declaring COMPLETE."
+          },
+          {
+            "name": "prd",
+            "path": "skills/prd/",
+            "description": "Generate a Product Requirements Document (PRD) for a new feature."
+          },
+          {
+            "name": "prd-to-json",
+            "path": "skills/prd-to-json/",
+            "description": "Convert PRDs to prd.json format for the Developer autonomous agent system."
+          },
+          {
+            "name": "prd-workflow",
+            "path": "skills/prd-workflow/",
+            "description": "PRD mode workflow for Builder. Use when building features from PRDs, implementing user stories, or managing PRD state transitions."
+          },
+          {
+            "name": "test-flow",
+            "path": "skills/test-flow/",
+            "description": "Automatic test generation and execution flows for Builder."
+          }
+        ]
+      },
+      "content": {
+        "description": "Documentation, screenshots, and marketing",
+        "skills": [
+          {
+            "name": "marketing-copy",
+            "path": "skills/marketing-copy/",
+            "description": "Generate marketing copy from product documentation and PRDs."
+          },
+          {
+            "name": "product-screenshots",
+            "path": "skills/product-screenshots/",
+            "description": "Capture and maintain product screenshots for marketing and support use."
+          },
+          {
+            "name": "public-page",
+            "path": "skills/public-page/",
+            "description": "Generate public-facing pages (marketing, legal, error, changelog)."
+          },
+          {
+            "name": "screenshot",
+            "path": "skills/screenshot/",
+            "description": "Capture authenticated screenshots of web pages for visual verification."
+          }
+        ]
+      },
+      "project": {
+        "description": "Project setup and scaffolding",
+        "skills": [
+          {
+            "name": "agent-audit",
+            "path": "skills/agent-audit/",
+            "description": "Audit AI toolkit agents for compliance and coverage gaps."
+          },
+          {
+            "name": "agent-onboard",
+            "path": "skills/agent-onboard/",
+            "description": "Onboard new or modified agents to ensure they are project-context aware and follow established conventions."
+          },
+          {
+            "name": "project-bootstrap",
+            "path": "skills/project-bootstrap/",
+            "description": "Bootstrap a new or existing project with stack detection and project.json generation."
+          },
+          {
+            "name": "project-scaffold",
+            "path": "skills/project-scaffold/",
+            "description": "Generate project boilerplate from scaffold templates."
+          },
+          {
+            "name": "spec-analyzer",
+            "path": "skills/spec-analyzer/",
+            "description": "Extract structured requirements from unstructured project specifications."
+          },
+          {
+            "name": "stack-advisor",
+            "path": "skills/stack-advisor/",
+            "description": "Recommend technology stacks based on project requirements."
+          }
+        ]
+      },
+      "meta": {
+        "description": "Skill generators for project-specific skills",
+        "skills": [
+          {
+            "name": "ai-tools-skill-generator",
+            "path": "skills/meta/ai-tools-skill-generator/",
+            "description": "Generate a project-specific AI tools skill."
+          },
+          {
+            "name": "api-endpoint-skill-generator",
+            "path": "skills/meta/api-endpoint-skill-generator/",
+            "description": "Generate a project-specific API patterns skill."
+          },
+          {
+            "name": "auth-skill-generator",
+            "path": "skills/meta/auth-skill-generator/",
+            "description": "Generate a project-specific auth-flow skill."
+          },
+          {
+            "name": "crud-skill-generator",
+            "path": "skills/meta/crud-skill-generator/",
+            "description": "Generate a project-specific CRUD patterns skill."
+          },
+          {
+            "name": "database-migration-skill-generator",
+            "path": "skills/meta/database-migration-skill-generator/",
+            "description": "Generate a project-specific database migration skill."
+          },
+          {
+            "name": "email-skill-generator",
+            "path": "skills/meta/email-skill-generator/",
+            "description": "Generate a project-specific transactional email skill."
+          },
+          {
+            "name": "form-skill-generator",
+            "path": "skills/meta/form-skill-generator/",
+            "description": "Generate a project-specific form patterns skill."
+          },
+          {
+            "name": "multi-tenant-skill-generator",
+            "path": "skills/meta/multi-tenant-skill-generator/",
+            "description": "Generate a project-specific tenant-context skill."
+          },
+          {
+            "name": "stripe-skill-generator",
+            "path": "skills/meta/stripe-skill-generator/",
+            "description": "Generate a project-specific payments skill for Stripe integration."
+          },
+          {
+            "name": "table-skill-generator",
+            "path": "skills/meta/table-skill-generator/",
+            "description": "Generate a project-specific data table patterns skill."
+          }
+        ]
+      },
+      "utilities": {
+        "description": "Miscellaneous utilities",
+        "skills": [
+          {
+            "name": "cve",
+            "path": "skills/cve/",
+            "description": "Investigate a CVE for exploitability, available fixes, and mitigation status."
+          },
+          {
+            "name": "e2e-quality",
+            "path": "skills/e2e-quality/",
+            "description": "Quality-beyond-correctness E2E testing patterns. Catches visual glitches, performance issues, layout shifts."
+          },
+          {
+            "name": "merge-conflicts",
+            "path": "skills/merge-conflicts/",
+            "description": "Resolve merge conflicts on a pull request by merging the target branch into the source branch."
+          }
+        ]
+      }
+    }
+  },
+  "schemas": {
+    "total": 8,
+    "items": [
+      {
+        "name": "builder-state.schema.json",
+        "file": "schemas/builder-state.schema.json",
+        "description": "Builder session state for resumability"
+      },
+      {
+        "name": "merge-queue.schema.json",
+        "file": "schemas/merge-queue.schema.json",
+        "description": "Merge queue for multi-session coordination"
+      },
+      {
+        "name": "prd-registry.schema.json",
+        "file": "schemas/prd-registry.schema.json",
+        "description": "PRD registry tracking PRDs in a project"
+      },
+      {
+        "name": "project.schema.json",
+        "file": "schemas/project.schema.json",
+        "description": "Project manifest configuration (project.json)"
+      },
+      {
+        "name": "projects-registry.schema.json",
+        "file": "schemas/projects-registry.schema.json",
+        "description": "Global registry of all projects (projects.json)"
+      },
+      {
+        "name": "requirements.schema.json",
+        "file": "schemas/requirements.schema.json",
+        "description": "Structured requirements extracted from specifications"
+      },
+      {
+        "name": "toolkit-structure.schema.json",
+        "file": "schemas/toolkit-structure.schema.json",
+        "description": "This manifest's schema definition"
+      },
+      {
+        "name": "workflow-defaults.schema.json",
+        "file": "schemas/workflow-defaults.schema.json",
+        "description": "Default workflow settings for projects"
+      }
+    ]
+  },
+  "scaffolds": {
+    "total": 3,
+    "items": [
+      {
+        "name": "go-chi-postgres",
+        "path": "scaffolds/go-chi-postgres/",
+        "description": "Go + Chi router + PostgreSQL backend"
+      },
+      {
+        "name": "nextjs-prisma",
+        "path": "scaffolds/nextjs-prisma/",
+        "description": "Next.js 15 + Prisma + PostgreSQL + Tailwind + TypeScript"
+      },
+      {
+        "name": "nextjs-supabase",
+        "path": "scaffolds/nextjs-supabase/",
+        "description": "Next.js 15 + Supabase + Tailwind + TypeScript"
+      }
+    ]
+  },
+  "templates": {
+    "coding": {
+      "description": "Language/framework coding conventions",
+      "items": [
+        {
+          "name": "coding-cloudformation.md",
+          "file": "templates/coding-cloudformation.md"
+        },
+        {
+          "name": "coding-common.md",
+          "file": "templates/coding-common.md"
+        },
+        {
+          "name": "coding-go.md",
+          "file": "templates/coding-go.md"
+        },
+        {
+          "name": "coding-java.md",
+          "file": "templates/coding-java.md"
+        },
+        {
+          "name": "coding-javascript.md",
+          "file": "templates/coding-javascript.md"
+        },
+        {
+          "name": "coding-playwright.md",
+          "file": "templates/coding-playwright.md"
+        },
+        {
+          "name": "coding-python.md",
+          "file": "templates/coding-python.md"
+        },
+        {
+          "name": "coding-react.md",
+          "file": "templates/coding-react.md"
+        },
+        {
+          "name": "coding-terraform.md",
+          "file": "templates/coding-terraform.md"
+        },
+        {
+          "name": "coding-typescript.md",
+          "file": "templates/coding-typescript.md"
+        }
+      ]
+    },
+    "git": {
+      "description": "Git workflow templates",
+      "items": [
+        {
+          "name": "branching.md",
+          "file": "templates/branching.md"
+        },
+        {
+          "name": "git-monorepo.md",
+          "file": "templates/git-monorepo.md"
+        },
+        {
+          "name": "git-safety.md",
+          "file": "templates/git-safety.md"
+        },
+        {
+          "name": "git-single-repo.md",
+          "file": "templates/git-single-repo.md"
+        }
+      ]
+    },
+    "other": {
+      "description": "Miscellaneous templates",
+      "items": [
+        {
+          "name": "brand-voice.md",
+          "file": "templates/brand-voice.md"
+        },
+        {
+          "name": "build.md",
+          "file": "templates/build.md"
+        },
+        {
+          "name": "e2e-quality-helpers.ts",
+          "file": "templates/e2e-quality-helpers.ts"
+        },
+        {
+          "name": "memory.md",
+          "file": "templates/memory.md"
+        },
+        {
+          "name": "tools.md",
+          "file": "templates/tools.md"
+        }
+      ]
+    },
+    "agentTemplates": {
+      "description": "Templates for generating project-specific agents",
+      "categories": {
+        "backend": [
+          {
+            "name": "go-chi.md",
+            "file": "agent-templates/backend/go-chi.md"
+          },
+          {
+            "name": "node-express.md",
+            "file": "agent-templates/backend/node-express.md"
+          },
+          {
+            "name": "python-fastapi.md",
+            "file": "agent-templates/backend/python-fastapi.md"
+          }
+        ],
+        "critics": [
+          {
+            "name": "go.md",
+            "file": "agent-templates/critics/go.md"
+          },
+          {
+            "name": "python.md",
+            "file": "agent-templates/critics/python.md"
+          },
+          {
+            "name": "typescript.md",
+            "file": "agent-templates/critics/typescript.md"
+          }
+        ],
+        "frontend": [
+          {
+            "name": "react.md",
+            "file": "agent-templates/frontend/react.md"
+          },
+          {
+            "name": "svelte.md",
+            "file": "agent-templates/frontend/svelte.md"
+          },
+          {
+            "name": "vue.md",
+            "file": "agent-templates/frontend/vue.md"
+          }
+        ],
+        "infra": [],
+        "styling": [
+          {
+            "name": "tailwind.md",
+            "file": "agent-templates/styling/tailwind.md"
+          }
+        ],
+        "testing": [
+          {
+            "name": "go-test.md",
+            "file": "agent-templates/testing/go-test.md"
+          },
+          {
+            "name": "jest-react.md",
+            "file": "agent-templates/testing/jest-react.md"
+          },
+          {
+            "name": "playwright.md",
+            "file": "agent-templates/testing/playwright.md"
+          },
+          {
+            "name": "pytest.md",
+            "file": "agent-templates/testing/pytest.md"
+          }
+        ]
+      }
+    }
+  },
+  "data": {
+    "description": "Configuration and reference data",
+    "items": [
+      {
+        "name": "capability-detection.json",
+        "file": "data/capability-detection.json",
+        "description": "Rules for detecting project capabilities from files"
+      },
+      {
+        "name": "meta-skill-triggers.json",
+        "file": "data/meta-skill-triggers.json",
+        "description": "Trigger conditions for meta skill generators"
+      },
+      {
+        "name": "stacks.yaml",
+        "file": "data/stacks.yaml",
+        "description": "Stack detection rules and templates"
+      },
+      {
+        "name": "workflow-defaults.json",
+        "file": "data/workflow-defaults.json",
+        "description": "Default workflow configuration values"
+      }
+    ]
+  },
+  "configuration": {
+    "opencode": {
+      "file": "opencode.json",
+      "description": "OpenCode app configuration with MCP servers and defaults"
+    }
+  },
+  "workflows": {
+    "description": "How agents communicate and coordinate through asynchronous update queues",
+    "overview": {
+      "summary": "The toolkit uses a message-passing architecture where agents communicate through file-based update queues. This design keeps agents loosely coupled while enabling cross-agent collaboration. The user remains in control, deciding when to review and apply queued updates.",
+      "keyPrinciples": [
+        "Agents never modify files outside their domain \u2014 they queue requests instead",
+        "Users decide when to apply updates, maintaining full control",
+        "Updates can be reviewed, modified, or rejected before application",
+        "Complex updates can be escalated to PRDs for proper planning"
+      ]
+    },
+    "primaryAgents": {
+      "description": "The three entry-point agents users invoke directly",
+      "agents": [
+        {
+          "name": "planner",
+          "role": "Project planning and PRD management",
+          "invocation": "@planner",
+          "responsibilities": [
+            "Bootstrap new projects with stack detection",
+            "Create and refine PRDs (Product Requirements Documents)",
+            "Manage the PRD registry and lifecycle states",
+            "Queue toolkit updates when discovering missing stack support"
+          ]
+        },
+        {
+          "name": "builder",
+          "role": "Feature implementation orchestrator",
+          "invocation": "@builder",
+          "responsibilities": [
+            "Build features from PRDs or ad-hoc requests",
+            "Orchestrate implementation agents (developer, tester, critic)",
+            "Apply project updates queued by @toolkit",
+            "Queue toolkit updates when discovering workflow gaps"
+          ]
+        },
+        {
+          "name": "toolkit",
+          "role": "AI toolkit maintenance",
+          "invocation": "@toolkit",
+          "responsibilities": [
+            "Maintain agents, skills, templates, and scaffolds",
+            "Process toolkit update requests from other agents",
+            "Queue project updates when schema or patterns change",
+            "Keep toolkit-structure.json and documentation in sync"
+          ]
+        }
+      ]
+    },
+    "updateQueues": {
+      "description": "File-based message queues for cross-agent communication",
+      "queues": [
+        {
+          "name": "pending-updates",
+          "path": "pending-updates/",
+          "direction": "Any agent \u2192 @toolkit",
+          "purpose": "Toolkit improvement requests discovered during work",
+          "description": "When any agent discovers a gap in the toolkit \u2014 a missing pattern, outdated guidance, or needed enhancement \u2014 it writes a request file here instead of modifying toolkit files directly. This preserves separation of concerns while enabling continuous toolkit improvement.",
+          "fileFormat": "YYYY-MM-DD-[agent]-[description].md",
+          "workflow": [
+            "Agent discovers toolkit gap during normal work",
+            "Agent writes structured request to pending-updates/",
+            "Agent notifies user: 'Queued toolkit update for @toolkit'",
+            "@toolkit presents pending requests at session start",
+            "User reviews each request and approves/rejects",
+            "@toolkit applies approved changes and commits"
+          ],
+          "userControl": "Users can review requests, ask clarifying questions, modify the scope, or reject updates entirely. Nothing is applied automatically.",
+          "example": {
+            "scenario": "Developer agent discovers Go import patterns aren't documented",
+            "file": "2026-02-20-developer-add-go-import-pattern.md",
+            "outcome": "@toolkit adds the pattern to coding-go.md template"
+          }
+        },
+        {
+          "name": "project-updates",
+          "path": "project-updates/[project-name]/",
+          "direction": "@toolkit \u2192 @builder",
+          "purpose": "Project changes required by toolkit updates",
+          "description": "When toolkit changes require updates to existing projects \u2014 schema migrations, new required fields, or pattern changes \u2014 @toolkit queues instructions here. Each project has its own subfolder. @builder applies these updates when the user works on that project.",
+          "fileFormat": "YYYY-MM-DD-[description].md",
+          "workflow": [
+            "@toolkit makes a change that affects project structure",
+            "@toolkit writes update instructions for each affected project",
+            "@builder presents pending updates when user selects a project",
+            "User chooses to apply, defer, or skip each update",
+            "@builder delegates to @developer to apply the changes",
+            "@builder deletes the update file after successful application"
+          ],
+          "userControl": "Users can apply updates immediately, defer them for later, or skip them entirely. Updates include verification steps so users can confirm correctness.",
+          "example": {
+            "scenario": "@toolkit renames 'features' to 'capabilities' in project.json schema",
+            "file": "2026-02-20-migrate-features-to-capabilities.md",
+            "outcome": "@builder updates each project's project.json to use new field name"
+          }
+        }
+      ]
+    },
+    "escalationToPRD": {
+      "description": "When simple updates aren't enough, they become full PRDs",
+      "summary": "Not all updates are simple fixes. When a pending update represents significant new functionality, architectural changes, or work that needs planning and decomposition, it can be escalated to a PRD.",
+      "triggers": [
+        "Update requires multiple coordinated changes across the toolkit",
+        "Update introduces new concepts that need documentation and testing",
+        "Update affects multiple agents or skills in complex ways",
+        "User requests formal planning for a queued update"
+      ],
+      "workflow": [
+        "User reviews pending update and decides it needs more planning",
+        "User asks @planner to create a PRD from the update concept",
+        "@planner creates a proper PRD with stories and acceptance criteria",
+        "Original pending update is deleted (superseded by PRD)",
+        "@builder implements the PRD through normal workflow"
+      ],
+      "example": {
+        "scenario": "Pending update requests 'add support for Rust projects'",
+        "reasoning": "This requires new agents, templates, skills, and scaffold \u2014 too complex for a simple update",
+        "outcome": "Escalated to PRD with stories for each component"
+      }
+    },
+    "userInitiatedUpdates": {
+      "description": "Users can also ask agents to generate pending updates",
+      "summary": "The update system isn't just for agent-discovered gaps. Users can ask any agent to queue an update request, capturing ideas for toolkit improvements without switching context.",
+      "examples": [
+        {
+          "userRequest": "Hey @developer, the way you handle database connections could be better. Queue an update for @toolkit to improve the guidance.",
+          "agentAction": "@developer writes a pending update describing the issue and suggested improvement",
+          "outcome": "User continues working; @toolkit addresses the improvement later"
+        },
+        {
+          "userRequest": "@builder, I want all my projects to use a new naming convention. Create a project update for each one.",
+          "agentAction": "@builder cannot create project-updates (only @toolkit can), so it queues a pending-update for @toolkit to handle",
+          "outcome": "@toolkit creates the project-updates in the next session"
+        }
+      ],
+      "benefits": [
+        "Capture improvement ideas without losing focus",
+        "Let the right agent handle the right work",
+        "Build a backlog of toolkit improvements organically"
+      ]
+    },
+    "architectureDiagram": {
+      "description": "Visual representation of agent communication flow",
+      "ascii": [
+        "\u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510",
+        "\u2502                        USER CONTROL                            \u2502",
+        "\u2502   (Reviews, approves, rejects, or escalates all updates)       \u2502",
+        "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+        "                              \u2502",
+        "        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510",
+        "        \u25bc                    \u25bc                    \u25bc",
+        "   \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510         \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510         \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510",
+        "   \u2502@planner \u2502         \u2502@builder \u2502         \u2502@toolkit \u2502",
+        "   \u2502         \u2502         \u2502         \u2502         \u2502         \u2502",
+        "   \u2502 \u2022 PRDs  \u2502         \u2502 \u2022 Build \u2502         \u2502 \u2022 Agents\u2502",
+        "   \u2502 \u2022 Stack \u2502         \u2502 \u2022 Test  \u2502         \u2502 \u2022 Skills\u2502",
+        "   \u2502 \u2022 Plan  \u2502         \u2502 \u2022 Ship  \u2502         \u2502 \u2022 Config\u2502",
+        "   \u2514\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2518         \u2514\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2518         \u2514\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2518",
+        "        \u2502                   \u2502                   \u2502",
+        "        \u2502   pending-updates/\u2502                   \u2502",
+        "        \u2502   \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510   \u2502",
+        "        \u2514\u2500\u2500\u25ba\u2502  Toolkit Update Requests      \u2502\u25c4\u2500\u2500\u2518",
+        "            \u2502  (any agent \u2192 @toolkit)       \u2502",
+        "            \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+        "                            \u2502",
+        "                            \u25bc",
+        "                       \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510",
+        "                       \u2502@toolkit \u2502\u2500\u2500\u2500\u2500 Reviews & applies",
+        "                       \u2514\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2518",
+        "                            \u2502",
+        "            project-updates/\u2502",
+        "            \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510",
+        "            \u2502  Project Update Instructions  \u2502",
+        "            \u2502  (@toolkit \u2192 @builder)        \u2502",
+        "            \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+        "                            \u2502",
+        "                            \u25bc",
+        "                       \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510",
+        "                       \u2502@builder \u2502\u2500\u2500\u2500\u2500 Applies to projects",
+        "                       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"
+      ]
+    },
+    "marketingHighlights": {
+      "description": "Key value propositions for the website",
+      "headline": "Autonomous Agents That Improve Themselves",
+      "subheadline": "A self-evolving development system where agents discover gaps, queue improvements, and continuously enhance your workflow \u2014 all under your control.",
+      "valueProps": [
+        {
+          "title": "Self-Improving System",
+          "description": "Agents don't just follow instructions \u2014 they identify gaps and queue improvements. Your toolkit gets better every time you use it.",
+          "detail": "When @developer discovers an undocumented pattern or @builder hits a workflow limitation, they automatically queue an update for @toolkit. No more manually tracking 'things to fix later.'"
+        },
+        {
+          "title": "You Stay in Control",
+          "description": "Every update is queued, not applied. You review, approve, modify, or reject changes on your schedule.",
+          "detail": "Unlike systems that make changes autonomously, this toolkit respects your authority. Pending updates wait for your review. You can ask clarifying questions, scope down changes, or reject them entirely."
+        },
+        {
+          "title": "Separation of Concerns",
+          "description": "Agents stay in their lane. Implementation agents don't modify the toolkit; toolkit agents don't touch your code.",
+          "detail": "@developer focuses on writing code, not maintaining agent definitions. @toolkit focuses on the agent system, not your application. Clear boundaries prevent accidents and make the system predictable."
+        },
+        {
+          "title": "Asynchronous Collaboration",
+          "description": "Queue an idea now, address it later. Keep your flow while building a backlog of improvements.",
+          "detail": "Mid-implementation, realize the toolkit could handle something better? Ask the agent to queue an update. You don't lose context switching to @toolkit \u2014 the improvement waits for you."
+        },
+        {
+          "title": "Graceful Escalation",
+          "description": "Simple fixes stay simple. Complex changes become proper PRDs with planning and decomposition.",
+          "detail": "A one-line fix stays a pending update. A new language stack? That escalates to a PRD with user stories, acceptance criteria, and proper implementation tracking."
+        }
+      ],
+      "useCases": [
+        {
+          "title": "Continuous Toolkit Evolution",
+          "story": "You're building a feature when @developer mentions it doesn't have guidance for a pattern you're using. It queues an update. Next week, @toolkit presents the queue \u2014 5 improvements discovered organically. You review and approve them. Your toolkit just got better without any dedicated 'maintenance time.'"
+        },
+        {
+          "title": "Schema Migrations at Scale",
+          "story": "@toolkit updates the project.json schema to add a new required field. It automatically queues migration instructions for all 12 of your projects. As you work on each project, @builder offers to apply the migration. No project gets left behind; no project is forced to update before you're ready."
+        },
+        {
+          "title": "Team Knowledge Capture",
+          "story": "A team member discovers a gotcha with the database library. They tell @developer to queue a toolkit update. @toolkit adds it to the coding conventions. Now every future implementation \u2014 by any team member \u2014 benefits from that knowledge. Institutional memory, automated."
+        }
+      ]
+    },
+    "todoSynchronization": {
+      "description": "How primary agents keep right-panel todos and disk state synchronized for resumability",
+      "summary": "Builder, Planner, and Toolkit treat OpenCode right-panel todos as the live checklist and mirror every status change to persistent state files. On startup, each agent restores panel todos from its state file so interrupted sessions can resume without losing task context.",
+      "agents": [
+        {
+          "agent": "builder",
+          "stateFile": "<project>/docs/builder-state.json",
+          "flows": [
+            {
+              "flow": "PRD (P)",
+              "granularity": "One todo per story",
+              "refId": "Story ID (US-###)"
+            },
+            {
+              "flow": "Ad-hoc (A)",
+              "granularity": "One todo per ad-hoc task",
+              "refId": "adhoc-###"
+            },
+            {
+              "flow": "Pending Updates (U)",
+              "granularity": "One todo per update file",
+              "refId": "Update filename"
+            },
+            {
+              "flow": "Deferred E2E (E)",
+              "granularity": "One todo per queued E2E test file",
+              "refId": "E2E file path"
+            }
+          ]
+        },
+        {
+          "agent": "planner",
+          "stateFile": "<project>/docs/planner-state.json",
+          "flows": [
+            {
+              "flow": "Draft refinement (D)",
+              "granularity": "One todo per refinement task/question batch",
+              "refId": "draft-<slug>-task-###"
+            },
+            {
+              "flow": "New PRD (N)",
+              "granularity": "One todo per creation step",
+              "refId": "new-prd-<slug>-step-###"
+            },
+            {
+              "flow": "Move to Ready (R)",
+              "granularity": "One todo per PRD moved",
+              "refId": "prd-<slug>"
+            },
+            {
+              "flow": "Planning updates (U)",
+              "granularity": "One todo per planning update file",
+              "refId": "Update filename"
+            }
+          ]
+        },
+        {
+          "agent": "toolkit",
+          "stateFile": "~/.config/opencode/.tmp/toolkit-state.json",
+          "flows": [
+            {
+              "flow": "Pending toolkit updates",
+              "granularity": "One todo per pending update file",
+              "refId": "pending-update filename"
+            },
+            {
+              "flow": "Direct toolkit requests",
+              "granularity": "One todo per user request task",
+              "refId": "toolkit-task-###"
+            },
+            {
+              "flow": "Post-change workflow",
+              "granularity": "One todo per mandatory post-change step",
+              "refId": "postchange-step-###"
+            }
+          ]
+        }
+      ],
+      "rules": [
+        "Persist every todo transition with status and priority to the agent state file",
+        "Keep at most one in_progress todo at any time",
+        "Restore panel todos from state file on startup",
+        "Do not rely on memory-only todo tracking for resumable workflows"
+      ]
+    }
+  },
+  "changelog": {
+    "generatedFrom": "git log --since='30 days ago'",
+    "entries": [
+      {
+        "date": "2026-02-21",
+        "changes": [
+          {
+            "type": "feat",
+            "description": "add story-level assessment for PRD rigor",
+            "hash": "63fd34c",
+            "scope": "testing"
+          },
+          {
+            "type": "fix",
+            "description": "de-duplicate PRD test flow and gate auto generation",
+            "hash": "c13771c",
+            "scope": "workflows"
+          },
+          {
+            "type": "fix",
+            "description": "enforce update file lifecycle verification",
+            "hash": "b081265",
+            "scope": "planner"
+          },
+          {
+            "type": "fix",
+            "description": "require explicit resume choice for in-progress PRDs",
+            "hash": "d2a6438",
+            "scope": "builder"
+          },
+          {
+            "type": "chore",
+            "description": "initialize public repository",
+            "hash": "c8f934b"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,642 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opencode.ai/schemas/project.json",
+  "title": "OpenCode Project Manifest",
+  "description": "Machine-readable project configuration for AI agents",
+  "type": "object",
+  "required": ["name", "stack"],
+
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable project name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of what this project does"
+    },
+
+    "stack": {
+      "type": "object",
+      "description": "Technology stack configuration",
+      "required": ["languages"],
+      "properties": {
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "enum": ["typescript", "javascript", "go", "python", "java", "rust", "ruby", "php", "csharp"]
+              },
+              "version": { "type": "string" },
+              "primary": { "type": "boolean", "default": false }
+            }
+          },
+          "description": "Programming languages used (first is primary if not specified)"
+        },
+        "runtime": {
+          "type": "string",
+          "enum": ["node", "bun", "deno", "go", "python", "jvm", "dotnet"],
+          "description": "Primary runtime environment"
+        },
+        "packageManager": {
+          "type": "string",
+          "enum": ["npm", "yarn", "pnpm", "bun", "go", "pip", "poetry", "cargo"],
+          "description": "Package manager for dependencies"
+        }
+      }
+    },
+
+    "apps": {
+      "type": "object",
+      "description": "Applications in this project (monorepo or single)",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["path", "type"],
+        "properties": {
+          "path": { "type": "string", "description": "Relative path from project root" },
+          "type": {
+            "type": "string",
+            "enum": ["frontend", "backend", "fullstack", "cli", "library", "worker"],
+            "description": "Application type"
+          },
+          "framework": {
+            "type": "string",
+            "description": "Framework name (e.g., nextjs, remix, express, gin, fastapi)"
+          },
+          "frameworkVersion": { "type": "string" },
+          "entryPoint": { "type": "string", "description": "Main entry directory or file" },
+          "port": { "type": "integer", "description": "DEPRECATED: Use devPort in projects.json registry instead. This field is ignored by agents." },
+          "structure": {
+            "type": "object",
+            "description": "Key directories within this app",
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "packages": {
+      "type": "object",
+      "description": "Shared packages (for monorepos)",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+
+    "database": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["postgres", "mysql", "sqlite", "mongodb", "redis", "none"]
+        },
+        "client": {
+          "type": "string",
+          "description": "Database client/ORM (e.g., supabase, prisma, drizzle, pgx, sqlalchemy)"
+        },
+        "migrationsPath": { "type": "string" },
+        "seedPath": { "type": "string" }
+      }
+    },
+
+    "styling": {
+      "type": "object",
+      "properties": {
+        "framework": {
+          "type": "string",
+          "enum": ["tailwind", "css-modules", "styled-components", "emotion", "sass", "vanilla", "none"]
+        },
+        "version": { "type": "string" },
+        "darkMode": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "strategy": {
+              "type": "string",
+              "enum": ["class", "media", "system"],
+              "description": "How dark mode is triggered"
+            }
+          }
+        },
+        "designSystemPath": {
+          "type": "string",
+          "description": "Path to design system documentation"
+        }
+      }
+    },
+
+    "testing": {
+      "type": "object",
+      "properties": {
+        "unit": {
+          "type": "object",
+          "properties": {
+            "framework": { "type": "string", "description": "e.g., jest, vitest, pytest, go-test" },
+            "configPath": { "type": "string" },
+            "testDir": { "type": "string" }
+          }
+        },
+        "e2e": {
+          "type": "object",
+          "properties": {
+            "framework": { "type": "string", "description": "e.g., playwright, cypress" },
+            "configPath": { "type": "string" },
+            "testDir": { "type": "string" }
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "threshold": { "type": "integer", "description": "Minimum coverage percentage" }
+          }
+        },
+        "rigorProfile": {
+          "type": "string",
+          "enum": ["rapid", "standard", "strict", "compliance"],
+          "default": "standard",
+          "description": "Default PRD testing rigor: rapid (speed-first), standard (balanced), strict (high confidence), compliance (strict + no bypass)"
+        },
+        "storyAssessment": {
+          "type": "object",
+          "description": "How per-story test intensity is determined during PRD execution",
+          "properties": {
+            "source": {
+              "type": "string",
+              "enum": ["planner", "builder", "hybrid"],
+              "default": "hybrid",
+              "description": "planner = use PRD-assigned intensity, builder = runtime assessment only, hybrid = planner baseline + runtime escalation"
+            },
+            "allowDowngrade": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether Builder may reduce planner-assigned story intensity. Recommended false."
+            }
+          }
+        },
+        "autoGenerate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically generate tests for changed code without existing coverage"
+        },
+        "qualityChecks": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable quality-beyond-correctness checks (visual stability, performance budgets, CLS)"
+        }
+      }
+    },
+
+    "linting": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "tools": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Linting tools (e.g., eslint, prettier, biome, golint, ruff)"
+        }
+      }
+    },
+
+    "git": {
+      "type": "object",
+      "description": "Git workflow and branching strategy configuration",
+      "properties": {
+        "branchingStrategy": {
+          "type": "string",
+          "enum": ["trunk-based", "github-flow", "git-flow", "release-branches"],
+          "default": "trunk-based",
+          "description": "Branching strategy: trunk-based (all work on main), github-flow (feature branches → main), git-flow (develop/release/main), release-branches (develop → release/* → main)"
+        },
+        "defaultBranch": {
+          "type": "string",
+          "default": "main",
+          "description": "Primary branch name (usually 'main' or 'master')"
+        },
+        "developBranch": {
+          "type": "string",
+          "default": "develop",
+          "description": "Integration branch for git-flow and release-branches strategies"
+        },
+        "releaseBranchPattern": {
+          "type": "string",
+          "default": "release/*",
+          "description": "Pattern for release branches (git-flow and release-branches strategies)"
+        }
+      }
+    },
+
+    "commands": {
+      "type": "object",
+      "description": "Shell commands for common operations",
+      "properties": {
+        "dev": { "type": "string", "description": "Command to start development server (e.g., npm run dev)" },
+        "build": { "type": "string" },
+        "test": { "type": "string" },
+        "testUnit": { "type": "string" },
+        "testE2E": { "type": "string" },
+        "typecheck": { "type": "string" },
+        "lint": { "type": "string" },
+        "lintFix": { "type": "string" },
+        "format": { "type": "string" },
+        "migrate": { "type": "string" },
+        "migrateCreate": { "type": "string" }
+      },
+      "additionalProperties": { "type": "string" }
+    },
+
+    "devServer": {
+      "type": "object",
+      "description": "Development server configuration. NOTE: The port is stored in ~/.config/opencode/projects.json (projects[].devPort), NOT here. This section is for health checks and startup options only.",
+      "properties": {
+        "healthCheck": {
+          "type": "string",
+          "description": "URL path to check if server is ready (e.g., / or /api/health). Combined with port from projects.json to form full URL."
+        },
+        "startupTimeout": {
+          "type": "integer",
+          "default": 30000,
+          "description": "Maximum time in milliseconds to wait for server to become ready"
+        },
+        "env": {
+          "type": "object",
+          "description": "Environment variables to set when starting the dev server (e.g., DISABLE_RATE_LIMIT=true for testing)",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+
+    "qualityGates": {
+      "type": "object",
+      "description": "Commands that must pass at various stages",
+      "properties": {
+        "beforeCommit": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Commands to run before committing"
+        },
+        "beforePush": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "beforeMerge": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "capabilities": {
+      "type": "object",
+      "description": "Project capabilities. Set at bootstrap, updated by agents as new integrations are added. Used to determine which workflow steps are applicable.",
+      "properties": {
+        "authentication": { "type": "boolean", "description": "Has user authentication system" },
+        "multiTenant": { "type": "boolean", "description": "Supports multiple organizations/tenants" },
+        "payments": { "type": "boolean", "description": "Has payment processing (Stripe, etc.)" },
+        "email": { "type": "boolean", "description": "Has transactional email (Resend, SendGrid, etc.)" },
+        "i18n": { "type": "boolean", "description": "Has internationalization support" },
+        "marketing": { "type": "boolean", "description": "Has marketing/landing pages" },
+        "supportDocs": { "type": "boolean", "description": "Has support documentation/help articles" },
+        "api": { "type": "boolean", "description": "Exposes an API for external consumption" },
+        "realtime": { "type": "boolean", "description": "Has realtime/websocket features" },
+        "ai": { "type": "boolean", "description": "Has AI/LLM integration" },
+        "documentation": {
+          "type": "object",
+          "description": "Documentation system configuration (used by docs-writer, support-article-writer)",
+          "properties": {
+            "system": {
+              "type": "string",
+              "enum": ["markdown", "docusaurus", "vitepress", "database", "notion", "none"],
+              "description": "Documentation system type"
+            },
+            "userDocsPath": { "type": "string", "description": "Path to user-facing docs" },
+            "supportArticlesPath": { "type": "string", "description": "Path to support articles" },
+            "apiDocsPath": { "type": "string", "description": "Path to API documentation" },
+            "databaseTable": { "type": "string", "description": "Table name if database-backed (e.g., support_articles)" }
+          }
+        },
+        "aiTools": {
+          "type": "object",
+          "description": "AI/chatbot tools configuration (used by tools-writer)",
+          "properties": {
+            "system": {
+              "type": "string",
+              "enum": ["openai-functions", "langchain", "mcp", "custom", "none"],
+              "description": "AI tool system type"
+            },
+            "schemaPath": { "type": "string", "description": "Path to tool schema definitions" },
+            "implementationPath": { "type": "string", "description": "Path to tool implementations" },
+            "typesPath": { "type": "string", "description": "Path to tool type definitions" }
+          }
+        }
+      },
+      "additionalProperties": { "type": "boolean" }
+    },
+
+    "workflows": {
+      "type": "object",
+      "description": "Project-specific workflow overrides. If not defined, defaults are read from ~/.config/opencode/data/workflow-defaults.json. See that file for current defaults and available steps.",
+      "properties": {
+        "adhoc": {
+          "type": "array",
+          "description": "Steps to run for ad-hoc requests. If not specified, falls back to toolkit defaults in data/workflow-defaults.json.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "build",
+              "typecheck",
+              "lint",
+              "test",
+              "test-scoped",
+              "critic",
+              "tester",
+              "tester-scoped",
+              "e2e",
+              "e2e-write",
+              "support-article",
+              "tools",
+              "marketing",
+              "visual-verify",
+              "commit",
+              "report",
+              "toolkit-suggestions"
+            ]
+          }
+        },
+        "prd": {
+          "type": "array",
+          "description": "Steps to run for PRD-driven work. If not specified, falls back to toolkit defaults in data/workflow-defaults.json.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "build",
+              "typecheck",
+              "lint",
+              "test",
+              "test-scoped",
+              "critic",
+              "tester",
+              "tester-scoped",
+              "e2e",
+              "e2e-write",
+              "support-article",
+              "tools",
+              "marketing",
+              "visual-verify",
+              "commit",
+              "report",
+              "toolkit-suggestions"
+            ]
+          }
+        }
+      }
+    },
+
+    "integrations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "e.g., stripe, resend, openai, supabase" },
+          "purpose": { "type": "string", "description": "What it's used for" }
+        }
+      }
+    },
+
+    "aws": {
+      "type": "object",
+      "description": "AWS configuration (used by backend-aws-critic, aws-dev)",
+      "properties": {
+        "services": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "AWS services used (e.g., dynamodb, s3, sqs, lambda, secrets-manager)"
+        },
+        "sdkVersion": { 
+          "type": "string",
+          "enum": ["v2", "v3"],
+          "description": "AWS SDK version" 
+        },
+        "infrastructure": {
+          "type": "string",
+          "enum": ["cdk", "cloudformation", "terraform", "sam", "serverless", "none"],
+          "description": "Infrastructure-as-code tool"
+        },
+        "infrastructurePath": { "type": "string", "description": "Path to IaC files" },
+        "clientWrapperPath": { 
+          "type": "string", 
+          "description": "Path to standard AWS client wrapper (if exists)" 
+        },
+        "localDevelopment": { 
+          "type": "boolean", 
+          "default": false,
+          "description": "Whether AWS services run locally (LocalStack, etc.)" 
+        }
+      }
+    },
+
+    "security": {
+      "type": "object",
+      "description": "Security configuration (used by security-critic, exploit-critic)",
+      "properties": {
+        "authMiddleware": { 
+          "type": "string", 
+          "description": "Path to authentication middleware" 
+        },
+        "csrfProtection": {
+          "type": "string",
+          "enum": ["double-submit", "synchronizer-token", "samesite-cookie", "none"],
+          "description": "CSRF protection strategy"
+        },
+        "corsConfigPath": { 
+          "type": "string", 
+          "description": "Path to CORS configuration" 
+        },
+        "securityHeadersPath": { 
+          "type": "string", 
+          "description": "Path to security headers configuration" 
+        },
+        "inputValidation": {
+          "type": "string",
+          "description": "Validation library (e.g., zod, yup, joi, class-validator)"
+        },
+        "secretsManagement": {
+          "type": "string",
+          "enum": ["env-vars", "aws-secrets-manager", "vault", "doppler", "other"],
+          "description": "How secrets are managed"
+        }
+      }
+    },
+
+    "agents": {
+      "type": "object",
+      "description": "AI agent behavior configuration",
+      "properties": {
+        "criticMode": {
+          "type": "string",
+          "enum": ["strict", "balanced", "fast"],
+          "default": "balanced",
+          "description": "When to run critic during PRD work: strict (after every story), balanced (every 2-3 stories), fast (once at end)"
+        },
+        "gitWorkflow": {
+          "type": "string",
+          "enum": ["trunk", "feature-branch", "pr-required"],
+          "default": "pr-required",
+          "description": "How agents should handle git"
+        },
+        "trunkMode": {
+          "type": "string",
+          "enum": ["branchless", "pr-based"],
+          "default": "branchless",
+          "description": "Only applies when gitWorkflow is 'trunk'. branchless = commit directly on default branch, pr-based = keep trunk semantics but allow PR flow."
+        },
+        "autoCommit": { "type": "boolean", "default": true },
+        "autoPush": { "type": "boolean", "default": true },
+        "browserVerification": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether UI changes need browser verification"
+        },
+        "heartbeatTimeoutMinutes": {
+          "type": "integer",
+          "default": 10,
+          "description": "Session heartbeat timeout in minutes. Session is considered abandoned after this period of inactivity."
+        },
+        "commitStrategy": {
+          "type": "string",
+          "enum": ["batch-per-session", "per-todo", "manual"],
+          "default": "batch-per-session",
+          "description": "When to commit: batch-per-session (default), per-todo (after each todo), or manual (user triggers)"
+        },
+        "multiSession": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable multi-session coordination (session locks, heartbeat, merge queue). For solo developers, keep false."
+        },
+        "autoMerge": {
+          "type": "string",
+          "enum": ["off", "on-e2e-pass", "on-ci-pass"],
+          "default": "off",
+          "description": "When to auto-merge PRs. 'off' = human merges, 'on-e2e-pass' = merge after Builder E2E passes, 'on-ci-pass' = merge after GitHub CI passes"
+        },
+        "requireApproval": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether PR approval is required before auto-merge (only applies when autoMerge is not 'off')"
+        },
+        "mergeQueue": {
+          "type": "object",
+          "description": "Merge queue configuration for coordinating parallel session merges",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether to use merge queue (false = legacy behavior, no queue)"
+            },
+            "autoProcess": {
+              "type": "boolean",
+              "default": false,
+              "description": "Automatically process queue when entry is added (vs manual @merge-coordinator)"
+            },
+            "strategy": {
+              "type": "string",
+              "enum": ["squash", "merge", "rebase"],
+              "default": "squash",
+              "description": "Git merge strategy to use"
+            },
+            "requireApproval": {
+              "type": "boolean",
+              "default": false,
+              "description": "Require PR approval before auto-merge through queue"
+            },
+            "runTestsAfterRebase": {
+              "type": "boolean",
+              "default": true,
+              "description": "Run full test suite after rebasing (slower but safer)"
+            },
+            "runE2EAfterRebase": {
+              "type": "boolean",
+              "default": true,
+              "description": "Run E2E tests after rebasing (requires dev server)"
+            },
+            "notifyOnComplete": {
+              "type": "boolean",
+              "default": true,
+              "description": "Log notification when merge completes or fails"
+            },
+            "deleteOnComplete": {
+              "type": "boolean",
+              "default": true,
+              "description": "Delete branch after successful merge"
+            }
+          }
+        }
+      }
+    },
+
+    "skills": {
+      "type": "object",
+      "description": "Project-specific skills configuration. Skills are step-by-step guides for common patterns in THIS project.",
+      "properties": {
+        "projectSkillsPath": {
+          "type": "string",
+          "default": "docs/skills/",
+          "description": "Path to project-specific skills directory"
+        },
+        "generated": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "description": "Skill name (e.g., auth-flow)" },
+              "generatedFrom": { "type": "string", "description": "Meta-skill that generated this (e.g., auth-skill-generator)" },
+              "generatedAt": { "type": "string", "format": "date", "description": "When the skill was generated" }
+            }
+          },
+          "description": "Skills that have been generated for this project"
+        }
+      }
+    },
+
+    "context": {
+      "type": "object",
+      "description": "Paths to additional context documents",
+      "properties": {
+        "architecture": { 
+          "type": "string",
+          "description": "Path to architecture documentation (e.g., docs/ARCHITECTURE.md)"
+        },
+        "conventions": { 
+          "type": "string",
+          "description": "Path to coding conventions documentation (e.g., docs/CONVENTIONS.md)"
+        },
+        "designSystem": { 
+          "type": "string",
+          "description": "Path to design system documentation"
+        },
+        "brandVoice": {
+          "type": "string",
+          "description": "Path to brand voice/messaging guidelines"
+        },
+        "glossary": { 
+          "type": "string",
+          "description": "Path to project glossary/terminology"
+        },
+        "security": { 
+          "type": "string",
+          "description": "Path to security guidelines"
+        }
+      },
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

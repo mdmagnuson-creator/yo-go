@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opencode.ai/schemas/builder-state.json",
+  "title": "Builder State",
+  "description": "Tracks Builder session state for resumability. Lives at docs/builder-state.json in each project.",
+  "type": "object",
+
+  "properties": {
+    "lastHeartbeat": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO8601 timestamp of last activity. Used to detect abandoned sessions."
+    },
+    "sessionId": {
+      "type": "string",
+      "description": "Unique identifier for the current session (e.g., builder-abc123)"
+    },
+
+    "activePrd": {
+      "type": ["object", "null"],
+      "description": "Currently active PRD being worked on. Null if no PRD work in progress.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "PRD identifier (e.g., prd-calendar-recurring)"
+        },
+        "file": {
+          "type": "string",
+          "description": "Path to PRD file relative to project root"
+        },
+        "branch": {
+          "type": "string",
+          "description": "Git branch for this PRD work"
+        },
+        "currentStory": {
+          "type": ["string", "null"],
+          "description": "Story currently being worked on (e.g., US-003). Null if between stories."
+        },
+        "storiesCompleted": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Stories that have been completed"
+        },
+        "storiesPending": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Stories remaining to be done"
+        },
+        "testingRigor": {
+          "type": "string",
+          "enum": ["rapid", "standard", "strict", "compliance"],
+          "description": "Resolved testing rigor profile selected for this PRD session"
+        },
+        "storyAssessments": {
+          "type": "object",
+          "description": "Per-story planned and effective testing intensity",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "planned": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "critical"],
+                "description": "Planner-assigned baseline intensity"
+              },
+              "effective": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "critical"],
+                "description": "Runtime intensity used by Builder after reassessment"
+              },
+              "escalatedBy": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Runtime signals that increased intensity"
+              },
+              "updatedAt": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "required": ["id", "file", "branch"]
+    },
+
+    "adhocQueue": {
+      "type": "array",
+      "description": "Queue of ad-hoc work items (non-PRD tasks)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier (e.g., adhoc-001)"
+          },
+          "description": {
+            "type": "string",
+            "description": "What needs to be done"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "cancelled"],
+            "description": "Current status"
+          },
+          "filesChanged": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Files modified for this work item"
+          },
+          "completedAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When this item was completed"
+          }
+        },
+        "required": ["id", "description", "status"]
+      }
+    },
+
+    "pendingTests": {
+      "type": "object",
+      "description": "Tests that have been generated but may not have run yet",
+      "properties": {
+        "unit": {
+          "type": "object",
+          "properties": {
+            "generated": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Paths to generated unit test files"
+            },
+            "status": {
+              "type": "string",
+              "enum": ["pending", "running", "passed", "failed"],
+              "description": "Current test status"
+            },
+            "lastRunAt": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            },
+            "failureCount": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        },
+        "e2e": {
+          "type": "object",
+          "properties": {
+            "generated": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Paths to generated E2E test files"
+            },
+            "status": {
+              "type": "string",
+              "enum": ["pending", "running", "passed", "failed", "deferred"],
+              "description": "Current test status"
+            },
+            "deferredTo": {
+              "type": ["string", "null"],
+              "enum": ["prd-completion", "manual", null],
+              "description": "If deferred, when should tests run"
+            },
+            "lastRunAt": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            },
+            "failureCount": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        }
+      }
+    },
+
+    "pendingUpdates": {
+      "type": "object",
+      "description": "Documentation and marketing updates auto-detected from changed files",
+      "properties": {
+        "supportArticles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Support article slugs that need updating"
+        },
+        "marketingScreenshots": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Marketing screenshot IDs that need refreshing"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in_progress", "completed", "skipped"],
+          "description": "Current status of pending updates"
+        }
+      }
+    },
+
+    "uiTodos": {
+      "type": "object",
+      "description": "Persistent mirror of OpenCode right-panel todos for session recovery",
+      "properties": {
+        "flow": {
+          "type": ["string", "null"],
+          "enum": ["prd", "adhoc", "updates", "e2e", null],
+          "description": "Active workflow that owns the current todo list"
+        },
+        "lastSyncedAt": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When panel todos were last synchronized to disk"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "string",
+                "description": "Todo text shown in right panel"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "in_progress", "completed", "cancelled"],
+                "description": "Todo status"
+              },
+              "priority": {
+                "type": "string",
+                "enum": ["high", "medium", "low"],
+                "description": "Todo priority"
+              },
+              "flow": {
+                "type": "string",
+                "enum": ["prd", "adhoc", "updates", "e2e"],
+                "description": "Workflow that created the todo"
+              },
+              "refId": {
+                "type": "string",
+                "description": "Stable identifier (story id, adhoc id, update filename, or e2e file)"
+              }
+            },
+            "required": ["content", "status", "priority", "flow", "refId"]
+          }
+        }
+      }
+    },
+
+    "uncommittedWork": {
+      "type": "object",
+      "description": "Summary of work that hasn't been committed yet",
+      "properties": {
+        "hasChanges": {
+          "type": "boolean",
+          "description": "Whether there are uncommitted changes"
+        },
+        "summary": {
+          "type": "string",
+          "description": "Brief summary of the uncommitted work"
+        },
+        "filesChanged": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of changed files"
+        },
+        "testsPass": {
+          "type": ["boolean", "null"],
+          "description": "Whether tests pass. Null if not yet run."
+        },
+        "docsComplete": {
+          "type": ["boolean", "null"],
+          "description": "Whether documentation updates are complete. Null if not applicable."
+        }
+      }
+    }
+  },
+
+  "required": ["lastHeartbeat", "sessionId"]
+}
