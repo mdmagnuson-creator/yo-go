@@ -435,18 +435,38 @@ Keep the README counts in sync:
    - `| [\`skills/\`](#skills) | XX reusable skills...`
 3. **If you added a new agent category or significant feature**, add it to the appropriate section
 
-### Step 3: Queue Website Update
+### Step 3: Handle Website Sync Mode
 
-Default behavior for this repository is **owner-managed website sync**:
+Website sync is controlled by a local, gitignored override so public users are not forced into website workflows.
 
-- Do **not** create a queued website update file unless the user explicitly requests queue-file mode.
-- Instead, include a short manual website sync checklist in your completion response.
+Resolve mode in this order:
 
-If queue-file mode is explicitly requested, create a pending update for the toolkit website project so @builder can sync the documentation:
+1. Read `.local/toolkit-overrides.json` (if present)
+2. Read `websiteSync.mode` from that file
+3. If missing, default to `disabled`
+
+Supported modes:
+
+- `disabled` (public default): skip website sync entirely; no checklist, no queue file required
+- `owner-managed`: include a short manual website sync checklist in completion output
+- `queue-file`: create a queued update file for toolkit website sync
+
+For your personal/local setup, use `.local/toolkit-overrides.json` (gitignored), for example:
+
+```json
+{
+  "websiteSync": {
+    "mode": "queue-file",
+    "projectId": "opencode-toolkit-website"
+  }
+}
+```
+
+If resolved mode is `queue-file`, create a pending update for the configured website project so @builder can sync the documentation:
 
 1. **Create the update file:**
    ```
-   project-updates/toolkit-website/YYYY-MM-DD-toolkit-sync.md
+   project-updates/<projectId>/YYYY-MM-DD-toolkit-sync.md
    ```
 
 2. **Use this format:**
@@ -482,7 +502,7 @@ If queue-file mode is explicitly requested, create a pending update for the tool
    - toolkit-structure.json: https://raw.githubusercontent.com/mdmagnuson-creator/ai-toolkit/main/toolkit-structure.json
    ```
 
-3. **If the toolkit-website project doesn't exist yet**, or owner-managed mode is active, skip queue-file creation and note the reason in completion output
+3. **If `projectId` is missing or target folder does not exist**, fail Step 3 and report the blocker
 
 ### Step 4: Run Governance Validators + Completion Report
 
@@ -519,7 +539,7 @@ If any item is not complete, do not claim completion. State the blocker and the 
 ```
 □ 1. toolkit-structure.json updated (counts, entries, timestamp, changelog)
 □ 2. README.md counts match actual (63 agents, 31 skills, etc.)
-□ 3. Website update queued (if structural change)
+□ 3. Website sync handled per resolved mode (`disabled`, `owner-managed`, or `queue-file`)
 □ 4. Governance validators run (toolkit-postchange, handoff-contracts, project-updates, policy-testability)
 □ 5. All files staged: git add toolkit-structure.json README.md project-updates/
 ```

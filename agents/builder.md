@@ -207,7 +207,7 @@ After the user selects a project number, show a **fast inline dashboard** — no
    >
    > Do not run startup health checks immediately after project selection.
    >
-   > **Verification:** Before executing `P`, `A`, `U`, or `E`, confirm running status with a successful port/health check.
+   > **Verification:** Before executing `P`, `A`, `U`, or `E`, run the strict health check script and require `running` status.
    > **Failure behavior:** If startup fails, report a single `startup failed` status with a brief reason and block that workflow until fixed.
    > **Output policy (token-light):**
    > - Do not stream dev server logs during startup checks.
@@ -215,41 +215,17 @@ After the user selects a project number, show a **fast inline dashboard** — no
    > - Include error details only when status is `startup failed`.
 
    ```bash
-   # 1. Get port from projects.json
-   DEV_PORT=$(jq -r '.projects[] | select(.name == "[PROJECT]") | .devPort' ~/.config/opencode/projects.json)
+   ~/.config/opencode/scripts/check-dev-server.sh --project-path "<project-path>"
+   ```
 
-   # 2. Check if already running
-    if lsof -i :$DEV_PORT -t >/dev/null 2>&1; then
-        echo "running"
-    else
-        # 3. Start the server in background
-        cd <project-path>
-        mkdir -p .tmp
-        npm run dev >.tmp/opencode-dev-server.log 2>&1 &  # Or use commands.dev from project.json
+   The script enforces:
+   - Registry devPort lookup from `~/.config/opencode/projects.json`
+   - Listener + HTTP readiness check (`2xx`/`3xx`)
+   - Process-to-port correlation (started process tree or project-local listener)
+   - Short stability re-check (must still pass after a brief delay)
+   - Single status output contract (`running`, `startup failed: ...`, `timed out`)
 
-        # 4. Wait for server to be ready (up to 30 seconds)
-        STARTED=false
-        for i in {1..30}; do
-            if curl -s http://localhost:$DEV_PORT -o /dev/null -w "%{http_code}" | grep -q "200\|304"; then
-                echo "running"
-                STARTED=true
-                break
-            fi
-            sleep 1
-        done
-
-        # 5. Emit one final status if startup did not become healthy
-        if [ "$STARTED" = false ]; then
-            if ! ps -p $! >/dev/null 2>&1; then
-                echo "startup failed"
-            else
-                echo "timed out"
-            fi
-        fi
-    fi
-    ```
-
-   **If server fails to start:** Show `startup failed` with a brief reason from startup logs, then block workflow progression.
+   **If status is not `running`:** Do not claim the server is up, and block workflow progression until resolved.
 
 ## Pending Project Update Routing (`U`)
 
@@ -609,18 +585,19 @@ COMPLETED PRDs (recent)
    # Find devPort for current project
    ```
 
-2. **Check if server is running:**
+2. **Use strict readiness script (required):**
    ```bash
-   lsof -i :{devPort} -t 2>/dev/null
-   # Or: curl -s http://localhost:{devPort} -o /dev/null -w "%{http_code}"
+   ~/.config/opencode/scripts/check-dev-server.sh --project-path "<project-path>"
    ```
 
-3. **Start if not running:**
-   ```bash
-   cd <project-path>
-   npm run dev &  # Or commands.dev from project.json
-   # Wait for health check
-   ```
+3. **Interpret status strictly:**
+   - `running` -> continue workflow
+   - `startup failed: ...` -> report failure and stop workflow
+   - `timed out` -> report timeout and stop workflow
+
+4. **Never make a running claim without immediate verification:**
+   - Re-run the script immediately before replying "running"
+   - If second check is not `running`, report failure state instead
 
 > ⚠️ **NEVER stop the dev server without asking the user.**
 >

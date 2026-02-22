@@ -46,6 +46,26 @@ opencode
 # Select "overlord" or "planner" to get started
 ```
 
+### 4. Optional Local Overrides (Gitignored)
+
+Use `.local/toolkit-overrides.json` for machine-specific Toolkit behavior that should not ship to other users.
+
+Example (auto-queue website sync updates locally):
+
+```json
+{
+  "websiteSync": {
+    "mode": "queue-file",
+    "projectId": "opencode-toolkit-website"
+  }
+}
+```
+
+Supported `websiteSync.mode` values:
+- `disabled` (default, public-safe)
+- `owner-managed` (manual checklist only)
+- `queue-file` (auto-create `project-updates/<projectId>/...`)
+
 ---
 
 ## Agents

@@ -16,6 +16,28 @@ warnings = []
 
 structure_path = root / "toolkit-structure.json"
 readme_path = root / "README.md"
+local_overrides_path = root / ".local" / "toolkit-overrides.json"
+resolved_website_project_id = ""
+
+
+def resolve_website_mode() -> str:
+    global resolved_website_project_id
+    mode = "disabled"
+    if local_overrides_path.exists():
+        try:
+            overrides = json.loads(local_overrides_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            issues.append(f"{local_overrides_path}: invalid JSON ({exc})")
+            return mode
+        mode = overrides.get("websiteSync", {}).get("mode", mode)
+        resolved_website_project_id = overrides.get("websiteSync", {}).get("projectId", "")
+
+    if mode not in {"disabled", "owner-managed", "queue-file"}:
+        issues.append(
+            f"{local_overrides_path}: websiteSync.mode must be one of disabled|owner-managed|queue-file"
+        )
+        return "disabled"
+    return mode
 
 if not structure_path.exists():
     print("FAIL: toolkit-structure.json is missing")
@@ -76,12 +98,19 @@ try:
     )
 
     if structural_changed:
-        website_updates = list((root / "project-updates" / "toolkit-website").glob("*.md"))
-        website_updates += list((root / "project-updates" / "opencode-toolkit-website").glob("*.md"))
-        if not website_updates:
-            warnings.append(
-                "No toolkit website sync update found in project-updates/toolkit-website/ or project-updates/opencode-toolkit-website/"
-            )
+        website_mode = resolve_website_mode()
+        if website_mode == "queue-file":
+            if not resolved_website_project_id:
+                issues.append(
+                    "websiteSync.mode=queue-file requires websiteSync.projectId in .local/toolkit-overrides.json"
+                )
+                website_updates = []
+            else:
+                website_updates = list((root / "project-updates" / resolved_website_project_id).glob("*.md"))
+            if not website_updates:
+                issues.append(
+                    "websiteSync.mode=queue-file but no toolkit website sync update found in project-updates/<websiteSync.projectId>/"
+                )
 except Exception:
     warnings.append("git status unavailable; skipped website sync heuristic")
 
