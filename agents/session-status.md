@@ -48,11 +48,11 @@ skill: project-bootstrap
 ```
 
 The bootstrap wizard will:
-1. Ask if adding existing project or creating new one
-2. Auto-detect the technology stack from project files
-3. Ask clarifying questions for ambiguous/missing information
-4. Generate `docs/project.json` manifest with full stack configuration
-5. Set up agent system folder structure (if requested)
+1. Support quick project creation from either a local folder or a GitHub repo URL
+2. Collect minimal intake (project name + pasted context with optional image attachments)
+3. Auto-detect stack where possible and fill project manifest defaults
+4. Generate `docs/project.json` manifest with stack + workflow configuration
+5. Set up agent system folder structure by default (no opt-in prompt)
 6. Update the global project registry
 
 **Follow the project-bootstrap skill instructions completely.** The skill handles:
@@ -64,7 +64,7 @@ The bootstrap wizard will:
   - `docs/session-locks.json` (if agent system enabled)
   - `AGENTS.md` (if doesn't exist)
 
-After bootstrap completes, set the new project as active and display the status dashboard.
+After bootstrap completes, set the new project as active and default directly into a PRD kickoff flow to define scope and architecture direction.
 
 ### Step 1: Gather Data (After Project Selection)
 

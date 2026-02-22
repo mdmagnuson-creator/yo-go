@@ -21,11 +21,18 @@ Users can provide specs in multiple formats:
 | **URL** | `https://notion.so/...` | Fetch URL contents |
 | **Interactive** | "Help me figure out what I need" | Ask clarifying questions |
 
+Default behavior for project bootstrap quick intake:
+- Ask user to paste freeform context directly
+- Accept image attachments as additional context
+- Do not force a method-selection menu unless user asks for file/URL mode
+
 ## Process
 
 ### Step 1: Acquire the Spec
 
-Ask the user how they want to provide the spec:
+For quick bootstrap flow, ask for direct context paste + optional images first.
+
+Use method-selection menu only when needed:
 
 ```
 ═══════════════════════════════════════════════════════════════════════

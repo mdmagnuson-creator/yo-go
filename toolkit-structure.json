@@ -1,8 +1,8 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-02-22T03:40:00Z",
-  "repository": "https://github.com/<your-org>/ai-toolkit",
+  "generatedAt": "2026-02-22T05:08:00Z",
+  "repository": "https://github.com/mdmagnuson-creator/ai-toolkit",
   "agents": {
     "total": 63,
     "categories": {

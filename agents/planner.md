@@ -85,7 +85,7 @@ Each session is independent — there is no persistent "active project" across s
    ```
 
 3. **WAIT for user response. Do NOT proceed until a project is selected.**
-   - If user selects "0", run @session-status to handle the "Add New Project" flow
+   - If user selects "0", run @session-status to handle the streamlined "Add New Project" flow (including GitHub repo bootstrap option)
 
 4. **After project is confirmed**, show a **fast inline dashboard** — no sub-agent calls:
 
@@ -243,8 +243,9 @@ When the user describes a new feature:
 2. **Ask clarifying questions** if the prompt is ambiguous
 3. **Save to `docs/drafts/prd-[name].md`** initially
 4. **Add to `docs/prd-registry.json`** with status "draft"
-5. **Add a planner-authored Definition of Done** to the draft PRD
-6. **Refine** as described above
+5. **For new-project kickoff PRDs, include architecture recommendation options** (2-3 approaches with tradeoffs)
+6. **Add a planner-authored Definition of Done** to the draft PRD
+7. **Refine** as described above
 
 ### 3. Move PRD to Ready
 
@@ -280,13 +281,14 @@ When the user wants to add or remove projects:
 
 ### 6. Bootstrap a New Project
 
-When the user selects "0 - Add New Project" and provides project details:
+When the user selects "0 - Add New Project", use a quick intake flow and default to agent-system setup.
 
-1. **Gather information:**
-   - Project path (absolute path, typically `~/code/[project-name]`)
-   - Project name (display name)
-   - Brief description
-   - Whether to enable agent system (recommended: yes)
+1. **Gather minimal information (quick intake):**
+   - Project name
+   - Optional GitHub repository URL (for starting from an existing repo)
+   - One freeform context drop from the user (paste text and image attachments) describing goals, scope, and constraints
+
+   **Do not ask whether to enable the agent system.** Assume "yes" by default.
 
 2. **Assign a dev port:**
    - Read `nextDevPort` from `~/.config/opencode/projects.json` (defaults to 4000 if not present)
@@ -294,21 +296,28 @@ When the user selects "0 - Add New Project" and provides project details:
    - Increment `nextDevPort` and save it back to the registry
    - Example: If `nextDevPort` is 4005, assign 4005 to the project and update `nextDevPort` to 4006
 
-3. **Add to registry** in `~/.config/opencode/projects.json` with all fields including `devPort`
+3. **Add to registry** in `~/.config/opencode/projects.json` with all fields including `devPort` and `hasAgentSystem: true`
 
-4. **If directory doesn't exist AND user wants agent system**, bootstrap it:
+4. **Create or initialize project directory:**
+
+   - Default local path: `~/code/[project-name-kebab]`
+   - If GitHub URL is provided and directory does not exist: clone the repo into the default path
+   - If no GitHub URL is provided: create the directory and initialize git
+
+   Bootstrap commands:
    ```bash
-   # Create project directory
+   # No GitHub URL
    mkdir -p ~/code/[project-name]
-   
-   # Initialize git
-   cd ~/code/[project-name] && git init
+   git init
+
+   # With GitHub URL
+   git clone <repo-url> ~/code/[project-name]
    
    # Create docs structure
    mkdir -p docs/{drafts,prds,bugs,completed,abandoned}
    ```
 
-5. **Create agent system files** (if enabled):
+5. **Create agent system files** (always):
    - `docs/project.json` — Project manifest with stack info, commands, features
    - `docs/prd-registry.json` — Empty PRD registry
    - `docs/session-locks.json` — Empty session locks
@@ -418,10 +427,16 @@ When the user selects "0 - Add New Project" and provides project details:
    **If no meta-skills match:**
    - Note: "No skill generators match your capabilities. You can create custom skills in `docs/skills/` later."
 
-9. **Confirm success** and offer next steps:
-   - Create first PRD for the project
-   - Open project in editor/IDE
-   - Note the assigned dev port (e.g., "Dev server will run on port 4005")
+9. **Default next step to PRD kickoff (required):**
+   - Immediately start a PRD working session with the user to define project scope
+   - Use the freeform text/images as initial context
+   - In that first PRD draft, include a concise architecture recommendation section with options and tradeoffs
+   - Continue PRD refinement until it is ready for Builder
+
+10. **Confirm success** and state the bootstrap outcome:
+   - Project path and assigned dev port
+   - Whether project was created from GitHub repo or local init
+   - PRD kickoff started as the default next step
 
 ## Flag Auto-Detection
 

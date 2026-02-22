@@ -28,7 +28,7 @@ brew install opencode
 ### 2. Clone and Link
 
 ```bash
-git clone https://github.com/<your-org>/ai-toolkit.git ~/code/ai-toolkit
+git clone https://github.com/mdmagnuson-creator/ai-toolkit.git ~/code/ai-toolkit
 
 # Create symlinks in your OpenCode config
 mkdir -p ~/.config/opencode
@@ -321,7 +321,7 @@ jobs:
     if: failure()
     steps:
       - uses: actions/checkout@v4
-      - uses: <your-org>/ai-toolkit/triage@main
+      - uses: mdmagnuson-creator/ai-toolkit/triage@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK }}

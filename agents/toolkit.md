@@ -437,7 +437,12 @@ Keep the README counts in sync:
 
 ### Step 3: Queue Website Update
 
-Create a pending update for the toolkit website project so @builder can sync the documentation:
+Default behavior for this repository is **owner-managed website sync**:
+
+- Do **not** create a queued website update file unless the user explicitly requests queue-file mode.
+- Instead, include a short manual website sync checklist in your completion response.
+
+If queue-file mode is explicitly requested, create a pending update for the toolkit website project so @builder can sync the documentation:
 
 1. **Create the update file:**
    ```
@@ -474,10 +479,10 @@ Create a pending update for the toolkit website project so @builder can sync the
    ## Source
    
    - Commit: [commit hash]
-   - toolkit-structure.json: https://raw.githubusercontent.com/<your-org>/ai-toolkit/main/toolkit-structure.json
+   - toolkit-structure.json: https://raw.githubusercontent.com/mdmagnuson-creator/ai-toolkit/main/toolkit-structure.json
    ```
 
-3. **If the toolkit-website project doesn't exist yet**, skip this step but note it in the commit message
+3. **If the toolkit-website project doesn't exist yet**, or owner-managed mode is active, skip queue-file creation and note the reason in completion output
 
 ### Step 4: Run Governance Validators + Completion Report
 

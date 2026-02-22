@@ -16,7 +16,7 @@ Initialize a project with stack-agnostic configuration. For existing projects, a
 2. Ask clarifying questions for ambiguous/missing information
 3. Collect infrastructure conventions (network, security, AWS, API, testing patterns)
 4. Generate `docs/project.json` manifest
-5. Set up agent system folder structure (if requested)
+5. Set up agent system folder structure (default)
 6. Generate ARCHITECTURE.md and CONVENTIONS.md
 7. Update the global project registry
 
@@ -28,6 +28,19 @@ Initialize a project with stack-agnostic configuration. For existing projects, a
 5. Generate project agents from templates (future)
 6. Generate ARCHITECTURE.md, CONVENTIONS.md, and initial PRD
 7. Update the global project registry
+
+## Default Bootstrap Mode (Quick Intake)
+
+Use this as the default for new projects unless the user explicitly asks for advanced/manual setup.
+
+Quick intake asks only:
+1. Project name
+2. Optional GitHub repo URL
+3. One freeform context drop (paste text and optional image attachments)
+
+Assume the user wants the agent system. Do not ask an enable/disable question.
+
+After creation, default immediately to PRD kickoff so Planner can define scope and suggest architecture options.
 
 ---
 
@@ -42,9 +55,10 @@ Ask the user:
 
 Choose an option:
 
-  A. Add existing project (I have a folder with code already)
-  B. Create new project from spec/PRD (recommended for new features)
-  C. Create new project manually (I know my stack)
+  A. Add existing local project folder
+  B. Create new project (quick intake: name + context paste/images)
+  C. Create from GitHub repo URL (quick intake + clone)
+  D. Advanced/manual stack setup
 
 > _
 ═══════════════════════════════════════════════════════════════════════
@@ -52,8 +66,9 @@ Choose an option:
 
 **Flow by choice:**
 - **Option A** → [Step 2a: Existing Project Path](#step-2a-existing-project-path)
-- **Option B** → [Step 2b: Spec-Driven Creation](#step-2b-spec-driven-creation) (NEW)
-- **Option C** → [Step 2c: Manual Stack Selection](#step-2c-manual-stack-selection) (NEW)
+- **Option B** → [Step 2b: Quick New Project Creation](#step-2b-quick-new-project-creation)
+- **Option C** → [Step 2c: New Project from GitHub Repo](#step-2c-new-project-from-github-repo)
+- **Option D** → [Step 2d: Advanced Manual Stack Selection](#step-2d-advanced-manual-stack-selection)
 
 ---
 
@@ -82,11 +97,58 @@ This folder is not a git repository. Initialize git? (y/n)
 
 ---
 
-## Step 2b: Spec-Driven Creation
+## Step 2b: Quick New Project Creation
 
-If Option B (new project from spec):
+If Option B (quick new project):
 
-This is the recommended flow for new projects. It uses AI to analyze your requirements and recommend appropriate technology stacks.
+Ask for only the essentials:
+
+```
+Project name: _
+
+Paste project context (goals, scope, constraints). You can also drop image attachments now.
+> _
+```
+
+Then:
+1. Create `~/code/<project-name-kebab>`
+2. Initialize git
+3. Run spec analysis from the pasted context (+ images)
+4. Continue with stack recommendation and project setup
+
+Agent system is always enabled in this flow.
+
+## Step 2c: New Project from GitHub Repo
+
+If Option C (GitHub repo bootstrap):
+
+```
+Project name: _
+GitHub repo URL: _
+
+Paste project context (goals, scope, constraints). You can also drop image attachments now.
+> _
+```
+
+Then:
+1. Clone repository to `~/code/<project-name-kebab>`
+2. Read existing codebase for stack detection
+3. Merge user context with detected stack/capabilities
+4. Generate docs manifests and agent system files
+
+Agent system is always enabled in this flow.
+
+## Step 2d: Advanced Manual Stack Selection
+
+If Option D (manual stack selection):
+
+Use the existing advanced stack interview flow below.
+
+---
+
+## Step 2e: Spec-Driven Creation (Detailed)
+
+If user explicitly requests deeper spec-driven analysis beyond quick intake, run the detailed flow below.
 
 ### 2b.1: Invoke Spec Analyzer
 
@@ -322,9 +384,9 @@ Use Supabase client for database operations.
 
 ---
 
-## Step 2c: Manual Stack Selection
+## Step 2d: Manual Stack Selection
 
-If Option C (manual stack selection):
+If Option D (manual stack selection):
 
 User knows their stack and just wants to set up the project structure.
 
@@ -942,65 +1004,27 @@ If they choose C (Git Flow) or D (Release Branches), ask follow-up:
 
 ## Step 9: Agent System Setup
 
-Ask if they want the PRD-based agent system:
+Always enable PRD-based agent system for bootstrap flows.
 
-```
-═══════════════════════════════════════════════════════════════════════
-                      AGENT SYSTEM SETUP
-═══════════════════════════════════════════════════════════════════════
-
-The agent system enables:
-  • PRD-based development with user stories
-  • Multi-session coordination (parallel AI sessions)
-  • Automatic documentation and tool generation
-  • Session heartbeats and conflict detection
-
-Would you like to set up the agent system?
-
-  A. Yes, full setup (recommended for new features/products)
-  B. No, just create project.json (for existing projects, no PRDs)
-
-> _
-═══════════════════════════════════════════════════════════════════════
-```
-
-If yes, create:
+Create:
 ```bash
 mkdir -p docs/prds docs/drafts docs/completed docs/bugs docs/memory docs/abandoned
 ```
 
 And create registry files (see Step 10).
 
+Do not ask an enable/disable question for agent system setup.
+
 ---
 
 ## Step 9b: Documentation Templates
 
-Ask if they want architecture and conventions documentation:
+Generate both documentation templates by default:
 
-```
-═══════════════════════════════════════════════════════════════════════
-                    DOCUMENTATION TEMPLATES
-═══════════════════════════════════════════════════════════════════════
+- `docs/ARCHITECTURE.md`
+- `docs/CONVENTIONS.md`
 
-I can generate documentation templates to help AI agents understand 
-your codebase better:
-
-  • ARCHITECTURE.md — System overview, data flow, key modules
-  • CONVENTIONS.md — Coding patterns, naming, style guidelines
-
-These are partially filled from auto-detection. You'll want to 
-expand them with project-specific details.
-
-Generate documentation templates?
-
-  A. Yes, create both ARCHITECTURE.md and CONVENTIONS.md
-  B. Just ARCHITECTURE.md
-  C. Just CONVENTIONS.md
-  D. No, skip documentation templates
-
-> _
-═══════════════════════════════════════════════════════════════════════
-```
+Do not prompt for this in quick intake mode.
 
 Templates are located at:
 - `~/.config/opencode/templates/ARCHITECTURE.md`
@@ -1370,7 +1394,7 @@ Compile all detected and confirmed information into the manifest:
 }
 ```
 
-### 10d: Generate `docs/ARCHITECTURE.md` (if requested)
+### 10d: Generate `docs/ARCHITECTURE.md`
 
 Use the template from `~/.config/opencode/templates/ARCHITECTURE.md`.
 
@@ -1411,7 +1435,7 @@ example-scheduler/
 <!-- Continue filling in detected values... -->
 ```
 
-### 10e: Generate `docs/CONVENTIONS.md` (if requested)
+### 10e: Generate `docs/CONVENTIONS.md`
 
 Use the template from `~/.config/opencode/templates/CONVENTIONS.md`.
 
@@ -1757,7 +1781,7 @@ Add the project to `~/.config/opencode/projects.json`:
   "name": "<Display Name>",
   "path": "<full-path>",
   "description": "<description>",
-  "hasAgentSystem": true/false,
+  "hasAgentSystem": true,
   "projectManifest": "docs/project.json",
   "prdRegistry": "docs/prd-registry.json" or null,
   "sessionLocks": "docs/session-locks.json" or null
@@ -1803,11 +1827,11 @@ Project "<Name>" is now ready!
    - crud-patterns/          Entity CRUD operations
    (Skills are generated based on detected capabilities)
 
-📝 Next steps:
-  1. Review and expand docs/ARCHITECTURE.md with your system details
-  2. Review and expand docs/CONVENTIONS.md with your coding patterns
-  3. Create your first PRD: @planner create a prd for <feature>
-  4. Or start working directly: @builder <task description>
+📝 Next steps (default):
+  1. Start PRD kickoff now with @planner to define project scope
+  2. Include architecture options/tradeoffs in the PRD as part of scope definition
+  3. Move PRD to ready
+  4. Start implementation with @builder
 
 💡 Infrastructure conventions collected:
    - Network/HTTP: <summary of what was configured>
@@ -1867,8 +1891,8 @@ Stack selected:
 
 Project "<Name>" is ready for development!
 
-📝 Next steps:
-  1. Review docs/drafts/prd-mvp.md — refine user stories with @planner
+📝 Next steps (default):
+  1. Continue PRD kickoff with @planner to lock scope + architecture direction
   2. Move PRD to ready: @planner move prd-mvp to ready
   3. Start implementation: @builder (will claim the ready PRD)
 
@@ -1906,10 +1930,10 @@ Files generated:
 
 Project "<Name>" is ready!
 
-📝 Next steps:
-  1. Set up your project manually (install dependencies, etc.)
-  2. Review and expand docs/ARCHITECTURE.md and CONVENTIONS.md
-  3. Create your first PRD: @planner create a prd for <feature>
+📝 Next steps (default):
+  1. Start PRD kickoff with @planner to define project scope
+  2. Add architecture recommendations in the PRD
+  3. Move PRD to ready and start implementation with @builder
 
 ═══════════════════════════════════════════════════════════════════════
 ```
