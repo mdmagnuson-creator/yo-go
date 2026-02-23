@@ -19,24 +19,24 @@ if "\"pending updates\", \"project updates\", \"apply updates\"" not in builder:
     issues.append("agents/builder.md: missing pending/project updates intent row")
 if "Handle in Builder" not in builder:
     issues.append("agents/builder.md: pending updates intent is not explicitly handled by Builder")
-if "scope: implementation" not in builder or "scope: planning" not in builder or "scope: mixed" not in builder:
-    issues.append("agents/builder.md: missing scope routing table for planning/implementation/mixed")
 if "Process pending project updates from `project-updates/`" in builder:
     issues.append("agents/builder.md: contains legacy prohibition against project-updates processing")
+# Builder should NOT redirect to planner - both can handle any update
+# Check for positive redirect instructions (not "no need to redirect")
+if "redirect to @planner" in builder.lower() and "no need" not in builder.lower():
+    issues.append("agents/builder.md: contains legacy redirection to @planner for project updates")
 
 # Planner checks
-if "Process pending updates in Planner scope" not in planner:
-    issues.append("agents/planner.md: missing Planner-scoped U-flow guidance")
-if "scope: planning" not in planner or "scope: implementation" not in planner or "scope: mixed" not in planner:
-    issues.append("agents/planner.md: missing scope routing table for planning/implementation/mixed")
+if "Process pending updates" not in planner:
+    issues.append("agents/planner.md: missing pending updates U-flow guidance")
+# Planner should NOT redirect to builder - both can handle any update
+# Check for positive redirect instructions (not "no need to redirect")
+if ("hand to @builder" in planner.lower() or "route to @builder" in planner.lower()) and "no need" not in planner.lower():
+    issues.append("agents/planner.md: contains legacy redirection to @builder for project updates")
 
-# Toolkit checks
-if "Updates for @builder or @planner to apply based on update scope" not in toolkit:
-    issues.append("agents/toolkit.md: project-updates ownership line is inconsistent")
-if "scope: implementation" not in toolkit:
-    issues.append("agents/toolkit.md: project-updates template missing required scope field")
-if "`scope` values:" not in toolkit:
-    issues.append("agents/toolkit.md: project-updates template missing scope value guidance")
+# Toolkit checks - both can handle any scope now
+if "Updates for @builder and @planner" not in toolkit:
+    issues.append("agents/toolkit.md: project-updates ownership line should mention both agents equally")
 
 if issues:
     print("FAIL: handoff contract inconsistencies found")

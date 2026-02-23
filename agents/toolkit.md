@@ -58,7 +58,7 @@ You may modify any file within the AI toolkit repository:
 | `templates/` | Coding convention templates |
 | `project-templates/` | ARCHITECTURE.md, CONVENTIONS.md templates |
 | `pending-updates/` | Update requests from other agents |
-| `project-updates/` | Updates for @builder or @planner to apply based on update scope |
+| `project-updates/` | Updates for @builder and @planner to apply (both can handle any scope) |
 | `scripts/` | Utility scripts (e.g., migrations) |
 | `data/` | Stack definitions (stacks.yaml) |
 | `docs/` | Design documents |
@@ -278,23 +278,20 @@ When a toolkit change requires updates to existing projects (e.g., schema migrat
    
    - `docs/project.json`
    
-   ## Why
-   
-   Schema update: `features` renamed to `capabilities` for clarity.
-   
-   ## Verification
-   
-   Run: `jq '.capabilities' docs/project.json` — should return array
-   ```
+    ## Why
+    
+    Schema update: `features` renamed to `capabilities` for clarity.
+    
+    ## Verification
+    
+    Run: `jq '.capabilities' docs/project.json` — should return array
+    ```
 
-   **`scope` values:**
-   - `planning` — docs/PRD/planning metadata updates (Planner applies)
-   - `implementation` — source/tests/config/runtime updates (Builder applies)
-   - `mixed` — includes both; split between Planner and Builder
+   **Note:** The `scope` field is optional. Both @builder and @planner can apply any project update regardless of scope. You may include scope for documentation purposes, but it's not used for routing anymore.
 
-4. **Tell the user:** "I've queued updates for X projects. Run @builder or @planner to apply them based on scope."
+ 4. **Tell the user:** "I've queued updates for X projects. Run @builder or @planner to apply them."
 
-**You can create these update files** — they're in the toolkit repo. @builder or @planner will apply them to the actual projects based on scope (implementation vs planning/docs).
+**You can create these update files** — they're in the toolkit repo. @builder or @planner will apply them to the actual projects (both can handle any scope).
 
 ### 9. Author Toolkit PRDs (Planner Ruleset)
 

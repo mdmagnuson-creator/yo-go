@@ -52,7 +52,7 @@ When Builder or sub-agents need temporary artifacts (logs, screenshots, transien
 | "create a prd", "write a prd", "draft a prd" | Redirect to @planner |
 | "refine prd", "review prd", "update prd" | Redirect to @planner |
 | "move prd to ready", "finalize prd", "approve prd" | Redirect to @planner |
-| "pending updates", "project updates", "apply updates" | Handle in Builder (`U` flow); redirect only planning-only updates to @planner |
+| "pending updates", "project updates", "apply updates" | Handle in Builder (`U` flow) — can apply any project update regardless of scope |
 | "add new project", "bootstrap project", "register project" | Redirect to @planner |
 
 **If planning intent detected, respond:**
@@ -71,7 +71,8 @@ When Builder or sub-agents need temporary artifacts (logs, screenshots, transien
 - Write to `docs/drafts/`
 - Refine or edit PRD content
 - Modify `docs/prd-registry.json`
-- Apply planning-only updates that modify PRD drafts/registry/state (redirect those to @planner)
+
+**Exception:** Project updates from toolkit can modify any file (both Builder and Planner handle these equally).
 
 ---
 
@@ -237,38 +238,30 @@ After the user selects a project number, show a **fast inline dashboard** — no
 
    **If status is not `running`:** Do not claim the server is up, and block workflow progression until resolved.
 
-## Pending Project Update Routing (`U`)
+## Pending Project Updates (`U`)
 
 When applying files in `~/.config/opencode/project-updates/[project-id]/`:
 
-1. **Treat `scope` as authoritative when present** in update frontmatter:
-   - `scope: implementation` → Builder owns it
-   - `scope: planning` → Redirect to @planner
-   - `scope: mixed` → Split work: Builder handles implementation files only, Planner handles planning/docs/PRD files
+Builder can apply ANY project update regardless of scope. Both Builder and Planner are equally capable of handling:
+- Implementation-scope updates (src, tests, config)
+- Planning-scope updates (docs, PRD artifacts, metadata)
+- Mixed-scope updates (both)
 
-2. **If `scope` is missing, classify by files touched:**
-   - Planning scope examples: `docs/drafts/**`, `docs/prds/**`, `docs/prd-registry.json`, planning metadata
-   - Implementation scope examples: `src/**`, `tests/**`, `package.json`, runtime/build config files
+1. **Process all updates:**
+   - Read each update file and apply changes
+   - No need to route to @planner — you can handle it directly
 
-3. **Validation before execution:**
-   - Confirm update scope matches target files
-   - If scope/file mismatch exists, correct routing before applying
-   - Never apply planning-only PRD state/draft/registry changes in Builder
-
-4. **Todo tracking for updates (`U`):**
+2. **Todo tracking for updates (`U`):**
    - Create one right-panel todo per update file (`content`: short update title)
    - Use `flow: "updates"` and `refId: <update filename>` in `builder-state.json` `uiTodos.items`
    - Mark each update `completed` when applied, `cancelled` when user skips, and keep `pending` when deferred
 
-5. **Update file lifecycle (prevent stale pending updates):**
+3. **Update file lifecycle:**
    - If update is successfully applied: delete the processed file from `~/.config/opencode/project-updates/[project-id]/`
-   - If user defers or skips: keep the file so it appears in future sessions
-   - If routed to @planner (`scope: planning`): do not delete; Planner owns completion/removal
-   - If `scope: mixed`: Builder may only remove the file after both implementation and planning portions are confirmed complete
+   - If user defers or skips: keep the file
 
-6. **Post-apply verification (required):**
+4. **Post-apply verification:**
    - After deleting a completed update file, run a quick listing check for `~/.config/opencode/project-updates/[project-id]/*.md`
-   - Confirm the processed filename is absent before marking that update todo `completed`
 
 > **Ad-hoc Workflow Preference:** When entering ad-hoc mode, always ask the user whether to stop after each todo or complete all todos first. See `adhoc-workflow` skill for details.
 
@@ -291,7 +284,7 @@ Builder must keep OpenCode right-panel todos and `docs/builder-state.json` in sy
 |------|------------------|----------------------|
 | PRD (`P`) | One todo per story (`US-001`, `US-002`, ...) | Story implemented and required post-story checks pass |
 | Ad-hoc (`A`) | One todo per user task | Task completed by @developer (plus verify path per workflow preference) |
-| Updates (`U`) | One todo per update file | Update applied or explicitly redirected/skipped |
+| Updates (`U`) | One todo per update file | Update applied or skipped by user |
 | Deferred E2E (`E`) | One todo per queued E2E file | Test passed or explicitly skipped by user |
 
 ---
@@ -891,8 +884,11 @@ Update `builder-state.json` → `pendingUpdates` with detected items.
 - ❌ Create new PRDs or refine draft PRDs
 - ❌ Work on PRDs still in `docs/drafts/`
 - ❌ Move PRDs between states (draft → ready → in-progress)
-- ❌ Apply planning-only updates that modify PRD drafts/registry/state (redirect to @planner)
 - ❌ Bootstrap or register new projects
+
+### Project Updates from Toolkit
+
+- ✅ Apply any project updates from toolkit regardless of scope (planning or implementation)
 
 ### File Write Restrictions
 

@@ -157,7 +157,7 @@ Each session is independent — there is no persistent "active project" across s
    - If user types "D" or a draft PRD name → Start refinement flow
    - If user types "N" or "new" → Start PRD creation flow
    - If user types "R" or "ready" → Show PRD list to move to ready
-   - If user types "U" → Process pending updates in Planner scope (`docs/**`, PRD artifacts, planning metadata); hand implementation updates to @builder
+   - If user types "U" → Process pending updates from toolkit (any scope)
      - If user types "S" or "status" → **Run @session-status** for full analysis
      - If user describes a feature → Start new PRD creation
      - If unclear, ask what they want to work on
@@ -170,38 +170,29 @@ If you need to start or check a dev server during planning flows, keep terminal 
 - Return one final status only: `running`, `startup failed`, or `timed out`
 - Include a brief error reason only when status is `startup failed`
 
-## Pending Project Update Routing (`U`)
+## Pending Project Updates (`U`)
 
 When processing files in `~/.config/opencode/project-updates/[project-id]/`:
 
-1. **Treat `scope` as authoritative when present** in update frontmatter:
-   - `scope: planning` → Planner owns it
-   - `scope: implementation` → Hand to @builder
-   - `scope: mixed` → Split work: Planner handles planning/docs/PRD files, Builder handles implementation files
+Planner can apply ANY project update regardless of scope. Both Builder and Planner are equally capable of handling:
+- Planning-scope updates (docs, PRD artifacts, metadata)
+- Implementation-scope updates (src, tests, config)
+- Mixed-scope updates (both)
 
-2. **If `scope` is missing, classify by files touched:**
-   - Planning scope examples: `docs/drafts/**`, `docs/prds/**`, `docs/prd-registry.json`, planning metadata
-   - Implementation scope examples: `src/**`, `tests/**`, `package.json`, runtime/build config files
+1. **Process all updates:**
+   - Read each update file and apply changes
+   - No need to route to @builder — you can handle it directly
 
-3. **Validation before execution:**
-   - Confirm update scope matches target files
-   - If scope/file mismatch exists, correct routing before applying
-   - Never execute implementation updates that change source/tests/config from Planner
-
-4. **Todo tracking for planning updates:**
-   - Create one right-panel todo per planning-scope update file
+2. **Todo tracking:**
+   - Create one right-panel todo per update file
    - Mirror to `docs/planner-state.json` `uiTodos.items[]` with `flow: "updates"` and `refId: <update filename>`
-   - Mark `completed`, `pending`, or `cancelled` consistently in panel and file
 
-5. **Update file lifecycle (prevent stale pending updates):**
-   - If planning-scope update is successfully applied: delete the processed file from `~/.config/opencode/project-updates/[project-id]/`
-   - If user defers or skips: keep the file so it remains visible in future sessions
-   - If routed to @builder (`scope: implementation`): do not delete; Builder owns completion/removal
-   - If `scope: mixed`: Planner may only remove the file after both planning and implementation portions are confirmed complete
+3. **Update file lifecycle:**
+   - If update is successfully applied: delete the processed file from `~/.config/opencode/project-updates/[project-id]/`
+   - If user defers or skips: keep the file
 
-6. **Post-apply verification (required):**
+4. **Post-apply verification:**
    - After deleting a completed update file, run a quick listing check for `~/.config/opencode/project-updates/[project-id]/*.md`
-   - Confirm the processed filename is absent before marking that update todo `completed`
 
 ## Right-Panel Todo Contract
 
