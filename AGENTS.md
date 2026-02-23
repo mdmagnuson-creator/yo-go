@@ -43,7 +43,7 @@ Rules:
 
 - Do not over-comment; add comments only for non-obvious logic
 - Exported functions/classes must include language-standard doc comments
-- When using external libraries, use a documentation lookup tool if available (for example Context7)
+- When using external libraries, use a documentation lookup tool if available
 - If a docs tool is not available, use primary upstream docs and project source references as fallback
 
 ## AWS CLI Sessions

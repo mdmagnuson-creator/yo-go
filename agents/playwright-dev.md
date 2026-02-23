@@ -47,7 +47,7 @@ You receive a task description describing what needs to be tested or implemented
 
 2. **Understand project conventions** - Read AGENTS.md files in relevant directories
 
-3. **Look up documentation** - Use context7 MCP tool for Playwright documentation when needed
+3. **Look up documentation** - Use documentation lookup tools for Playwright documentation when needed
 
 4. **Study existing patterns** - Examine existing test files (*.spec.ts, *.test.ts) to understand:
    - How tests are organized
@@ -501,7 +501,7 @@ test.describe('Shopping Cart', () => {
 
 1. **Read project documentation** - Check for AGENTS.md in test directories
 2. **Study existing tests** - Look at patterns in *.spec.ts, *.test.ts files
-3. **Look up Playwright APIs** - Use context7 for documentation when needed
+3. **Look up Playwright APIs** - Use documentation lookup tools when needed
 4. **Implement the task** - Write tests following project conventions and best practices
 5. **Run tests with list reporter** - Execute: `npx playwright test --reporter=list`
 6. **Report completion** - Summarize what was implemented and files changed

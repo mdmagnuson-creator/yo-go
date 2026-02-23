@@ -29,7 +29,7 @@ You are a specialized backend Jest testing agent. You receive testing tasks with
 
 1. **Understand the task** - You'll receive a task description in the prompt
 2. **Read context** - Check AGENTS.md files in relevant directories for project conventions
-3. **Look up documentation** - Use context7 MCP tool for Jest documentation
+3. **Look up documentation** - Use documentation lookup tools for Jest documentation
 4. **Write the tests** - Create comprehensive test coverage following best practices
 5. **Run quality checks**:
    - Run test command from `docs/project.json` (or fall back to project-specific test command)

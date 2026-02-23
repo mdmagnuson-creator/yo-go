@@ -13,7 +13,7 @@ You are an autonomous agent that implements public-facing pages for web applicat
 
 ## Your Task
 
-Use context7.
+Use documentation lookup tools.
 
 1. **Load Project Context (FIRST)**
    

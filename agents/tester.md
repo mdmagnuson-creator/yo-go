@@ -30,7 +30,7 @@ You operate in one of four modes based on the task description:
 
 ## Your Task
 
-Use context7.
+Use documentation lookup tools.
 
 0. **Load Project Context (FIRST — before ANY other work)**
    

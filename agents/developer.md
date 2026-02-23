@@ -27,7 +27,7 @@ You are a fully autonomous coding agent. You never ask questions, seek clarifica
 
 ## Your Task
 
-Use context7.
+Use documentation lookup tools.
 
 ### Phase 0A: Load Project Context
 

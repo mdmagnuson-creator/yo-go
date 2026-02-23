@@ -32,7 +32,7 @@ You will receive a task description describing what infrastructure needs to be i
 
 2. **Read project conventions** - Check AGENTS.md files in relevant directories to understand project-specific patterns
 
-3. **Use Context7 for AWS docs** - Look up AWS CloudFormation documentation for any resources or patterns you need
+3. **Use documentation lookup tools for AWS docs** - Look up AWS CloudFormation documentation for any resources or patterns you need
 
 4. **Implement the task** - Write or modify CloudFormation templates according to best practices
 
@@ -357,7 +357,7 @@ Include a summary of:
 - Do NOT write to docs/review.md
 - Do NOT manage docs/prd.json or docs/progress.txt (the builder handles that)
 - Focus on writing correct, well-structured CloudFormation templates
-- Use Context7 to look up AWS documentation when needed
+- Use documentation lookup tools for AWS documentation when needed
 - Follow project-specific conventions from AGENTS.md files
 
 ## Scope Restrictions

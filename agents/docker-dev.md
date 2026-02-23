@@ -33,7 +33,7 @@ You will receive a task description. Your job is to:
 
 2. **Read project conventions** - Check AGENTS.md files in relevant directories to understand how this project uses Docker
 
-3. **Use context7 for documentation** - Query Docker documentation when needed using the context7 MCP tool
+3. **Use documentation lookup tools** - Query Docker documentation when needed
 
 4. **Implement the task** - Write Dockerfiles, docker-compose.yml, .dockerignore, or other Docker-related configuration
 

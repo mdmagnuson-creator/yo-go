@@ -13,7 +13,7 @@ You are a specialized React implementation subagent. You receive frontend tasks 
 
 ## Your Task
 
-Use context7 for library documentation lookups.
+Use documentation lookup tools for library documentation lookups.
 
 You'll receive a task description. Follow this workflow:
 

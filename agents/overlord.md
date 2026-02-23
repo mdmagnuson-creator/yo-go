@@ -15,7 +15,7 @@ You are an autonomous coding agent coordinator. You should identify features tha
 
 ## Your Task
 
-Use context7.
+Use documentation lookup tools.
 
 0. **Load Project Context (FIRST)**
    

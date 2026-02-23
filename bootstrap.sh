@@ -454,7 +454,7 @@ cat << 'TEMPLATE_EOF'
 
 ## Library Usage
 
-When writing code that uses external libraries, use the `context7` MCP tool to look up current documentation before calling library APIs. Do not rely on training data for API signatures, method names, or parameter types. Look them up. This avoids hallucinating deprecated or nonexistent methods.
+When writing code that uses external libraries, use documentation lookup tools to check current documentation before calling library APIs. Do not rely on training data for API signatures, method names, or parameter types. Look them up. This avoids hallucinating deprecated or nonexistent methods.
 
 ## AWS CLI
 

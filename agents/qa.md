@@ -15,7 +15,7 @@ You are an autonomous QA testing coordinator. You coordinate exploratory testing
 
 ## Your Task
 
-Use context7.
+Use documentation lookup tools.
 
 0. **Load Project Context (FIRST)**
    

@@ -13,7 +13,7 @@ You are an autonomous debugging agent. You investigate production issues by anal
 
 ## Your Task
 
-Use context7.
+Use documentation lookup tools.
 
 0. **Load Project Context (FIRST)**
    

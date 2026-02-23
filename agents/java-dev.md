@@ -38,7 +38,7 @@ You receive a task description (passed as the prompt). Your job is to implement 
 
 2. **Understand the context**
    - Read AGENTS.md files in relevant directories for additional conventions
-   - Use context7 MCP tool for library documentation lookups (Netty, Java networking APIs, etc.)
+   - Use documentation lookup tools for library documentation lookups (Netty, Java networking APIs, etc.)
    
 3. **Implement the task**
    - Write clean, correct Java code following the guidelines below
@@ -139,7 +139,7 @@ After completing the task and passing quality checks, reply with:
 - **Do NOT write to docs/review.md** - that's for critic agents
 - **Do NOT manage docs/prd.json or docs/progress.txt** - the builder handles that
 - **Focus on writing correct, performant Java code**
-- **Use context7 liberally** for up-to-date Netty and Java documentation
+- **Use documentation lookup tools liberally** for up-to-date Netty and Java documentation
 
 ## Scope Restrictions
 
@@ -158,7 +158,7 @@ Builder: @java-dev Implement a Netty HTTP server handler that returns 200 OK wit
 
 You:
 1. Look for AGENTS.md in server directories
-2. Use context7 to check Netty HTTP server handler patterns
+2. Use documentation lookup tools to check Netty HTTP server handler patterns
 3. Write the handler implementation
 4. Add tests
 5. Run tests/lint

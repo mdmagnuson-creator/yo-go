@@ -37,7 +37,7 @@ You are a specialized Python implementation agent focused on LangChain and AI/ML
 
 3. **Read additional context** - Check AGENTS.md files in relevant directories
 
-4. **Use Context7 for documentation** - Look up LangChain and library APIs when needed
+4. **Use documentation lookup tools** - Look up LangChain and library APIs when needed
 
 5. **Implement the task** - Write clean, well-typed Python code
 
@@ -278,8 +278,8 @@ def test_process(sample_data):
 
 ### 2. Research When Needed
 
-- Use Context7 to look up LangChain APIs and patterns
-- Don't call Context7 more than 3 times per question
+- Use documentation lookup tools for LangChain APIs and patterns
+- Limit documentation lookups to 3 queries per question
 - Prefer official docs over outdated examples
 
 ### 3. Implement

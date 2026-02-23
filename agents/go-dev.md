@@ -36,7 +36,7 @@ You are a specialized Go implementation agent. You receive Go-specific tasks wit
 
 3. **Read additional context** - Check AGENTS.md files in relevant directories for project conventions
 
-4. **Look up documentation** - Use context7 MCP tool for Go library and AWS SDK documentation
+4. **Look up documentation** - Use documentation lookup tools for Go library and AWS SDK documentation
 
 5. **Implement the task** - Write the Go code following best practices
 

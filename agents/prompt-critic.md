@@ -60,7 +60,7 @@ For each file, evaluate the following areas. Only flag issues you're confident a
 ### Tool and Subagent Configuration
 
 - Tool permissions that are too broad (`"*": true`) when the agent only needs specific tools.
-- Missing tools that the prompt instructs the agent to use (e.g., prompt says "use context7" but context7 tools aren't available).
+- Missing tools that the prompt instructs the agent to use (e.g., prompt says "use documentation lookup tools" but documentation tools aren't available).
 - Subagent references (`@agent-name`) to agents that don't exist in the agents directory.
 - Circular delegation — Agent A calls Agent B which calls Agent A.
 - Missing handoff context — when delegating to a subagent, is enough context passed for the subagent to do its job without re-reading everything?

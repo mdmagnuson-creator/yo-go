@@ -13,7 +13,7 @@ You are an autonomous coding agent that fixes problems with pull requests.
 
 ## Your Task
 
-Use context7.
+Use documentation lookup tools.
 
 0. **Load Project Context (FIRST)**
    

@@ -15,7 +15,7 @@ You are an autonomous coding planner. You should use ticket information and code
 
 ## Your Task
 
-Use context7.
+Use documentation lookup tools.
 
 0. **Load Project Context (FIRST)**
    

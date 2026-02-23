@@ -8,7 +8,7 @@
 
 ## Library Usage
 
-When writing code that uses external libraries, use a documentation lookup tool if available (for example Context7) before calling library APIs. If a docs tool is unavailable, use official upstream docs and local source references. Do not rely only on memory for API signatures, method names, or parameter types.
+When writing code that uses external libraries, use a documentation lookup tool if available before calling library APIs. If a docs tool is unavailable, use official upstream docs and local source references. Do not rely only on memory for API signatures, method names, or parameter types.
 
 ## AWS CLI
 

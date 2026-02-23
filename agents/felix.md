@@ -13,7 +13,7 @@ You are an autonomous coding agent who fixes builds and addresses PR feedback.
 
 ## Your Task
 
-Use context7.
+Use documentation lookup tools.
 
 0. **Load Project Context (FIRST)**
    

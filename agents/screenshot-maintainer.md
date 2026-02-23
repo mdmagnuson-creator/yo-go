@@ -13,7 +13,7 @@ You are an autonomous agent that maintains product screenshots for marketing pag
 
 ## Your Task
 
-Use context7.
+Use documentation lookup tools.
 
 0. **Load Project Context (FIRST)**
    
@@ -54,12 +54,11 @@ When invoked after a UI change:
    - Capture screenshot and save to `path`
    - Update registry entry with new `lastUpdated` and `gitHash`
 
-> ⚠️ **CRITICAL: Always read port from project registry**
->
-> The canonical dev port for each project is stored in `~/.config/opencode/projects.json` under `projects[].devPort`.
-> This is the **single source of truth** for which port each project uses.
->
-> Do NOT hardcode port numbers. Do NOT assume port 3000. Always read it from the registry.
+Port source of truth:
+
+- For project-based captures, read the port from `~/.config/opencode/projects.json` (`projects[].devPort`) before navigation.
+- Do not hardcode port numbers or assume `3000`.
+- Include the resolved base URL in your completion report so callers can verify the target.
 
 4. **Report changes.** List:
    - Which screenshots were updated
