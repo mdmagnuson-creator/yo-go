@@ -16,6 +16,56 @@
       "description": "Brief description of what this project does"
     },
 
+    "environments": {
+      "type": "object",
+      "description": "Environment hosting configuration. Used by agents for deployment, database access, and environment-specific config.",
+      "properties": {
+        "development": {
+          "type": "object",
+          "description": "Local development environment",
+          "properties": {
+            "host": {
+              "type": "string",
+              "enum": ["local", "docker", "tunnel"],
+              "default": "local",
+              "description": "How the dev environment is hosted"
+            },
+            "port": { "type": "integer", "description": "Dev server port" },
+            "databaseUrl": { "type": "string", "description": "Database connection string (use 'envvar:NAME' for env var reference)" },
+            "apiUrl": { "type": "string", "description": "Base URL for API calls" }
+          }
+        },
+        "staging": {
+          "type": "object",
+          "description": "Staging/preview environment",
+          "properties": {
+            "host": {
+              "type": "string",
+              "enum": ["vercel", "render", "fly", "railway", "aws", "gcp", "docker", "custom"],
+              "description": "Hosting platform"
+            },
+            "url": { "type": "string", "description": "Staging URL" },
+            "databaseUrl": { "type": "string", "description": "Database connection string (use 'envvar:NAME' for env var reference)" },
+            "apiUrl": { "type": "string", "description": "Base URL for API calls" }
+          }
+        },
+        "production": {
+          "type": "object",
+          "description": "Production environment",
+          "properties": {
+            "host": {
+              "type": "string",
+              "enum": ["vercel", "render", "fly", "railway", "aws", "gcp", "docker", "custom"],
+              "description": "Hosting platform"
+            },
+            "url": { "type": "string", "description": "Production URL" },
+            "databaseUrl": { "type": "string", "description": "Database connection string (use 'envvar:NAME' for env var reference)" },
+            "apiUrl": { "type": "string", "description": "Base URL for API calls" }
+          }
+        }
+      }
+    },
+
     "stack": {
       "type": "object",
       "description": "Technology stack configuration",
