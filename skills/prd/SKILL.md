@@ -14,8 +14,9 @@ Create detailed Product Requirements Documents that are clear, actionable, and s
 1. **Read project context** from `docs/project.json` (if exists)
 2. Receive a feature description from the user
 3. Ask 3-5 essential clarifying questions (with lettered options)
-4. Generate a structured PRD based on answers
-5. Save to `docs/drafts/prd-[feature-name].md`
+4. Identify external service dependencies and credential timing needs
+5. Generate a structured PRD based on answers
+6. Save to `docs/drafts/prd-[feature-name].md`
 
 **Important:** Do NOT start implementing. Just create the PRD.
 
@@ -62,6 +63,7 @@ Ask only critical questions where the initial prompt is ambiguous. Focus on:
 - **Core Functionality:** What are the key actions?
 - **Scope/Boundaries:** What should it NOT do?
 - **Success Criteria:** How do we know it's done?
+- **External Dependencies:** Which services/API keys/accounts are needed, and when are they needed?
 
 Also review `planning.considerations` from `project.json` (if present) and ask follow-up questions only for considerations that appear relevant to the requested feature.
 
@@ -118,6 +120,7 @@ Each story needs:
 - **Documentation Required:** Whether this story needs support documentation (see below)
 - **Tools Required:** Whether this story needs AI chatbot tools (see below)
 - **Considerations:** Which project-level considerations this story addresses
+- **Credentials:** Whether this story needs credentials, and whether they are required `upfront` or `after-initial-build`
 
 Each story should be small enough to implement in one focused session.
 
@@ -133,6 +136,8 @@ Each story should be small enough to implement in one focused session.
 **Tools:** Yes/No (+ tool name if updating existing)
 
 **Considerations:** [comma-separated ids from `planning.considerations`, or `none`]
+
+**Credentials:** none | required (`service`, `credential type`, `timing: upfront|after-initial-build`)
 
 **Acceptance Criteria:**
 
@@ -335,6 +340,27 @@ How will success be measured?
 
 Remaining questions or areas needing clarification.
 
+### 10. Credential & Service Access Plan
+
+Include this section whenever the PRD touches third-party services, hosted providers, or protected APIs.
+
+Use a concise table:
+
+```markdown
+## Credential & Service Access Plan
+
+| Service | Credential Type | Needed For | Request Timing | Fallback if Not Available |
+|---------|------------------|------------|----------------|---------------------------|
+| Stripe | Secret API key | US-004, US-005 | upfront | Build UI and mocks first; delay live charge tests |
+| SendGrid | API key | US-006 | after-initial-build | Implement local email preview and queue integration step |
+```
+
+Rules:
+- Use `upfront` when progress is blocked without access.
+- Use `after-initial-build` when scaffold/UI/local logic can proceed without live credentials.
+- Never include actual secret values in PRDs.
+- If no credentials are required, include `No external credentials required for this PRD.`
+
 ---
 
 ## Writing for Junior Developers
@@ -508,6 +534,7 @@ Before saving the PRD:
 - [ ] `planning.considerations` reviewed and relevant items reflected in PRD scope
 - [ ] PRD includes `## Scope Considerations` section when considerations exist
 - [ ] Relevant stories include `Considerations` field with mapped ids
+- [ ] Credential dependencies are captured with request timing (`upfront` or `after-initial-build`)
 - [ ] Saved to `docs/drafts/prd-[feature-name].md`
 
 ## Automatic Post-Completion Tasks

@@ -60,6 +60,16 @@ If no `project.json` exists, note this and use defaults:
   "project": "[From project.json or folder name]",
   "branchName": "feature/[feature-name-kebab-case]",
   "description": "[Feature description from PRD title/intro]",
+  "credentialRequirements": [
+    {
+      "service": "stripe",
+      "credentialType": "apiKey",
+      "requestTiming": "upfront",
+      "requiredForStories": ["US-003"],
+      "fallbackPlan": "Implement mocks until credentials are provided",
+      "status": "pending"
+    }
+  ],
   "userStories": [
     {
       "id": "US-001",
@@ -80,7 +90,8 @@ If no `project.json` exists, note this and use defaults:
       "toolsRequired": false,
       "toolsType": null,
       "relatedToolNames": [],
-      "considerations": []
+      "considerations": [],
+      "requiredCredentials": []
     }
   ]
 }
@@ -476,6 +487,38 @@ Guidance:
 - If no project considerations exist, set `considerations: []`
 - If mapping is uncertain, confirm before finalizing
 
+### Credential Planning Fields
+
+Use these optional fields when PRD stories depend on external services:
+
+Top-level:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `credentialRequirements` | object[] | List of credential dependencies and request timing |
+
+`credentialRequirements[]` object shape:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `service` | string | Provider or API name (e.g., `stripe`, `supabase`, `sendgrid`) |
+| `credentialType` | string | Type such as `apiKey`, `oauthClient`, `serviceAccount`, `token` |
+| `requestTiming` | string | `upfront` or `after-initial-build` |
+| `requiredForStories` | string[] | Story IDs blocked by this credential |
+| `fallbackPlan` | string | What can proceed when credential is unavailable |
+| `status` | string | `pending`, `provided`, or `deferred` |
+
+Per-story:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `requiredCredentials` | string[] | Service names this story depends on |
+
+Rules:
+- If no credential dependencies exist, set `credentialRequirements: []` and `requiredCredentials: []`.
+- Do not include real secrets in JSON; capture only metadata and timing.
+- If timing is unclear, mark as `⚠` in review and ask the user to choose `upfront` or `after-initial-build`.
+
 ---
 
 ## Story Size: The Number One Rule
@@ -618,6 +661,8 @@ Before writing prd.json, verify:
 - [ ] Promotable features have `marketingRequired: true` (if `capabilities.marketing`)
 - [ ] Chat-accessible stories have `toolsRequired: true` (if `capabilities.ai`)
 - [ ] `planning.considerations` mapped to relevant stories (when present)
+- [ ] Credential dependencies captured in `credentialRequirements` with request timing
+- [ ] Stories map credential dependencies via `requiredCredentials`
 - [ ] Acceptance criteria are verifiable (not vague)
 - [ ] No story depends on a later story
 - [ ] **All uncertain (⚠) flags have been confirmed by user**

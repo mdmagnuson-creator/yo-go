@@ -99,18 +99,30 @@ At PRD start, prompt for testing rigor profile (default from `docs/project.json`
 
 Persist selection to `builder-state.json` under `activePrd.testingRigor` so resumed sessions keep the same behavior.
 
-### Step 3: Copy PRD to Working Location
+### Step 3: Credential Readiness Check
+
+Before copying the PRD to the working location, inspect credential metadata in `docs/prds/prd-[name].json`:
+
+- Read top-level `credentialRequirements[]` (if present).
+- For each entry with `requestTiming: "upfront"`, ask for credential readiness before starting story execution.
+- If user does not have a credential yet, mark it `deferred` and continue only with stories that do not depend on it.
+- Persist statuses in `builder-state.json` under `activePrd.credentials` with `pending|provided|deferred`.
+- Never ask users to paste actual secrets into chat; request secure local setup via environment variables/secrets manager.
+
+If no credential requirements are listed, continue normally.
+
+### Step 4: Copy PRD to Working Location
 
 Copy `docs/prds/prd-[name].json` to `docs/prd.json`. This is where @developer reads the current work.
 
-### Step 4: Update PRD Registry Status
+### Step 5: Update PRD Registry Status
 
 Update `docs/prd-registry.json`:
 - Set `status: "in_progress"`
 - Set `startedAt: <now>`
 - Store `currentStory` as work progresses
 
-### Step 5: Create Session Lock
+### Step 6: Create Session Lock
 
 Create/update entry in `docs/session-locks.json`:
 
@@ -129,7 +141,7 @@ Create/update entry in `docs/session-locks.json`:
 }
 ```
 
-### Step 6: Set Execution Branch
+### Step 7: Set Execution Branch
 
 If `trunk + branchless`:
 
@@ -150,6 +162,12 @@ git checkout -b <branchName> <default-branch>
 For each story in priority order:
 
 ### Step 1: Implement the Story
+
+0. **Credential gate before implementation:**
+   - Check story `requiredCredentials[]` (if present).
+   - If any required credential is still `pending`/`deferred`, prompt at the story boundary.
+   - For `requestTiming: "after-initial-build"`, this is the first required prompt point.
+   - If credential is still unavailable, skip to the next unblocked story and clearly report the block.
 
 1. **Run the workflow steps** from `workflows.prd`:
 

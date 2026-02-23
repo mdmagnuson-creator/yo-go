@@ -231,9 +231,10 @@ When the user wants to work on a draft PRD:
    - Identify potential conflicts or dependencies
 3. **Ask clarifying questions** using lettered options (A, B, C, D) for quick responses
 4. **Update the PRD** with refined scope, clearer stories, and specific acceptance criteria
-5. **Write a planner-authored Definition of Done** section describing what complete implementation looks like
-5. **Run flag auto-detection** for documentation and tools requirements
-6. **Present an interactive table** for flag confirmation before finalizing
+5. **Add or update a Credential & Service Access Plan** when stories depend on external services, API keys, or account credentials
+6. **Write a planner-authored Definition of Done** section describing what complete implementation looks like
+7. **Run flag auto-detection** for documentation and tools requirements
+8. **Present an interactive table** for flag confirmation before finalizing
 
 ### 2. Create a New PRD
 
@@ -244,8 +245,9 @@ When the user describes a new feature:
 3. **Save to `docs/drafts/prd-[name].md`** initially
 4. **Add to `docs/prd-registry.json`** with status "draft"
 5. **For new-project kickoff PRDs, include architecture recommendation options** (2-3 approaches with tradeoffs)
-6. **Add a planner-authored Definition of Done** to the draft PRD
-7. **Refine** as described above
+6. **Include a Credential & Service Access Plan** when external integrations or secrets are required
+7. **Add a planner-authored Definition of Done** to the draft PRD
+8. **Refine** as described above
 
 ### 3. Move PRD to Ready
 
@@ -468,6 +470,17 @@ Example consideration IDs: `permissions`, `support-docs`, `ai-tools`, `complianc
 
 Please confirm or adjust the ⚠️ values before I finalize.
 ```
+
+## Credential & Service Access Planning
+
+When a PRD includes third-party services or protected APIs, include a `## Credential & Service Access Plan` section.
+
+Rules:
+- Include one row per dependency with: service, credential type, related stories, request timing, and fallback behavior.
+- Use request timing `upfront` when implementation is blocked immediately without access.
+- Use request timing `after-initial-build` when scaffold or local development can proceed first.
+- Never place actual secret values in PRDs; reference only names/placeholders and secure setup path.
+- If no credentials are required, include `No external credentials required for this PRD.`
 
 ## Definition of Done (Planner-authored)
 
