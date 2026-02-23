@@ -30,7 +30,36 @@
               "default": "local",
               "description": "How the dev environment is hosted"
             },
-            "port": { "type": "integer", "description": "Dev server port" },
+            "services": {
+              "type": "array",
+              "description": "Multiple services running in dev (e.g., web frontend, API server)",
+              "items": {
+                "type": "object",
+                "required": ["name", "port"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Service name (e.g., 'web', 'api', 'worker')"
+                  },
+                  "port": {
+                    "type": "integer",
+                    "description": "Port this service runs on"
+                  },
+                  "command": {
+                    "type": "string",
+                    "description": "Optional: command to start this service (e.g., 'npm run dev:api')"
+                  },
+                  "healthCheck": {
+                    "type": "string",
+                    "description": "Optional: path to check if service is ready (e.g., '/api/health')"
+                  }
+                }
+              }
+            },
+            "primaryService": {
+              "type": "string",
+              "description": "Name of the primary service (for default health checks, etc.)"
+            },
             "databaseUrl": { "type": "string", "description": "Database connection string (use 'envvar:NAME' for env var reference)" },
             "apiUrl": { "type": "string", "description": "Base URL for API calls" }
           }
@@ -44,7 +73,29 @@
               "enum": ["vercel", "render", "fly", "railway", "aws", "gcp", "docker", "custom"],
               "description": "Hosting platform"
             },
-            "url": { "type": "string", "description": "Staging URL" },
+            "services": {
+              "type": "array",
+              "description": "Services running in staging",
+              "items": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Service name (e.g., 'web', 'api', 'worker')"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "URL for this service"
+                  }
+                }
+              }
+            },
+            "primaryService": {
+              "type": "string",
+              "description": "Name of the primary service"
+            },
+            "url": { "type": "string", "description": "Staging URL (fallback for single-service setups)" },
             "databaseUrl": { "type": "string", "description": "Database connection string (use 'envvar:NAME' for env var reference)" },
             "apiUrl": { "type": "string", "description": "Base URL for API calls" }
           }
@@ -58,7 +109,29 @@
               "enum": ["vercel", "render", "fly", "railway", "aws", "gcp", "docker", "custom"],
               "description": "Hosting platform"
             },
-            "url": { "type": "string", "description": "Production URL" },
+            "services": {
+              "type": "array",
+              "description": "Services running in production",
+              "items": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Service name (e.g., 'web', 'api', 'worker')"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "URL for this service"
+                  }
+                }
+              }
+            },
+            "primaryService": {
+              "type": "string",
+              "description": "Name of the primary service"
+            },
+            "url": { "type": "string", "description": "Production URL (fallback for single-service setups)" },
             "databaseUrl": { "type": "string", "description": "Database connection string (use 'envvar:NAME' for env var reference)" },
             "apiUrl": { "type": "string", "description": "Base URL for API calls" }
           }
