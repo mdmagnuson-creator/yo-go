@@ -192,10 +192,13 @@ split_sections() {
 incorporate_content() {
   local existing="$1" new="$2"
 
-  local tmp_existing tmp_new
-  tmp_existing=$(mktemp -d)
-  tmp_new=$(mktemp -d)
-  trap "rm -rf '$tmp_existing' '$tmp_new'" RETURN
+  local bootstrap_tmp_base tmp_existing tmp_new
+  bootstrap_tmp_base="$TARGET_DIR/.tmp/bootstrap-$$"
+  mkdir -p "$bootstrap_tmp_base"
+  tmp_existing="$bootstrap_tmp_base/existing"
+  tmp_new="$bootstrap_tmp_base/new"
+  mkdir -p "$tmp_existing" "$tmp_new"
+  trap "rm -rf '$bootstrap_tmp_base'" RETURN
 
   split_sections "$existing" "$tmp_existing"
   split_sections "$new" "$tmp_new"
@@ -459,6 +462,12 @@ When writing code that uses external libraries, use documentation lookup tools t
 ## AWS CLI
 
 If any command fails with a message about an expired AWS session, expired credentials, or a prompt to run `aws sso login`, **stop and tell the user**. Do not attempt to run `aws sso login` or refresh credentials yourself. The user must do this manually in their own terminal.
+
+## Temporary Files
+
+- Never write temporary artifacts to system temp directories such as `/tmp/` or `/var/folders/`.
+- Use project-local `.tmp/` for all temporary files.
+- Ensure `.tmp/` is present in the repository `.gitignore`.
 TEMPLATE_EOF
 }
 

@@ -32,6 +32,8 @@ When planning work starts, verify each write target is in this allowlist. If a r
 | `docs/session-locks.json` | Session coordination |
 | `docs/planner-state.json` | Planner todo/session resume state |
 | `docs/project.json` | Planning metadata and project considerations |
+| `.tmp/` | Project-local temporary planning artifacts |
+| `.gitignore` | Ensure `.tmp/` is ignored |
 
 **You may also write to:**
 | Allowed Path | Purpose |
@@ -50,10 +52,18 @@ When planning work starts, verify each write target is in this allowlist. If a r
 - ❌ Source code (`src/`, `apps/`, `lib/`, etc.)
 - ❌ Tests (`tests/`, `__tests__/`, `*.test.*`, `*.spec.*`)
 - ❌ Configuration files (`package.json`, `tsconfig.json`, etc.)
-- ❌ Any file outside of `docs/` in the project
+- ❌ Any file outside of `docs/` in the project, except `.tmp/` and `.gitignore` for temp hygiene
 - ❌ **AI Toolkit files** (`~/.config/opencode/agents/`, `skills/`, `scaffolds/`, etc.) — request via `pending-updates/`
 
 If you need changes outside these locations, tell the user to use @builder for project code or @toolkit for AI toolkit changes. You can also write a request to `~/.config/opencode/pending-updates/` for toolkit changes.
+
+## Temporary Files Policy
+
+When planning flows require temporary artifacts, use project-local temp storage only.
+
+- Never use system temp paths such as `/tmp/` or `/var/folders/`
+- Use `<project>/.tmp/` for temporary artifacts
+- Ensure `<project>/.gitignore` contains `.tmp/` before writing temp files
 
 ## Startup
 

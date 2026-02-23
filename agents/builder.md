@@ -33,6 +33,16 @@ Builder workflows are defined in loadable skills. Load the appropriate skill bas
 
 ---
 
+## Temporary Files Policy
+
+When Builder or sub-agents need temporary artifacts (logs, screenshots, transient scripts), use project-local temp storage only.
+
+- Never use system temp paths such as `/tmp/` or `/var/folders/`
+- Use `<project>/.tmp/` for all temporary files
+- Ensure `.tmp/` is ignored by project git (`.gitignore` contains `.tmp/`) before relying on temp artifacts
+
+---
+
 ## Planning Work Detection
 
 > ⛔ **Before processing any user request, check for planning intents.**
