@@ -609,19 +609,31 @@ COMPLETED PRDs (recent)
    - Re-run the script immediately before replying "running"
    - If second check is not `running`, report failure state instead
 
-> ⚠️ **NEVER stop the dev server without asking the user.**
+> ⚠️ **ALWAYS LEAVE THE DEV SERVER RUNNING**
 >
-> Multiple Builder sessions may be sharing the same dev server. Killing it would break other sessions.
-> Verify user confirmation is recorded before issuing any stop command.
+> The dev server must remain running at all times — before, during, and after all Builder operations.
 >
-> **Verification:** Explicit user confirmation is required in-session before any server stop action.
->
-> **Do NOT kill the dev server:**
+> **Do NOT stop the dev server:**
 > - ❌ After completing a task
 > - ❌ After running E2E tests
 > - ❌ After completing a PRD
 > - ❌ Between ad-hoc tasks
 > - ❌ When ending your session
+> - ❌ When the user is away or idle
+> - ❌ Ever — unless the user explicitly requests it
+>
+> The server is a shared resource. Other sessions or processes may depend on it. Only stop it when the user explicitly asks.
+
+### Session End Behavior
+
+**When your session ends (user closes session, starts new project, or goes idle):**
+
+- ✅ Leave the dev server **running** — it should continue serving
+- ❌ Do NOT run any cleanup commands that stop the server
+- ❌ Do NOT check if the server should be stopped
+- The server persists and will be available for the next session
+
+This ensures zero latency startup for subsequent sessions.
 >
 > **If the user asks to stop the server**, confirm first:
 > ```

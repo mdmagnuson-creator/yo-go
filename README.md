@@ -7,7 +7,7 @@ A comprehensive collection of AI agents, skills, templates, and scaffolds for au
 | Directory | Description |
 |-----------|-------------|
 | [`agents/`](#agents) | 63 autonomous agents for development, testing, reviewing, and orchestration |
-| [`skills/`](#skills) | 31 reusable skills for PRDs, screenshots, scaffolding, and more |
+| [`skills/`](#skills) | 32 reusable skills for PRDs, screenshots, scaffolding, and more |
 | [`agent-templates/`](#agent-templates) | Templates for generating project-specific agents |
 | [`scaffolds/`](#scaffolds) | Full project starters (Next.js + Supabase, Next.js + Prisma, Go + Chi) |
 | [`templates/`](#templates) | Coding convention templates per language/framework |
