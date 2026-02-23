@@ -177,7 +177,7 @@ Toolkit keeps OpenCode right-panel todos and `~/.config/opencode/.tmp/toolkit-st
 | Flow | Todo granularity | Completion condition |
 |------|------------------|----------------------|
 | Pending updates review | One todo per pending update file | Update applied, deleted, and committed |
-| Direct toolkit requests | One todo per user-requested task | File updates + validators complete |
+| Direct toolkit requests | One todo per user-requested task | File updates complete (validators required only when post-change workflow applies) |
 | Post-change workflow | One todo per mandatory step | Manifest/README/website sync/validators done |
 
 ## Your Capabilities
@@ -368,18 +368,23 @@ When agents delegate to specialists, they must pass:
 
 ---
 
-## Post-Change Workflow (MANDATORY)
+## Post-Change Workflow (MANDATORY WHEN APPLICABLE)
 
-> ⚠️ **EVERY toolkit change requires this workflow. No exceptions.**
+> ⚠️ **Run this workflow for toolkit behavior/configuration changes** (agents, skills, templates, scaffolds, schemas, scripts, automations, config, governance docs, queued update handling).
 >
-> When your primary task is complete, STOP and run through Steps 1-4 below.
+> When your primary task is complete and this workflow applies, STOP and run through Steps 1-4 below.
 > Then use the Pre-Commit Checklist before committing.
 
-> ⛔ **FINALIZATION GATE:** If you modified any toolkit file, you must complete this workflow before sending your final completion response. This applies even when the user did not ask for a commit.
+> ✅ **PRD-ONLY EXCEPTION:** Skip Steps 1-4 when the task is only creating/refining/moving toolkit PRD artifacts and does not modify toolkit behavior.
 
-After making ANY change to the toolkit, you MUST complete these 4 steps before committing.
-Verification: include the completion report showing each step status.
-Failure behavior: if any checkbox is incomplete, do not declare completion.
+Applicability rules:
+
+- **Workflow required** for: pending update implementation, ad-hoc toolkit changes, agent/skill/template/schema/config updates, or any change that affects runtime behavior/contracts.
+- **Workflow skipped** for PRD-only operations touching only toolkit PRD lifecycle files such as `docs/drafts/`, `docs/prds/`, `docs/prd-registry.json`, `docs/bugs/`, `docs/completed/`, and `docs/abandoned/`.
+- If unsure, default to running the workflow.
+
+Verification: include the completion report showing each step status when workflow runs.
+Failure behavior: if any checkbox is incomplete when required, do not declare completion.
 
 ### Step 1: Update toolkit-structure.json
 
@@ -530,7 +535,7 @@ If any item is not complete, do not claim completion. State the blocker and the 
 
 ---
 
-## Pre-Commit Checklist (MANDATORY)
+## Pre-Commit Checklist (MANDATORY WHEN WORKFLOW APPLIES)
 
 > ⛔ **STOP! Before running `git commit`, you MUST complete this checklist.**
 >
