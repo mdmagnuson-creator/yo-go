@@ -542,7 +542,7 @@ The user might have seen the event appear in the wrong location before correctin
 
 ### Quality Helpers
 
-Copy `e2e-quality-helpers.ts` from the ai-toolkit to your project:
+Copy `e2e-quality-helpers.ts` from the yo-go to your project:
 
 ```bash
 cp ~/.config/opencode/templates/e2e-quality-helpers.ts {{PROJECT.paths.e2e || 'e2e'}}/helpers/

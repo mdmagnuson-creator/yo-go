@@ -8,22 +8,29 @@ scope: implementation
 
 # Sync Toolkit Documentation
 
-## Changes
+## What to do
 
-Updated temp-file policy and bootstrap behavior to use project-local `.tmp/` consistently.
+1. Fetch latest `toolkit-structure.json` from GitHub.
+2. Update website docs that describe Builder/Planner temp-file behavior.
+3. Update bootstrap/setup docs to state `.tmp/` and `.gitignore` expectations.
 
-- Updated `agents/builder.md` and `agents/planner.md` with explicit temp-file rules (`.tmp/` only, never `/tmp/`)
-- Expanded planner write allowlist to include project `.tmp/` and `.gitignore` for temp hygiene
-- Updated generated conventions in `templates/coding-common.md` and mirrored bootstrap template content
-- Updated `bootstrap.sh` internals to use project-local temp scratch space instead of system `mktemp` directories
+## Files affected
 
-## Files to Update
+- `agents/builder.md`
+- `agents/planner.md`
+- `templates/coding-common.md`
+- `bootstrap.sh`
+- `toolkit-structure.json`
 
-- Fetch latest `toolkit-structure.json` from GitHub
-- Update website docs that describe Builder/Planner temp-file behavior
-- Update bootstrap/setup docs to state `.tmp/` and `.gitignore` expectations
+## Why
 
-## Source
+Toolkit now enforces project-local `.tmp/` usage and avoids system temp paths for both prompts and bootstrap internals.
 
-- Commit: pending local commit
-- toolkit-structure.json: https://raw.githubusercontent.com/mdmagnuson-creator/ai-toolkit/main/toolkit-structure.json
+## Verification
+
+Run these checks after website sync:
+
+- Confirm docs state `.tmp/` (project-local) and no `/tmp` guidance is present.
+- Confirm bootstrap documentation mentions `.gitignore` should include `.tmp/`.
+- Confirm source manifest URL resolves:
+  `https://raw.githubusercontent.com/mdmagnuson-creator/yo-go/main/toolkit-structure.json`

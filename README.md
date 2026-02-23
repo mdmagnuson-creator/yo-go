@@ -1,4 +1,4 @@
-# AI Toolkit
+# Yo Go
 
 A comprehensive collection of AI agents, skills, templates, and scaffolds for autonomous software development. Built for [OpenCode](https://opencode.ai) but adaptable to other AI coding platforms.
 
@@ -28,13 +28,13 @@ brew install opencode
 ### 2. Clone and Link
 
 ```bash
-git clone https://github.com/mdmagnuson-creator/ai-toolkit.git ~/code/ai-toolkit
+git clone https://github.com/mdmagnuson-creator/yo-go.git ~/code/yo-go
 
 # Create symlinks in your OpenCode config
 mkdir -p ~/.config/opencode
 cd ~/.config/opencode
-ln -s ~/code/ai-toolkit/agents agents
-ln -s ~/code/ai-toolkit/skills skills
+ln -s ~/code/yo-go/agents agents
+ln -s ~/code/yo-go/skills skills
 ```
 
 ### 3. Run an Agent
@@ -322,7 +322,7 @@ jobs:
     if: failure()
     steps:
       - uses: actions/checkout@v4
-      - uses: mdmagnuson-creator/ai-toolkit/triage@main
+      - uses: mdmagnuson-creator/yo-go/triage@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK }}

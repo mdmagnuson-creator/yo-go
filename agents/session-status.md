@@ -89,7 +89,7 @@ After bootstrap completes, set the new project as active and default directly in
 
 5. **Check for pending project updates:**
    ```bash
-   ls ~/code/ai-toolkit/project-updates/[project-id]/*.md 2>/dev/null
+   ls ~/.config/opencode/project-updates/[project-id]/*.md 2>/dev/null
    ```
    - If updates exist, read each file to get the title and priority
    - Include in the dashboard output (see Step 4)

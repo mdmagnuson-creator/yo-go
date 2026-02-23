@@ -1,4 +1,4 @@
-# PRD: AI Toolkit v2 — Streamlining & Testing System
+# PRD: Yo Go v2 — Streamlining & Testing System
 
 ## Introduction
 

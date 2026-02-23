@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing to `ai-toolkit`.
+Thanks for contributing to `yo-go`.
 
 ## How to Contribute
 

@@ -1,6 +1,6 @@
 name: 'Generate PRD'
 description: 'Generate a Product Requirements Document from a GitHub issue using AI'
-author: 'AI Toolkit'
+author: 'Yo Go'
 
 branding:
   icon: 'file-text'

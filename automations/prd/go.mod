@@ -1,4 +1,4 @@
-module github.com/ai-toolkit/automations/prd
+module github.com/mdmagnuson-creator/yo-go/automations/prd
 
 go 1.22
 

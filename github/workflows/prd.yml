@@ -1,4 +1,4 @@
-# Example workflow showing how to use the ai-toolkit PRD action
+# Example workflow showing how to use the yo-go PRD action
 # Copy this file to your repo's .github/workflows/ directory
 
 name: Generate PRD
@@ -39,7 +39,7 @@ jobs:
           fi
 
       - name: Generate PRD
-        uses: your-org/ai-toolkit@main  # Replace with your repo reference
+        uses: your-org/yo-go@main  # Replace with your repo reference
         with:
           issue_number: ${{ steps.issue.outputs.number }}
           github_token: ${{ secrets.GITHUB_TOKEN }}

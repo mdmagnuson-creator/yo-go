@@ -53,7 +53,7 @@ When planning work starts, verify each write target is in this allowlist. If a r
 - ❌ Tests (`tests/`, `__tests__/`, `*.test.*`, `*.spec.*`)
 - ❌ Configuration files (`package.json`, `tsconfig.json`, etc.)
 - ❌ Any file outside of `docs/` in the project, except `.tmp/` and `.gitignore` for temp hygiene
-- ❌ **AI Toolkit files** (`~/.config/opencode/agents/`, `skills/`, `scaffolds/`, etc.) — request via `pending-updates/`
+- ❌ **Yo Go files** (`~/.config/opencode/agents/`, `skills/`, `scaffolds/`, etc.) — request via `pending-updates/`
 
 If you need changes outside these locations, tell the user to use @builder for project code or @toolkit for AI toolkit changes. You can also write a request to `~/.config/opencode/pending-updates/` for toolkit changes.
 
@@ -114,7 +114,7 @@ Each session is independent — there is no persistent "active project" across s
     - cat <project>/docs/prd-registry.json
     - cat <project>/docs/project.json  
     - list <project>/docs/ first, then read <project>/docs/planner-state.json only if it exists
-    - ls ~/code/ai-toolkit/project-updates/[project-id]/*.md 2>/dev/null
+    - ls ~/.config/opencode/project-updates/[project-id]/*.md 2>/dev/null
     ```
 
     **Important:** Treat missing `docs/planner-state.json` as normal first-run behavior. Do not surface a file-missing error for this optional file.
@@ -172,7 +172,7 @@ If you need to start or check a dev server during planning flows, keep terminal 
 
 ## Pending Project Update Routing (`U`)
 
-When processing files in `~/code/ai-toolkit/project-updates/[project-id]/`:
+When processing files in `~/.config/opencode/project-updates/[project-id]/`:
 
 1. **Treat `scope` as authoritative when present** in update frontmatter:
    - `scope: planning` → Planner owns it
@@ -194,13 +194,13 @@ When processing files in `~/code/ai-toolkit/project-updates/[project-id]/`:
    - Mark `completed`, `pending`, or `cancelled` consistently in panel and file
 
 5. **Update file lifecycle (prevent stale pending updates):**
-   - If planning-scope update is successfully applied: delete the processed file from `~/code/ai-toolkit/project-updates/[project-id]/`
+   - If planning-scope update is successfully applied: delete the processed file from `~/.config/opencode/project-updates/[project-id]/`
    - If user defers or skips: keep the file so it remains visible in future sessions
    - If routed to @builder (`scope: implementation`): do not delete; Builder owns completion/removal
    - If `scope: mixed`: Planner may only remove the file after both planning and implementation portions are confirmed complete
 
 6. **Post-apply verification (required):**
-   - After deleting a completed update file, run a quick listing check for `~/code/ai-toolkit/project-updates/[project-id]/*.md`
+   - After deleting a completed update file, run a quick listing check for `~/.config/opencode/project-updates/[project-id]/*.md`
    - Confirm the processed filename is absent before marking that update todo `completed`
 
 ## Right-Panel Todo Contract
@@ -515,7 +515,7 @@ Rules:
 - ❌ Modify files in projects you didn't just create
 
 Exception for project updates:
-- ✅ You may delete processed files in `~/code/ai-toolkit/project-updates/[project-id]/` after successful `U` handling
+- ✅ You may delete processed files in `~/.config/opencode/project-updates/[project-id]/` after successful `U` handling
 - ❌ Do not edit any other toolkit files
 
 ## Requesting Toolkit Updates

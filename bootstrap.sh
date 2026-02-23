@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ai-toolkit bootstrap — TUI wizard to set up AGENTS.md in a repository.
+# yo-go bootstrap — TUI wizard to set up AGENTS.md in a repository.
 # Run from within the target repository, or pass a path as the first argument.
 
 VERSION="1.0.0"
@@ -21,7 +21,7 @@ if [[ -t 0 ]] && [[ -t 1 ]]; then
   fi
 fi
 
-BACKTITLE="ai-toolkit bootstrap v${VERSION}"
+BACKTITLE="yo-go bootstrap v${VERSION}"
 
 # Display an info message box.
 info_box() {
@@ -1301,7 +1301,7 @@ TEMPLATE_EOF
 # ---------------------------------------------------------------------------
 
 main() {
-  info_box "ai-toolkit bootstrap" \
+  info_box "yo-go bootstrap" \
     "This wizard will set up AI agent configuration for your repository at:\n\n  $TARGET_DIR\n\nIt will generate AGENTS.md with coding guidelines, git workflow, and tool usage instructions."
 
   # --- Step 1: Determine output files and check for conflicts ---

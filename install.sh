@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# AI Toolkit Installer
+# Yo Go Installer
 # One-command setup for the AI agent toolkit
 # 
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/<your-org>/ai-toolkit/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/<your-org>/yo-go/main/install.sh | bash
 
 set -e
 
@@ -16,9 +16,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default paths
-TOOLKIT_DIR="$HOME/code/ai-toolkit"
+TOOLKIT_DIR="$HOME/code/yo-go"
 CONFIG_DIR="$HOME/.config/opencode"
-TOOLKIT_REPO_URL="${TOOLKIT_REPO_URL:-https://github.com/<your-org>/ai-toolkit.git}"
+TOOLKIT_REPO_URL="${TOOLKIT_REPO_URL:-https://github.com/<your-org>/yo-go.git}"
 
 confirm() {
     local prompt="$1"
@@ -39,7 +39,7 @@ confirm() {
 echo ""
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║                                                           ║${NC}"
-echo -e "${BLUE}║              🤖  AI Toolkit Installer  🤖                 ║${NC}"
+echo -e "${BLUE}║              🤖  Yo Go Installer  🤖                 ║${NC}"
 echo -e "${BLUE}║                                                           ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -80,7 +80,7 @@ else
     if [[ "$TOOLKIT_REPO_URL" == *"<your-org>"* ]]; then
         echo -e "${RED}Error: TOOLKIT_REPO_URL is not configured.${NC}"
         echo "Set TOOLKIT_REPO_URL to your public repository URL, for example:"
-        echo "  export TOOLKIT_REPO_URL=https://github.com/acme/ai-toolkit.git"
+        echo "  export TOOLKIT_REPO_URL=https://github.com/acme/yo-go.git"
         exit 1
     fi
     
@@ -170,7 +170,7 @@ echo -e "${GREEN}║                    ✅  All Done!  ✅                     
 echo -e "${GREEN}║                                                           ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo "The AI Toolkit is installed and ready to use."
+echo "Yo Go is installed and ready to use."
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo ""

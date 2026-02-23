@@ -511,7 +511,7 @@ Output summary:
   
   example-scheduler          ⚠️ Partial    Missing: aesthetic-critic
   example-portal             ✅ Covered    -
-  ai-toolkit                 ✅ Covered    -
+  yo-go                 ✅ Covered    -
   internal-api               ⚠️ Partial    Missing: go-tester template
   mobile-app                 ❌ Gaps       Missing: react-native support
 

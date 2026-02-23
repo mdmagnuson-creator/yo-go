@@ -8,20 +8,27 @@ scope: implementation
 
 # Sync Toolkit Documentation
 
-## Changes
+## What to do
 
-Removed MCP and Context7 configuration from toolkit defaults.
+1. Fetch latest `toolkit-structure.json` from GitHub.
+2. Refresh website configuration/docs pages that reference `opencode.json` defaults.
+3. Remove website references that imply Context7 MCP is configured by default.
 
-- Updated config: `opencode.json` no longer includes `mcp.playwright` or `mcp.context7`
-- Updated docs: `README.md` no longer includes the Optional MCP Integrations section
+## Files affected
 
-## Files to Update
+- `opencode.json`
+- `README.md`
+- `toolkit-structure.json`
 
-- Fetch latest `toolkit-structure.json` from GitHub
-- Refresh configuration/docs pages that reference `opencode.json` defaults
-- Remove website references that imply Context7 MCP is configured by default
+## Why
 
-## Source
+Toolkit defaults removed MCP and Context7 configuration and docs examples, so website content must match current behavior.
 
-- Commit: pending local commit
-- toolkit-structure.json: https://raw.githubusercontent.com/mdmagnuson-creator/ai-toolkit/main/toolkit-structure.json
+## Verification
+
+Run these checks after website sync:
+
+- Confirm rendered docs do not mention default `mcp.context7` configuration.
+- Confirm config snippets match current `opencode.json`.
+- Confirm source manifest URL resolves:
+  `https://raw.githubusercontent.com/mdmagnuson-creator/yo-go/main/toolkit-structure.json`

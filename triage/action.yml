@@ -1,6 +1,6 @@
 name: 'CI Failure Triage'
 description: 'AI-powered CI failure triage with auto-fix and Slack notifications'
-author: 'AI Toolkit'
+author: 'Yo Go'
 
 branding:
   icon: 'alert-triangle'

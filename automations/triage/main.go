@@ -1070,7 +1070,7 @@ func (t *Triage) NotifySlack(ctx context.Context, triageResult *TriageResult, pr
 			"elements": []map[string]string{
 				{
 					"type": "mrkdwn",
-					"text": fmt.Sprintf("Triaged by ai-toolkit | %s", time.Now().Format(time.RFC3339)),
+					"text": fmt.Sprintf("Triaged by yo-go | %s", time.Now().Format(time.RFC3339)),
 				},
 			},
 		},
@@ -1146,7 +1146,7 @@ func (t *Triage) CommentOnPR(ctx context.Context, triageResult *TriageResult, pr
 	}
 
 	runURL := fmt.Sprintf("https://github.com/%s/%s/actions/runs/%d", t.owner, t.repo, t.runID)
-	body.WriteString(fmt.Sprintf("\n---\n*[View workflow run](%s) · Triaged by ai-toolkit*\n", runURL))
+	body.WriteString(fmt.Sprintf("\n---\n*[View workflow run](%s) · Triaged by yo-go*\n", runURL))
 
 	comment := &github.IssueComment{
 		Body: github.Ptr(body.String()),

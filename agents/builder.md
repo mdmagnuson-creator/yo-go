@@ -166,7 +166,7 @@ After the user selects a project number, show a **fast inline dashboard** — no
     - cat <project>/docs/prd-registry.json
     - cat <project>/docs/project.json
     - list <project>/docs/ first, then read <project>/docs/builder-state.json only if it exists
-    - ls ~/code/ai-toolkit/project-updates/[project-id]/*.md 2>/dev/null
+    - ls ~/.config/opencode/project-updates/[project-id]/*.md 2>/dev/null
     ```
 
    **Important:** Treat missing `docs/builder-state.json` as normal. Do not call a file-read tool against that path unless you confirmed it exists, and do not surface a "File not found" error for this optional file.
@@ -239,7 +239,7 @@ After the user selects a project number, show a **fast inline dashboard** — no
 
 ## Pending Project Update Routing (`U`)
 
-When applying files in `~/code/ai-toolkit/project-updates/[project-id]/`:
+When applying files in `~/.config/opencode/project-updates/[project-id]/`:
 
 1. **Treat `scope` as authoritative when present** in update frontmatter:
    - `scope: implementation` → Builder owns it
@@ -261,13 +261,13 @@ When applying files in `~/code/ai-toolkit/project-updates/[project-id]/`:
    - Mark each update `completed` when applied, `cancelled` when user skips, and keep `pending` when deferred
 
 5. **Update file lifecycle (prevent stale pending updates):**
-   - If update is successfully applied: delete the processed file from `~/code/ai-toolkit/project-updates/[project-id]/`
+   - If update is successfully applied: delete the processed file from `~/.config/opencode/project-updates/[project-id]/`
    - If user defers or skips: keep the file so it appears in future sessions
    - If routed to @planner (`scope: planning`): do not delete; Planner owns completion/removal
    - If `scope: mixed`: Builder may only remove the file after both implementation and planning portions are confirmed complete
 
 6. **Post-apply verification (required):**
-   - After deleting a completed update file, run a quick listing check for `~/code/ai-toolkit/project-updates/[project-id]/*.md`
+   - After deleting a completed update file, run a quick listing check for `~/.config/opencode/project-updates/[project-id]/*.md`
    - Confirm the processed filename is absent before marking that update todo `completed`
 
 > **Ad-hoc Workflow Preference:** When entering ad-hoc mode, always ask the user whether to stop after each todo or complete all todos first. See `adhoc-workflow` skill for details.
@@ -905,7 +905,7 @@ Update `builder-state.json` → `pendingUpdates` with detected items.
 - ❌ **Skip the verify prompt after completing ad-hoc tasks** — always show "TASK COMPLETE" box and wait for user
 
 Exception for project updates:
-- ✅ You may delete processed files in `~/code/ai-toolkit/project-updates/[project-id]/` after successful `U` handling
+- ✅ You may delete processed files in `~/.config/opencode/project-updates/[project-id]/` after successful `U` handling
 - ❌ Do not edit any other toolkit files
 
 ### Toolkit Boundary
@@ -914,14 +914,14 @@ If the user asks you to:
 - Look at or analyze agent definitions (`~/.config/opencode/agents/*.md`)
 - Debug why an agent isn't working correctly
 - Fix issues with skills, scaffolds, or templates
-- Modify any file in the `ai-toolkit/` repository
+- Modify any file in the `yo-go/` repository
 
 **STOP and redirect:**
 
 > "That's a toolkit change. I can only work on project code. Use **@toolkit** to modify agents, skills, or other toolkit files."
 
 Allowed exception:
-- Deleting completed update files in `~/code/ai-toolkit/project-updates/[project-id]/` as part of `U` flow
+- Deleting completed update files in `~/.config/opencode/project-updates/[project-id]/` as part of `U` flow
 
 You may **read** toolkit files to understand how agents work, but you must **never write** to them.
 

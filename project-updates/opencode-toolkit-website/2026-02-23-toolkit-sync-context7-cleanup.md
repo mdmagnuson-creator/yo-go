@@ -8,21 +8,29 @@ scope: implementation
 
 # Sync Toolkit Documentation
 
-## Changes
+## What to do
 
-Repository-wide cleanup removed Context7-specific wording from agent prompts, templates, and bootstrap guidance.
+1. Fetch latest `toolkit-structure.json` from GitHub.
+2. Refresh website docs that describe agent prompt conventions and documentation lookup behavior.
+3. Remove any website references that still name Context7 as a default docs integration.
 
-- Updated agents and agent templates to reference generic documentation lookup tools instead of Context7
-- Updated `AGENTS.md`, `templates/coding-common.md`, and `bootstrap.sh` to remove Context7 naming
-- Updated `README.md` `opencode.json` description to match current defaults
+## Files affected
 
-## Files to Update
+- `AGENTS.md`
+- `templates/coding-common.md`
+- `bootstrap.sh`
+- `README.md`
+- `toolkit-structure.json`
 
-- Fetch latest `toolkit-structure.json` from GitHub
-- Refresh docs pages that describe agent prompt conventions and documentation lookup behavior
-- Remove any website references that still name Context7 as the default docs integration
+## Why
 
-## Source
+Toolkit prompts and templates were generalized to docs-tool language and no longer refer to Context7 directly.
 
-- Commit: pending local commit
-- toolkit-structure.json: https://raw.githubusercontent.com/mdmagnuson-creator/ai-toolkit/main/toolkit-structure.json
+## Verification
+
+Run these checks after website sync:
+
+- Search published site content for `Context7` and confirm no default-integration claims remain.
+- Confirm docs pages describe generic documentation lookup behavior.
+- Confirm source manifest URL resolves:
+  `https://raw.githubusercontent.com/mdmagnuson-creator/yo-go/main/toolkit-structure.json`

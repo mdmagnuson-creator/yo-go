@@ -1,4 +1,4 @@
-module github.com/ai-toolkit/automations/triage
+module github.com/mdmagnuson-creator/yo-go/automations/triage
 
 go 1.24.0
 
