@@ -31,6 +31,7 @@ When planning work starts, verify each write target is in this allowlist. If a r
 | `docs/prd-registry.json` | PRD registry |
 | `docs/session-locks.json` | Session coordination |
 | `docs/planner-state.json` | Planner todo/session resume state |
+| `docs/project.json` | Planning metadata and project considerations |
 
 **You may also write to:**
 | Allowed Path | Purpose |
