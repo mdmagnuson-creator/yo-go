@@ -252,6 +252,15 @@ Use this section when validating full-site quality after UI/content changes.
 - Audit all changed routes plus core nav-entry pages (home, primary docs/support, key feature pages)
 - Check each page at desktop and at least one narrow mobile viewport
 
+### Browser/Device Coverage Alignment
+
+When Builder/test-flow runtime preferences request expanded coverage:
+
+- `all-major` browser scope: run quality checks across Chromium, Firefox, and WebKit
+- `desktop+mobile` device scope: include at least one mobile profile in addition to desktop
+
+When defaults are selected (`chromium-only`, `desktop-only`), keep this skill fast and focused.
+
 ### Cross-Page Checks
 
 1. Diagram and flow coherence

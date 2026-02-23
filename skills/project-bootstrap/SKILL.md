@@ -1017,6 +1017,42 @@ Do not ask an enable/disable question for agent system setup.
 
 ---
 
+## Step 9a: Seed Architecture Guardrails and Bounded-Context Docs
+
+During bootstrap, generate baseline architecture automation artifacts by default.
+
+1. Seed architecture guardrails from detected structure:
+   - import boundary rules
+   - layer constraints (UI/app/domain/data)
+   - restricted direct-access rules
+2. Seed bounded-context docs:
+   - `docs/architecture/bounded-contexts.md`
+   - optional `docs/architecture/contexts/*.md`
+3. Persist default policies in `docs/project.json`:
+
+```json
+{
+  "architecture": {
+    "guardrails": {
+      "enabled": true,
+      "strictness": "standard",
+      "exceptionsPath": "docs/architecture/guardrail-exceptions.md"
+    },
+    "boundedContexts": {
+      "enabled": true,
+      "policy": "strict",
+      "docsPath": "docs/architecture/bounded-contexts.md"
+    }
+  }
+}
+```
+
+Supported strictness values for guardrails: `fast`, `standard`, `strict`.
+
+Only ask users to override these defaults when they explicitly request policy customization.
+
+---
+
 ## Step 9b: Documentation Templates
 
 Generate both documentation templates by default:

@@ -430,6 +430,37 @@ After each test operation, update `builder-state.json`:
 
 When running E2E tests (either immediately or at PRD completion):
 
+### Runtime Preference Prompt (Required)
+
+Before executing E2E, ask for runtime breadth:
+
+1. Browser scope:
+   - `chromium-only` (default)
+   - `all-major` (`chromium+firefox+webkit`)
+2. Device scope:
+   - `desktop-only` (default)
+   - `desktop+mobile`
+
+If user selects non-default breadth, include a brief runtime impact warning.
+
+Record selected values in `builder-state.json` under `pendingTests.e2e.preferences`.
+
+### Auth Mode Policy (Required for Auth-Enabled Projects)
+
+If authentication is enabled in project capabilities:
+
+1. Default to real-user auth E2E flows (seeded accounts + real sign-in path).
+2. Do not silently fall back to demo/adaptive assertions.
+3. If required credentials/secrets are missing:
+   - output a setup checklist
+   - mark the run as blocked by test setup debt
+   - persist debt under `builder-state.json` (`pendingTests.e2e.authSetupDebt[]`)
+
+Setup checklist should include at minimum:
+- required env vars/secrets
+- seeded account identifiers/roles
+- command to seed/reset test auth fixtures
+
 1. **Verify dev server is running** — Builder starts it at session startup. If somehow stopped, restart it (see Dev Server Management in builder.md)
 2. **Run all queued E2E tests:**
    ```bash
@@ -437,6 +468,15 @@ When running E2E tests (either immediately or at PRD completion):
    ```
 3. **Handle failures** with the fix loop above
 4. **Update state** — Mark as passed or track failure count
+
+### Playwright Matrix Guidance
+
+Generated/maintained `playwright.config.*` should support:
+
+- Chromium, Firefox, WebKit projects
+- At least one mobile project (for example iPhone)
+
+Keep defaults fast (`chromium-only`, desktop), while making policy-driven expansion straightforward.
 
 ---
 

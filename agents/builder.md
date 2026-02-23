@@ -772,6 +772,81 @@ run @critic  # Final review before PR
 
 ---
 
+## Architecture Guardrails Automation
+
+Builder treats architecture guardrails as automation-first project hygiene, not an optional extra.
+
+Required behavior in PRD and ad-hoc execution:
+
+1. Ensure baseline guardrails exist (generate when missing):
+   - Import boundary rules
+   - Layer constraints (UI/app/domain/data)
+   - Restricted direct access patterns (for example direct DB access outside approved layers)
+2. Run guardrail checks in the same path as lint/test/CI checks.
+3. Detect structure drift (new modules, domains, or layers) and refresh generated guardrails.
+4. Support strictness profiles:
+   - `fast` — lightweight checks, warnings allowed
+   - `standard` — default, fail on clear violations
+   - `strict` — fail on violations and unauthorized exceptions
+5. Surface guardrail results in completion output:
+   - violations found (count + top files)
+   - drift detected (yes/no)
+   - remediation guidance (exact next command or file to update)
+
+Guardrail exceptions must be explicit and documented; never silently bypass checks.
+
+---
+
+## Bounded-Context Documentation Automation
+
+Builder keeps bounded-context docs current automatically.
+
+Required behavior:
+
+1. Generate baseline docs when missing:
+   - `docs/architecture/bounded-contexts.md`
+   - Optional per-context docs under `docs/architecture/contexts/*.md`
+2. Detect boundary-impacting changes during execution (new/renamed domains, ownership shifts, cross-context calls).
+3. Refresh architecture docs automatically when impact is detected.
+4. Ask users only for policy choices (strict vs flexible boundary policy), not routine doc maintenance.
+5. Include a short boundary delta summary in completion output.
+
+---
+
+## PRD Completion Artifact
+
+For every completed PRD, generate a standardized completion report:
+
+- Path: `docs/completed/[prd-id]/completion-report.md`
+- Modes: `compact` or `detailed` (default: `detailed`, configurable in project config)
+- Always reference this artifact in final Builder completion output.
+
+Minimum required sections:
+- PRD metadata (id, title, completed timestamp)
+- Story-to-acceptance mapping
+- Files/system areas changed
+- Data and migration impact
+- API/auth/permission impact
+- UI/UX impact
+- Verification evidence (commands + pass/fail)
+- Deferred work, known issues, follow-ups
+
+---
+
+## E2E Runtime Preferences and Real-Auth Defaults
+
+Before running E2E tests, Builder asks for runtime breadth:
+
+1. Browser scope: `chromium-only` or `all-major` (`chromium+firefox+webkit`)
+2. Device scope: `desktop-only` or `desktop+mobile`
+3. If non-default breadth is selected, include a brief runtime impact warning.
+
+For projects with authentication enabled:
+
+- Default to real-user auth flows with seeded test accounts.
+- Do not silently fall back to demo/adaptive assertions when credentials are missing.
+- If credentials are missing, show a setup checklist and track it as actionable test setup debt.
+
 ## Auto-Detect Documentation/Marketing Updates
 
 After todos complete (and tests pass), analyze changed files:

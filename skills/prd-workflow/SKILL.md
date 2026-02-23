@@ -155,6 +155,25 @@ If not branchless trunk mode, create branch from PRD `branchName`:
 git checkout -b <branchName> <default-branch>
 ```
 
+### Step 8: Initialize Architecture Automation Baseline
+
+Before story execution begins, ensure architecture automation assets exist and are current:
+
+1. **Architecture guardrails** (generate when missing):
+   - import boundary rules
+   - layer constraints (UI/app/domain/data)
+   - restricted direct access patterns
+2. **Bounded-context docs** (generate when missing):
+   - `docs/architecture/bounded-contexts.md`
+   - optional `docs/architecture/contexts/*.md`
+3. Persist initialization status in `builder-state.json` under `activePrd.architecture`.
+
+Default policy:
+- `guardrails.strictness`: `standard`
+- `boundedContexts.policy`: `strict`
+
+Only prompt users for policy overrides, not routine generation/refresh.
+
 ---
 
 ## Phase 2: Build Stories
@@ -225,6 +244,19 @@ Use `test-flow` as the canonical source for all test behavior.
 
 Continue Steps 1-2 for each story until all are complete.
 
+### Step 4: Boundary Drift Detection During Build
+
+After each story, detect boundary-impacting changes and refresh docs/guardrails as needed:
+
+1. Detect drift signals:
+   - new/renamed domain modules
+   - cross-layer imports violating policy
+   - context ownership changes
+2. If drift detected:
+   - refresh guardrail artifacts
+   - refresh bounded-context docs
+3. Record a short change summary in `builder-state.json` (`activePrd.architecture.boundaryChanges[]`).
+
 ### Critic Batching
 
 When to run @critic depends on the configured `criticMode`:
@@ -264,6 +296,28 @@ Use commands from `docs/project.json`:
 # Example - actual commands come from project.json
 npm run typecheck && npm run test && npm run build
 ```
+
+### Step 1.5: Run Architecture Guardrail Checks
+
+Run guardrail validation in the same pre-ship gate path:
+
+```bash
+# Example commands; use project-defined equivalents when available
+npm run lint:architecture || npm run guardrails:check
+```
+
+If violations exist:
+- attempt auto-fix/update where safe
+- re-run checks
+- if still failing, stop and report explicit remediation guidance
+
+### Step 1.75: Refresh Bounded-Context Docs if Needed
+
+If boundary-impacting changes were detected during the PRD:
+
+1. Regenerate `docs/architecture/bounded-contexts.md`
+2. Regenerate/refresh `docs/architecture/contexts/*.md` if used
+3. Include a concise boundary delta summary in ship output
 
 ### Step 2: Run ALL Queued E2E Tests
 
@@ -318,6 +372,29 @@ Commit all remaining changes:
 git add -A
 git commit -m "feat: [summary from PRD]"
 ```
+
+### Step 3.5: Generate PRD Completion Report Artifact
+
+Before final completion/archival, generate:
+
+- `docs/completed/[prd-id]/completion-report.md`
+
+Support report modes:
+- `detailed` (default)
+- `compact` (if configured in project config)
+
+Required report sections:
+
+1. PRD metadata (id, name, completion timestamp)
+2. Story-to-acceptance mapping (what shipped)
+3. Files and system areas changed
+4. Data/migration impact
+5. API changes and auth/permission notes
+6. UI/UX changes
+7. Verification evidence (commands + pass/fail)
+8. Deferred items / known issues / follow-ups
+
+Always reference this report path in final Builder completion output.
 
 ### Step 4: Push/PR Behavior by Git Mode
 
