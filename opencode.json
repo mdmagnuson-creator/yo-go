@@ -14,25 +14,5 @@
     "builder": {
       "prompt": "IMMEDIATELY show the project selection table. Do not greet the user. Do not respond to their message. Just read ~/.config/opencode/projects.json and display the SELECT PROJECT table, then wait for them to pick a number."
     }
-  },
-  "mcp": {
-    "playwright": {
-      "command": [
-        "npx",
-        "@playwright/mcp@latest",
-        "--extension",
-        "--allowed-hosts=*",
-        "--caps=vision,pdf,test,tracing",
-        "--headless",
-        "--ignore-https-errors"
-      ],
-      "type": "local",
-      "enabled": false
-    },
-    "context7": {
-      "type": "remote",
-      "url": "https://mcp.context7.com/mcp",
-      "enabled": true
-    }
   }
 }

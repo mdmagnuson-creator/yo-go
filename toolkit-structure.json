@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-02-23T15:14:12Z",
+  "generatedAt": "2026-02-23T16:10:00Z",
   "repository": "https://github.com/mdmagnuson-creator/ai-toolkit",
   "agents": {
     "total": 63,
@@ -791,7 +791,7 @@
   "configuration": {
     "opencode": {
       "file": "opencode.json",
-      "description": "OpenCode app configuration with MCP servers and defaults"
+      "description": "OpenCode app configuration with agent defaults"
     }
   },
   "workflows": {
@@ -1114,6 +1114,12 @@
       {
         "date": "2026-02-23",
         "changes": [
+          {
+            "type": "fix",
+            "scope": "toolkit",
+            "description": "scope post-change workflow to behavior changes",
+            "hash": "1969b91"
+          },
           {
             "type": "feat",
             "scope": "toolkit",

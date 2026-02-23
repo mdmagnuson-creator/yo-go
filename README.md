@@ -301,25 +301,6 @@ templates/
 
 ---
 
-## Optional MCP Integrations
-
-The base toolkit does not require MCP to function. If you want external integrations, configure optional MCP servers in `opencode.json`.
-
-Example:
-
-```json
-{
-  "mcp": {
-    "context7": {
-      "type": "http",
-      "url": "https://mcp.context7.com/mcp"
-    }
-  }
-}
-```
-
----
-
 ## GitHub Actions
 
 ### CI Failure Triage
