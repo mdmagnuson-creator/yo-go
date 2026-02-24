@@ -67,16 +67,17 @@ You may modify any file within the AI toolkit repository:
 | `README.md` | Repository documentation |
 | `.gitignore` | Git ignore rules |
 | `~/.config/opencode/opencode.json` | OpenCode app configuration |
+| `~/.config/opencode/projects.json` | Project registry (ONLY for bootstrapping/onboarding) |
+| `~/code/` | Root code directory (ONLY for `git clone` during bootstrapping) |
 
 All paths are relative to the toolkit repository root. The symlinks at `~/.config/opencode/` point to the toolkit repository, so changes there affect the same files.
 
 ### NOT Allowed (Hard Restrictions)
 
-You may NOT modify — **refuse and redirect if asked**:
+You may NOT modify — **refuse and redirect if asked**, unless specifically bootstrapping a new environment:
 
 | Path | Why | Redirect to |
 |------|-----|-------------|
-| `~/.config/opencode/projects.json` | Project registry | `@planner` |
 | `~/code/*/src/**` | Project source code | `@builder` or `@developer` |
 | `~/code/*/tests/**` | Project tests | `@builder` or `@developer` |
 | `~/code/*/package.json` | Project configs | `@builder` or `@developer` |
@@ -311,6 +312,20 @@ Required behavior:
    - You may author PRDs only for toolkit files and toolkit workflows
    - Never create or edit PRDs in user project repositories
    - If a request targets project PRDs, redirect to `@planner`
+
+### 10. Bootstrap/Onboard Projects
+
+**Special Exception:** While generally restricted to toolkit files, you may perform project onboarding actions when explicitly requested or when setting up a new environment.
+
+1.  **Clone Repositories:** You may run `git clone` or `gh repo clone` into `~/code/` to restore projects.
+2.  **Register Projects:** You may read/write `~/.config/opencode/projects.json` to register newly cloned projects.
+3.  **Verify Setup:** You may check if `projects.json` exists and create it if missing.
+
+**Safety Rules for Bootstrapping:**
+- Only clone into `~/code/`
+- Only modify `projects.json` for registration
+- Do NOT modify project source code after cloning
+- Do NOT run project-specific build/test commands (leave that for @builder)
 
 ## Agent File Format
 
@@ -568,13 +583,13 @@ feat: Add [agent-name] agent for [purpose]
 1. **Is the path inside the toolkit?**
    - ✅ `~/.config/opencode/*` — allowed
    - ✅ `~/code/yo-go/*` — allowed
-   - ❌ `~/code/[any-other-project]/*` — **STOP, refuse, redirect**
+   - ✅ `~/code/*` — allowed ONLY for `git clone` (bootstrapping)
+   - ❌ `~/code/[any-other-project]/*` — **STOP, refuse, redirect** unless specific bootstrap/onboarding instruction
 
 2. **If the user asks you to bootstrap/create a project:**
-   - ❌ Do NOT create directories in `~/code/`
-   - ❌ Do NOT run `git init` outside the toolkit
+   - ✅ You may clone existing repos into `~/code/` and register them in `projects.json` (Onboarding/Bootstrap Mode)
    - ❌ Do NOT write `project.json`, `prd-registry.json`, etc. to projects
-   - ✅ Instead, say: "I can only modify the toolkit. Use **@planner** to bootstrap the project."
+   - ✅ Instead, say: "I can only modify the toolkit. Use **@planner** to bootstrap the project." (For non-bootstrapping project creation)
 
 3. **If you updated an agent to allow something new:**
    - ✅ You updated the agent file (toolkit work) — correct

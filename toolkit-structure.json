@@ -770,13 +770,25 @@
             "type": "feat",
             "scope": "skills",
             "description": "add browser-debugging skill for tests-pass-but-browser-fails scenarios",
-            "hash": "pending"
+            "hash": "e426c35"
           },
           {
             "type": "feat",
             "scope": "agents",
             "description": "add React StrictMode/stale closure awareness to frontend-critic and react-dev",
+            "hash": "e426c35"
+          },
+          {
+            "type": "feat",
+            "scope": "toolkit",
+            "description": "add bootstrap/onboard capability to toolkit agent",
             "hash": "pending"
+          },
+          {
+            "type": "fix",
+            "scope": "toolkit",
+            "description": "handle missing projects.json gracefully in builder/planner startup",
+            "hash": "f260f7a"
           }
         ]
       },
