@@ -139,6 +139,26 @@ You'll receive a task description. Follow this workflow:
 - **State colocation**: Keep state close to where it's used
 - **Avoid prop drilling**: Use context or composition when drilling becomes painful
 
+### React StrictMode Awareness
+
+When writing components with DOM event listeners (especially `document` or `window` level):
+
+#### Stale Closure Prevention
+- **Never capture ref values in closures** — Always read `ref.current` at event time
+- **Bad:** `const el = ref.current; document.addEventListener('x', () => { if (el === ...) })`
+- **Good:** `document.addEventListener('x', () => { if (ref.current === ...) })`
+
+#### Why This Matters
+- StrictMode double-mounts components in development
+- First mount's DOM elements are replaced by second mount
+- Closures capturing the first element become stale
+- This causes "works in tests, fails in browser" bugs
+
+#### When to Suspect This Issue
+- Feature works in E2E tests but not user's browser
+- Feature works after HMR but not on fresh page load
+- `document.activeElement === capturedElement` returns false unexpectedly
+
 ### Performance
 
 - **React.memo**: Only use when profiling shows a problem

@@ -30,6 +30,7 @@ Builder workflows are defined in loadable skills. Load the appropriate skill bas
 | `test-flow` | When running tests, handling failures, E2E deferral |
 | `adhoc-workflow` | Ad-hoc mode — direct requests without PRD |
 | `prd-workflow` | PRD mode — building features from PRDs |
+| `browser-debugging` | User reports feature doesn't work but tests pass |
 
 ---
 

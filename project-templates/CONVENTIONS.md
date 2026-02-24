@@ -444,6 +444,63 @@ Examples:
 - "❌ Mutating props or state directly"
 -->
 
+## React Patterns (StrictMode Awareness)
+
+> **Important:** React StrictMode double-mounts components in development to detect side effects. This can cause subtle bugs that work in tests but fail in the browser.
+
+### Stale Closure Prevention
+
+When writing components with DOM event listeners (especially `document` or `window` level):
+
+| Pattern | Status | Why |
+|---------|--------|-----|
+| `const el = ref.current; handler(() => { if (el === ...) })` | ❌ Bad | Closure captures first-mount element |
+| `handler(() => { if (ref.current === ...) })` | ✅ Good | Reads ref at event time |
+
+### Common Pitfall: Document Event Listeners
+
+```typescript
+// ❌ BAD: Captures ref value at effect time
+useEffect(() => {
+  const element = textareaRef.current;
+  
+  const handleSelection = () => {
+    // This captures the first-mount element
+    // After StrictMode remount, this points to unmounted DOM
+    if (document.activeElement === element) {
+      // ...
+    }
+  };
+  
+  document.addEventListener('selectionchange', handleSelection);
+  return () => document.removeEventListener('selectionchange', handleSelection);
+}, []);
+
+// ✅ GOOD: Reads ref at event time
+useEffect(() => {
+  const handleSelection = () => {
+    // Always reads current ref value
+    if (document.activeElement === textareaRef.current) {
+      // ...
+    }
+  };
+  
+  document.addEventListener('selectionchange', handleSelection);
+  return () => document.removeEventListener('selectionchange', handleSelection);
+}, []);
+```
+
+### When to Suspect StrictMode Issues
+
+- Feature works in E2E tests but not in user's browser
+- Feature works after HMR (hot reload) but not on fresh page load
+- `document.activeElement === capturedElement` returns false unexpectedly
+- Event listeners seem to "stop working" randomly
+
+### Rule of Thumb
+
+**Never capture `ref.current` in a variable used inside an event handler closure.** Always read `ref.current` at the moment you need it.
+
 ## Examples in Codebase
 
 When unsure about conventions, reference these exemplary files:

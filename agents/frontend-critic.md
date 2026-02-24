@@ -103,6 +103,19 @@ For each file, evaluate the following areas. Only flag issues you're confident a
 - Responsive design gaps
 - Unused or duplicated styles
 
+### React StrictMode / Stale Closure Check
+When reviewing code with `useEffect` + event listeners:
+- Does the effect capture ref values in variables used inside handlers? (e.g., `const el = ref.current` then used in event handler)
+- Are document-level event listeners comparing against captured DOM elements? (e.g., `document.activeElement === element`)
+- Should the code read `ref.current` at event time instead of capture time?
+
+**Flag as potential bug:**
+- `const element = ref.current` followed by use in event handler closure
+- `document.activeElement === element` where `element` is from closure
+- Any pattern that captures a ref value outside the handler and uses it inside
+
+**Why this matters:** React StrictMode double-mounts components in development. First mount's DOM elements are replaced by second mount, so closures capturing the first element become stale. This causes "works in tests, fails in browser" bugs.
+
 ### General Best Practices
 - Error handling: missing error boundaries, unhandled promise rejections, silent failures
 - Edge cases: empty states, loading states, error states not handled
