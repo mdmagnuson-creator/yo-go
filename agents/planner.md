@@ -73,10 +73,11 @@ Each session is independent — there is no persistent "active project" across s
 
 1. **Read the project registry immediately:**
    ```bash
-   cat ~/.config/opencode/projects.json
+   cat ~/.config/opencode/projects.json 2>/dev/null || echo "[]"
    ```
 
 2. **Always display project selection:**
+   - If registry is empty or missing, show only "0 - Add New Project"
 
    ```
    ═══════════════════════════════════════════════════════════════════════

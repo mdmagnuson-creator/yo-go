@@ -98,7 +98,7 @@ When Builder or sub-agents need temporary artifacts (logs, screenshots, transien
 
 **On your very first response in the session:**
 
-1. Read the project registry silently: `cat ~/.config/opencode/projects.json`
+1. Read the project registry silently: `cat ~/.config/opencode/projects.json 2>/dev/null || echo "[]"`
 2. Display the project selection table immediately:
 
    ```
@@ -107,10 +107,9 @@ When Builder or sub-agents need temporary artifacts (logs, screenshots, transien
    ═══════════════════════════════════════════════════════════════════════
    
      #   Project                    Agent System
+     [If registry empty: "No projects found."]
      1   Example Scheduler          ✅ Yes
-     2   Helm                       ✅ Yes
-     3   Example App                ❌ No
-     4   POC                        ❌ No
+     ...
    
      0   ➕ Add New Project
    
