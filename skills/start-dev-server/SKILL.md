@@ -177,10 +177,24 @@ for service in $services; do
   
   if [ $ELAPSED -ge $TIMEOUT_MS ]; then
     echo "ERROR: $service failed to become ready within ${TIMEOUT_MS}ms"
+    # Important: Kill the orphaned background process before exiting
+    if [ -f "$projectPath/.tmp/dev-server.pids" ]; then
+      while IFS=: read -r svc pid; do
+        if [ -n "$pid" ]; then
+          kill $pid 2>/dev/null
+          echo "Killed orphaned $svc (PID: $pid)"
+        fi
+      done < "$projectPath/.tmp/dev-server.pids"
+      rm "$projectPath/.tmp/dev-server.pids"
+    fi
     exit 1
   fi
 done
 ```
+
+> ⚠️ **On timeout or failure, ALWAYS kill background processes.**
+> The code above shows killing PIDs before exit. Without this, `node` processes remain orphaned and consume CPU indefinitely.
+> **Check:** After failure, verify no orphaned processes with `lsof -i:$PORT`. **Stop** if processes remain.
 
 ### Step 7: Return Result
 
@@ -312,5 +326,6 @@ Dev servers ready:
 | "npm install failed" | Network or package issues | Check npm registry access, clear cache with `npm cache clean --force` |
 | "Port X in use" | Another process using the port | Kill existing process or change port in project.json |
 | "commands.dev not found" | No dev command configured | Add `commands.dev` or `services[].command` to project.json |
-| "Dev server failed to become ready" | Server didn't respond to health check | Check `healthCheck` path is correct |
+| "Dev server failed to become ready" | Server didn't respond to health check within timeout | Cleanup kills orphaned processes automatically; check logs at `.tmp/dev-server.log` |
 | "Process terminated unexpectedly" | Server crashed on startup | Check terminal output for errors |
+| Orphaned node processes after failure | Old bug: cleanup wasn't called on timeout | Fixed: Step 6 now kills PIDs before exit on failure |
