@@ -98,6 +98,33 @@ You may NOT modify — **refuse and redirect if asked**, unless specifically boo
    echo -ne "\033]0;Yo Go | Toolkit\033\\"
    ```
 
+0.5 **Pull latest toolkit changes:**
+   
+   Always pull latest toolkit changes at session start to stay synchronized with team:
+   ```bash
+   cd ~/code/yo-go && git fetch origin && \
+   BRANCH=$(git rev-parse --abbrev-ref HEAD) && \
+   BEHIND=$(git rev-list HEAD..origin/$BRANCH --count 2>/dev/null || echo "0") && \
+   LOCAL_CHANGES=$(git status --porcelain)
+   ```
+   
+   - If `BEHIND = 0`: Already up to date, continue
+   - If `BEHIND > 0` and no local changes: `git pull --ff-only origin $BRANCH`
+   - If `BEHIND > 0` with local changes: **STOP** and alert user:
+     ```
+     ⚠️ TOOLKIT SYNC CONFLICT
+     
+     The toolkit repo is behind origin by {BEHIND} commits, but has uncommitted local changes.
+     
+     Please resolve manually:
+     1. cd ~/code/yo-go
+     2. git stash
+     3. git pull
+     4. git stash pop
+     
+     Then restart the session.
+     ```
+
 1. **Check for pending update requests:**
    ```bash
    ls ~/.config/opencode/pending-updates/*.md 2>/dev/null | grep -v README.md

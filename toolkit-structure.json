@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-02-25T18:30:00Z",
+  "generatedAt": "2026-02-25T19:00:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 63,
@@ -349,7 +349,7 @@
     }
   },
   "skills": {
-    "total": 33,
+    "total": 34,
     "categories": {
       "workflow": {
         "description": "Workflow and lifecycle skills",
@@ -363,6 +363,11 @@
             "name": "builder-state",
             "path": "skills/builder-state/SKILL.md",
             "description": "Manage builder session state for resumability. Use when reading/writing builder-state.json, updating heartbeat, or resuming sessions. Triggers on: session state, builder state, heartbeat, resume session."
+          },
+          {
+            "name": "git-sync",
+            "path": "skills/git-sync/SKILL.md",
+            "description": "Team synchronization for multi-machine collaboration. Provides pull/push protocols for keeping repos in sync across team members. Triggers on: team sync, git sync, pull latest, push changes."
           },
           {
             "name": "multi-session",
@@ -766,6 +771,24 @@
       {
         "date": "2026-02-25",
         "changes": [
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "add git-sync skill for team synchronization across multiple machines",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "agents",
+            "description": "add team sync (auto pull/push) to planner, builder, and toolkit agents",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "schema",
+            "description": "add git.teamSync configuration to project schema",
+            "hash": "pending"
+          },
           {
             "type": "fix",
             "scope": "agents",
