@@ -96,6 +96,7 @@ Use documentation lookup tools.
 
 5. **After all specialists complete**:
    - Use test commands from `docs/project.json` (or fall back to AGENTS.md)
+   - **Always use CI/non-watch mode** — see "Test Execution Mode" below
    - Run the appropriate test commands to verify all tests pass
    - If tests fail, identify the issue and re-run the appropriate specialist with fix instructions
 
@@ -796,6 +797,48 @@ Tell the user: "I've queued a toolkit update request for @toolkit to review."
 8. Commit: `test: add coverage for Header, format utils`
 
 9. Signal: `<promise>COMPLETE</promise>`
+
+## Test Execution Mode (CRITICAL)
+
+> ⚠️ **ALWAYS run tests in CI/non-watch mode to prevent orphaned processes.**
+>
+> Many test runners (Vitest, Jest, etc.) default to **watch mode** which keeps processes running indefinitely.
+> When the terminal session ends, these processes become orphaned and consume CPU.
+
+### Required Flags by Test Runner
+
+| Runner | Command | Watch Mode (DO NOT USE) | CI Mode (USE THIS) |
+|--------|---------|------------------------|-------------------|
+| **Vitest** | `npx vitest` | `vitest` (default watches) | `vitest run` or `vitest --run` |
+| **Jest** | `npx jest` | `jest --watch` | `jest` (default is CI mode) |
+| **Playwright** | `npx playwright test` | N/A | Default is single-run |
+| **Go test** | `go test` | N/A | Default is single-run |
+
+### When Running Tests
+
+1. **Check if project uses Vitest:**
+   ```bash
+   grep -q '"vitest"' package.json && echo "Uses Vitest"
+   ```
+
+2. **If Vitest detected**, ensure the test command includes `run`:
+   - ✅ `vitest run` or `npm run test` (if script is `"test": "vitest run"`)
+   - ❌ `vitest` or `npm run test:watch`
+
+3. **If uncertain**, add `--run` flag explicitly:
+   ```bash
+   npx vitest run --passWithNoTests
+   ```
+
+4. **Set CI environment variable** as a safety net:
+   ```bash
+   CI=true npm test
+   ```
+   Most test runners detect `CI=true` and automatically disable watch mode.
+
+### Verification
+
+After tests complete, the test runner process should exit immediately. If you notice tests "hanging" without returning to the prompt, the runner is likely in watch mode — kill it and re-run with proper flags.
 
 ## Quality Requirements
 

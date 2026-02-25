@@ -557,12 +557,19 @@ func TestConcurrentAccess(t *testing.T) {
 
 ## Running Tests
 
+> ℹ️ **Go tests run in CI mode by default** — unlike JavaScript test runners, `go test` does not have watch mode.
+
 **Use make test:**
 ```bash
 make test
 ```
 
 This runs the project's test suite. Check AGENTS.md for any project-specific test commands or requirements.
+
+**Note:** If the project also has JavaScript tests (e.g., monorepo with Go backend + React frontend), ensure JS tests use CI mode:
+```bash
+CI=true npm test
+```
 
 ## Stop Condition
 

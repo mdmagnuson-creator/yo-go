@@ -375,6 +375,26 @@ it('renders with provided props', () => {
 - **Props variations**: Test different prop combinations
 - **Accessibility**: Test keyboard navigation and ARIA attributes
 
+## Running Tests (CI Mode)
+
+> ⚠️ **ALWAYS run tests in CI/non-watch mode to prevent orphaned processes.**
+
+When executing test commands, ensure non-watch mode:
+
+```bash
+# Safest — explicit CI mode
+CI=true npm test
+
+# If project uses Vitest (check package.json)
+npx vitest run
+
+# Never use watch flags in automation
+# ❌ jest --watch
+# ❌ vitest (without 'run')
+```
+
+If tests "hang" without returning to the prompt, the runner is likely in watch mode — kill it and re-run with proper flags.
+
 ## Stop Condition
 
 After completing the task and running quality checks, reply with:

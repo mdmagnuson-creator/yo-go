@@ -676,14 +676,36 @@ describe('error handling', () => {
 
 ## Running Tests
 
+> ⚠️ **ALWAYS run tests in CI/non-watch mode to prevent orphaned processes.**
+
 Check AGENTS.md for project-specific test commands. Common patterns:
 
 ```bash
-npm test
+npm test               # Usually CI mode by default
 npm run test:unit
-jest
-yarn test
+CI=true npx jest       # Explicit CI mode
 ```
+
+### CI Mode Safety
+
+Many test runners (especially **Vitest**) default to watch mode. Always ensure:
+
+1. **Set CI environment variable:**
+   ```bash
+   CI=true npm test
+   ```
+
+2. **Check for Vitest** — If the project uses Vitest instead of Jest:
+   ```bash
+   # Vitest requires explicit 'run' flag
+   npx vitest run
+   # Or with CI variable
+   CI=true npx vitest
+   ```
+
+3. **Jest defaults to CI mode** when `CI=true` or not in a TTY, but setting it explicitly is safer.
+
+If tests "hang" without returning to the prompt, the runner is likely in watch mode — kill it and re-run with proper flags.
 
 ## Stop Condition
 

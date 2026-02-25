@@ -66,6 +66,49 @@ In `hybrid` mode, Builder uses planner-assigned `testIntensity` as baseline and 
 
 ---
 
+## Test Execution Mode (CRITICAL)
+
+> ⚠️ **ALWAYS run tests in CI/non-watch mode to prevent orphaned processes.**
+>
+> Many test runners default to **watch mode** which keeps processes running indefinitely.
+> When the terminal session ends, these processes become orphaned and consume CPU.
+
+### Required Flags by Runner
+
+| Runner | Watch Mode (DO NOT USE) | CI Mode (USE THIS) |
+|--------|------------------------|-------------------|
+| **Vitest** | `vitest` (default) | `vitest run` |
+| **Jest** | `jest --watch` | `jest` (default) |
+| **Playwright** | N/A | Default is single-run |
+| **Go test** | N/A | Default is single-run |
+
+### Enforcement
+
+When executing test commands:
+
+1. **Check if project uses Vitest** — look for `vitest` in `package.json` dependencies
+2. **If Vitest detected**, verify the test script includes `run`:
+   - ✅ `"test": "vitest run"`
+   - ❌ `"test": "vitest"` (will watch)
+3. **If the script is wrong or uncertain**, run with explicit flags:
+   ```bash
+   CI=true npx vitest run
+   ```
+4. **CI environment variable** — set `CI=true` as a safety net:
+   ```bash
+   CI=true npm test
+   ```
+   Most test runners detect `CI=true` and automatically disable watch mode.
+
+### Symptoms of Watch Mode
+
+If tests "hang" without returning to the prompt:
+1. The runner is likely in watch mode
+2. Kill the process (Ctrl+C or kill PID)
+3. Re-run with proper CI mode flags
+
+---
+
 ## PRD Mode Test Flow (US-003)
 
 **After each story completion:**
