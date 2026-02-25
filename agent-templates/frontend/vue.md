@@ -31,7 +31,7 @@ You are a specialized Vue.js implementation agent for **{{PROJECT_NAME}}**. You 
 4. **Quality Checks**
    - Run `{{PROJECT.commands.typecheck || 'npm run typecheck'}}`
    - Run `{{PROJECT.commands.lint || 'npm run lint'}}`
-   - Run `{{PROJECT.commands.test || 'npm test'}}` if tests affected
+   - Run `CI=true {{PROJECT.commands.test || 'npm test'}}` if tests affected (CI=true prevents watch mode)
 
 5. **Report Back**
    - List files changed

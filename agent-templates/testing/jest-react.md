@@ -29,7 +29,7 @@ You are a specialized testing agent for **{{PROJECT_NAME}}**. You write comprehe
    - Cover happy path, edge cases, and error states
 
 4. **Run Tests**
-   - Run `{{PROJECT.commands.test || 'npm test'}}`
+   - Run `CI=true {{PROJECT.commands.test || 'npm test'}}` (CI=true prevents watch mode)
    - Ensure all tests pass
    - Check coverage if configured
 

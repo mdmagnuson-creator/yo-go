@@ -143,9 +143,9 @@ Set status to `testing`, update heartbeat.
 
 2. **Run tests based on config:**
    ```bash
-   # From project.json commands
+   # From project.json commands (CI=true prevents watch mode)
    npm run typecheck
-   npm run test
+   CI=true npm run test
    ```
 
 3. **Run E2E if configured** (`mergeQueue.runE2EAfterRebase: true`):

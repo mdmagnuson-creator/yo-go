@@ -681,9 +681,9 @@ describe('error handling', () => {
 Check AGENTS.md for project-specific test commands. Common patterns:
 
 ```bash
-npm test               # Usually CI mode by default
-npm run test:unit
-CI=true npx jest       # Explicit CI mode
+CI=true npm test         # Safest - explicit CI mode
+CI=true npm run test:unit
+CI=true npx jest         # Explicit CI mode
 ```
 
 ### CI Mode Safety

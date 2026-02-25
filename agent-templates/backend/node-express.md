@@ -32,7 +32,7 @@ You are a specialized Node.js/Express implementation agent for **{{PROJECT_NAME}
 4. **Quality Checks**
    - Run `{{PROJECT.commands.typecheck || 'npm run typecheck'}}`
    - Run `{{PROJECT.commands.lint || 'npm run lint'}}`
-   - Run `{{PROJECT.commands.test || 'npm test'}}`
+   - Run `CI=true {{PROJECT.commands.test || 'npm test'}}` (CI=true prevents watch mode)
 
 5. **Report Back**
    - List files changed

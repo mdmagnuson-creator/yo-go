@@ -294,7 +294,8 @@ Use commands from `docs/project.json`:
 
 ```bash
 # Example - actual commands come from project.json
-npm run typecheck && npm run test && npm run build
+# CI=true prevents watch mode for test runners
+npm run typecheck && CI=true npm run test && npm run build
 ```
 
 ### Step 1.5: Run Architecture Guardrail Checks

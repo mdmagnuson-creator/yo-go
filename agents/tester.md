@@ -301,10 +301,10 @@ scope: since-checkpoint
    
    **Unit tests:**
    ```bash
-   # Jest
-   npx jest src/components/__tests__/Header.test.tsx src/utils/__tests__/format.test.ts
+   # Jest (CI=true ensures no watch mode)
+   CI=true npx jest src/components/__tests__/Header.test.tsx src/utils/__tests__/format.test.ts
    
-   # Go
+   # Go (no watch mode by default)
    go test ./api/handlers/... -run TestUserHandler
    ```
    
@@ -385,7 +385,7 @@ scope: since-checkpoint
 
 4. Run scoped tests:
    ```bash
-   npx jest src/components/__tests__/Header.test.tsx  # Pass
+   CI=true npx jest src/components/__tests__/Header.test.tsx  # Pass
    npx playwright test e2e/navigation.spec.ts         # Pass
    ```
 
@@ -395,7 +395,7 @@ scope: since-checkpoint
 
 6. Run new tests:
    ```bash
-   npx jest src/utils/__tests__/format.test.ts  # Pass
+   CI=true npx jest src/utils/__tests__/format.test.ts  # Pass
    ```
 
 7. Update checkpoint with all tested files
@@ -430,10 +430,10 @@ generatePRD: true|false
    Use the test command from `project.json` or fall back to common patterns:
    
    ```bash
-   # Node/TypeScript projects
-   npm test -- --passWithNoTests 2>&1 | tee .tmp/unit-test-output.txt || true
+   # Node/TypeScript projects (CI=true prevents watch mode)
+   CI=true npm test -- --passWithNoTests 2>&1 | tee .tmp/unit-test-output.txt || true
    
-   # Go projects
+   # Go projects (no watch mode, safe as-is)
    go test ./... 2>&1 | tee .tmp/unit-test-output.txt || true
    ```
 
@@ -783,14 +783,14 @@ Tell the user: "I've queued a toolkit update request for @toolkit to review."
 
 5. Run scoped tests:
    ```bash
-   npx jest src/components/__tests__/Header.test.tsx  # Pass
+   CI=true npx jest src/components/__tests__/Header.test.tsx  # Pass
    npx playwright test e2e/navigation.spec.ts         # Pass
    ```
 
 6. Write missing test:
    - Delegate `format.ts` to @jest-tester with ad-hoc context
    - Specialist creates `src/utils/__tests__/format.test.ts`
-   - Run: `npx jest src/utils/__tests__/format.test.ts` # Pass
+   - Run: `CI=true npx jest src/utils/__tests__/format.test.ts` # Pass
 
 7. Update checkpoint with tested files and timestamps
 
@@ -801,9 +801,8 @@ Tell the user: "I've queued a toolkit update request for @toolkit to review."
 ## Test Execution Mode (CRITICAL)
 
 > ⚠️ **ALWAYS run tests in CI/non-watch mode to prevent orphaned processes.**
->
-> Many test runners (Vitest, Jest, etc.) default to **watch mode** which keeps processes running indefinitely.
-> When the terminal session ends, these processes become orphaned and consume CPU.
+> Many test runners default to **watch mode**. When the terminal ends, these become orphaned.
+> **Check:** If command hangs, stop and re-run with `CI=true` or `--run` flag.
 
 ### Required Flags by Test Runner
 
