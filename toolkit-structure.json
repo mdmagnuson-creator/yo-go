@@ -823,7 +823,7 @@
             "type": "fix",
             "scope": "skills",
             "description": "kill orphaned dev server processes on timeout/failure in start-dev-server skill",
-            "hash": "pending"
+            "hash": "f68cfa2"
           }
         ]
       },
