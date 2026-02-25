@@ -14,6 +14,19 @@ tools:
 
 # PRD Impact Analyzer
 
+> ⛔ **CRITICAL: Check `git.autoCommit` before committing registry changes**
+>
+> **Trigger:** Before running `git commit` in Step 7.
+>
+> **Check:** Read `project.json` → `git.autoCommit` (or receive from parent agent)
+> - If `true` (default): Proceed with commit normally
+> - If `false`: **NEVER run `git commit`** — failure to comply violates project constraint
+>
+> **When autoCommit is disabled:**
+> 1. Stage files: `git add docs/prd-registry.json docs/prd-impact-report.md`
+> 2. Report what would be committed and suggested message
+> 3. Let parent agent handle commit reporting to user
+
 Analyzes how a completed PRD affects other PRDs in the backlog. This ensures the PRD registry stays accurate and helps identify when:
 - Dependencies are now satisfied
 - Conflict risks have changed

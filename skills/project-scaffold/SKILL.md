@@ -5,6 +5,18 @@ description: "Generate project boilerplate from scaffold templates. Use when cre
 
 # Project Scaffold Skill
 
+> ⛔ **CRITICAL: Initial scaffold commit respects user preference**
+>
+> **Trigger:** Before running `git commit` for initial scaffold.
+>
+> **Check:** Ask user before committing: "Create initial commit? [Y/n]"
+> - If user confirms or default: Proceed with `git commit -m "Initial scaffold"`
+> - If user declines: **Stop after `git add .`** — do not commit
+>
+> **Note:** New projects don't have `project.json` yet, so we ask the user directly.
+> After scaffolding, if the user sets `git.autoCommit: false` in `project.json`,
+> all future agent commits will require manual confirmation.
+
 Generate project boilerplate based on selected stack archetype. This skill is invoked by `project-bootstrap` after stack selection.
 
 ---
@@ -483,6 +495,8 @@ postScaffold:
   - command: git init
   - command: git add .
   - command: git commit -m "Initial scaffold from {{scaffoldName}}"
+    requiresConfirmation: true
+    confirmationPrompt: "Create initial commit? [Y/n]"
 ```
 
 **Execution:**
@@ -499,8 +513,19 @@ npx supabase init --workdir .
 # Initialize git
 git init
 git add .
-git commit -m "Initial scaffold from nextjs-supabase"
+
+# Ask user before committing (requiresConfirmation: true)
+# If user confirms: git commit -m "Initial scaffold from nextjs-supabase"
+# If user declines: skip commit, files remain staged
 ```
+
+**Handling `requiresConfirmation`:**
+
+When a postScaffold command has `requiresConfirmation: true`:
+1. Display the `confirmationPrompt` to the user
+2. If user confirms (Y/Enter): execute the command
+3. If user declines (n): skip the command, continue with next step
+4. Report which commands were skipped
 
 ---
 

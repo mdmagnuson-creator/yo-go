@@ -5,6 +5,19 @@ description: "Generate public-facing pages (marketing, legal, error, changelog).
 
 # Public Page Skill
 
+> ⛔ **CRITICAL: Check `git.autoCommit` before committing page changes**
+>
+> **Trigger:** Before running `git commit` in Step 7.
+>
+> **Check:** Read `project.json` → `git.autoCommit`
+> - If `true` (default): Proceed with commit normally
+> - If `false`: **NEVER run `git commit`** — failure to comply violates project constraint
+>
+> **When autoCommit is disabled:**
+> 1. Stage files: `git add .`
+> 2. Report staged files and suggested commit message
+> 3. Say: "Auto-commit is disabled. Run `git commit -m \"feat: add [page type] page\"` when ready."
+
 Generate and implement public-facing pages for the web application.
 
 ---

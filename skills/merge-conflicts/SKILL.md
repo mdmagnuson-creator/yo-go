@@ -5,6 +5,19 @@ description: "Resolve merge conflicts on a pull request by merging the target br
 
 # Merge Conflict Resolver
 
+> ⛔ **CRITICAL: Check `git.autoCommit` before completing merge commit**
+>
+> **Trigger:** Before running `git commit --no-edit` in Step 5.
+>
+> **Check:** Read `project.json` → `git.autoCommit`
+> - If `true` (default): Proceed with commit normally
+> - If `false`: **NEVER run `git commit`** — failure to comply violates project constraint
+>
+> **When autoCommit is disabled:**
+> 1. Stage resolved files: `git add <resolved-files>`
+> 2. Report: "Conflicts resolved and staged. Run `git commit --no-edit` to complete merge."
+> 3. Wait for user confirmation before pushing
+
 Resolve merge conflicts on a pull request by merging the target branch into the source branch and fixing all conflicts.
 
 ---

@@ -774,6 +774,12 @@
           {
             "type": "fix",
             "scope": "agents",
+            "description": "extend autoCommit enforcement to all commit locations (prd-impact-analyzer, merge-conflicts, public-page, project-scaffold)",
+            "hash": "pending"
+          },
+          {
+            "type": "fix",
+            "scope": "agents",
             "description": "add hardened identity locks and intent mismatch detection to prevent role drift after compaction",
             "hash": "0ad247f"
           }

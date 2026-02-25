@@ -246,3 +246,5 @@ postScaffold:
   - command: git commit -m "Initial scaffold from nextjs-prisma"
     workdir: .
     description: Create initial commit
+    requiresConfirmation: true
+    confirmationPrompt: "Create initial commit? [Y/n]"
