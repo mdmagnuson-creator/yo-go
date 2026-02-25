@@ -817,7 +817,7 @@
             "type": "fix",
             "scope": "agents",
             "description": "add comprehensive CI=true enforcement across all test command examples and agent templates",
-            "hash": "pending"
+            "hash": "d0c8512"
           }
         ]
       },
