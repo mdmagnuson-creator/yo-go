@@ -775,7 +775,7 @@
             "type": "feat",
             "scope": "schema",
             "description": "support no-local-runtime projects with devPort: null",
-            "hash": "pending"
+            "hash": "e76474e"
           },
           {
             "type": "feat",
