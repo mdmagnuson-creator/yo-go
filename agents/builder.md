@@ -1124,6 +1124,145 @@ For projects with authentication enabled:
 - Do not silently fall back to demo/adaptive assertions when credentials are missing.
 - If credentials are missing, show a setup checklist and track it as actionable test setup debt.
 
+---
+
+## Authentication Configuration Check (MANDATORY)
+
+> ⛔ **CRITICAL: Check for authentication config BEFORE any auth-dependent task.**
+>
+> **Auth-dependent tasks include:**
+> - E2E tests on authenticated pages
+> - Screenshot capture on authenticated pages
+> - QA browser testing on authenticated features
+> - Any Playwright/browser automation requiring login
+>
+> **DO NOT proceed without valid `authentication` configuration. NO inline guessing.**
+
+### When to Check
+
+Trigger this check when:
+- Starting E2E tests that require login
+- Capturing screenshots of authenticated pages
+- Running QA tests on authenticated features
+- Any sub-agent (e2e-playwright, qa-browser-tester, screenshot) needs to authenticate
+
+### Check Flow
+
+1. **Read `project.json` → `authentication`:**
+   ```bash
+   jq '.authentication' docs/project.json
+   ```
+
+2. **If `authentication` exists and is valid:**
+   - Proceed with the auth-dependent task
+   - Load the appropriate auth skill (derived from `method` + `provider`)
+   - Pass auth config to sub-agents
+
+3. **If `authentication` is missing or invalid:**
+   
+   **Step A: Scan for auth clues**
+   ```bash
+   # Check package.json for auth dependencies
+   cat package.json | jq -r '.dependencies // {} | keys[]' 2>/dev/null | grep -iE "supabase|next-auth|auth|clerk|firebase"
+   
+   # Check for auth patterns in code
+   grep -r "signInWithOtp\|signInWithPassword\|signIn\|useSession" src/ app/ --include="*.ts" --include="*.tsx" 2>/dev/null | head -3
+   ```
+   
+   **Step B: Present findings and require configuration**
+   
+   ```
+   ═══════════════════════════════════════════════════════════════════════
+                   ⚠️ AUTHENTICATION CONFIGURATION REQUIRED
+   ═══════════════════════════════════════════════════════════════════════
+   
+   I detected authentication in your project but no `authentication` config
+   in `docs/project.json`.
+   
+   Detected:
+     • @supabase/supabase-js in package.json
+     • signInWithOtp() calls found in src/lib/auth.ts
+   
+   I cannot proceed with auth-dependent tasks without configuration.
+   
+   OPTIONS
+   ───────────────────────────────────────────────────────────────────────
+   
+   1. Run interactive setup:
+      Type: /setup-auth
+      
+   2. Add config manually to docs/project.json:
+   
+      {
+        "authentication": {
+          "method": "passwordless-otp",
+          "provider": "supabase",
+          "testUser": {
+            "type": "fixed",
+            "email": "test@example.com"
+          },
+          "routes": {
+            "login": "/login",
+            "verify": "/verify",
+            "authenticated": "/dashboard"
+          }
+        }
+      }
+   
+   After configuration, retry the task.
+   
+   > _
+   ═══════════════════════════════════════════════════════════════════════
+   ```
+
+4. **STOP workflow and wait for user to configure authentication**
+   - Do NOT proceed with auth-dependent tasks
+   - Do NOT attempt to guess or hardcode auth configuration
+   - Do NOT offer to "try anyway"
+
+### Detection Patterns
+
+| Dependency | Provider | Likely Method |
+|------------|----------|---------------|
+| `@supabase/supabase-js` | supabase | Check for OTP vs password |
+| `@supabase/ssr` | supabase | Check for OTP vs password |
+| `next-auth` | nextauth | credentials or oauth |
+| `@auth/core` | nextauth | credentials or oauth |
+| `@clerk/nextjs` | clerk | oauth |
+| `@auth0/auth0-react` | auth0 | oauth |
+
+### Sub-Agent Delegation with Auth
+
+When delegating to auth-dependent sub-agents, include auth config in context:
+
+```yaml
+<context>
+version: 1
+project:
+  path: {path}
+  stack: {stack}
+authentication:
+  method: {method}
+  provider: {provider}
+  skill: {skill name}
+  testUserEmail: {email}
+  routes:
+    login: {login path}
+    authenticated: {authenticated path}
+</context>
+```
+
+### Related Skills
+
+- `setup-auth` — Interactive auth configuration wizard
+- `auth-supabase-otp` — Supabase OTP login
+- `auth-supabase-password` — Supabase password login
+- `auth-nextauth-credentials` — NextAuth credentials login
+- `auth-generic` — Generic/custom auth
+- `auth-headless` — Headless auth session injection
+
+---
+
 ## Auto-Detect Documentation/Marketing Updates
 
 After todos complete (and tests pass), analyze changed files:
