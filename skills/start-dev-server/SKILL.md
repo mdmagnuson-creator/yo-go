@@ -20,6 +20,22 @@ When invoking this skill, provide:
 
 ## Steps
 
+### Step 0: Check for Local Runtime Capability
+
+Before doing anything else, check if this project can run locally:
+
+```bash
+# Check if devPort is null in projects.json
+DEV_PORT=$(cat ~/.config/opencode/projects.json | jq -r '.projects[] | select(.path == "'"$projectPath"'") | .devPort')
+
+if [ "$DEV_PORT" = "null" ]; then
+  echo "⏭️  Skipping dev server: Project has no local runtime (devPort: null)"
+  exit 0
+fi
+```
+
+**If devPort is null:** This project cannot run locally (e.g., remote-only codebase, library, or cloud-native app without local dev). Skip all subsequent steps and return immediately.
+
 ### Step 1: Load Project Configuration
 
 Read configuration from both sources:

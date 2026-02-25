@@ -174,12 +174,22 @@ Each UI area should have tests for:
 > ⚠️ **CRITICAL: Always read port from project registry**
 >
 > The canonical dev port for each project is stored in `~/.config/opencode/projects.json` under `projects[].devPort`.
-> This is the **single source of truth** for which port each project uses.
+> If `devPort` is `null`, stop immediately — this project has no local runtime.
+>
+> **Trigger:** Before running any Playwright tests or checking dev server status.
 >
 > **BEFORE** running tests:
 > 1. Read `~/.config/opencode/projects.json`
 > 2. Find the project entry by `id` or `path`
-> 3. Verify the dev server is running on that `devPort`
+> 3. Check if `devPort` is `null` — if so, stop immediately:
+>    ```
+>    ⏭️  E2E tests skipped: Project has no local runtime (devPort: null)
+>    ```
+> 4. Verify the dev server is running on that `devPort`
+>
+> **Evidence:** Include the resolved `devPort` in test output or completion report.
+>
+> **Failure behavior:** If `devPort` cannot be resolved or is `null`, stop and report instead of hardcoding a port.
 >
 > Do NOT hardcode port numbers. Do NOT assume port 3000. Always read it from the registry.
 

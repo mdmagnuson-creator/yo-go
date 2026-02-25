@@ -396,6 +396,23 @@ Builder must keep OpenCode right-panel todos and `docs/builder-state.json` in sy
 
 When the dashboard shows deferred E2E tests and user selects "E":
 
+### Step 0: Check for Local Runtime
+
+Before proceeding, verify this project can run E2E tests locally:
+
+```bash
+# Check devPort from projects.json
+DEV_PORT=$(jq -r '.projects[] | select(.path == "'"$(pwd)"'") | .devPort' ~/.config/opencode/projects.json)
+
+if [ "$DEV_PORT" = "null" ]; then
+  echo "⏭️  Cannot run E2E tests: Project has no local runtime (devPort: null)"
+  echo "   Deferred E2E tests cannot be executed for code-only projects."
+  # Do NOT mark as complete — just report the situation
+fi
+```
+
+**If devPort is null:** Report to user that E2E tests cannot run for this project type. The tests remain deferred but cannot be executed locally.
+
 ### Step 1: Identify the Source
 
 Read `builder-state.json` → `pendingTests.e2e`:

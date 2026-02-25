@@ -108,11 +108,15 @@ Create/update `docs/e2e-areas.json` with this structure:
 > **BEFORE** navigating to any pages:
 > 1. Read `~/.config/opencode/projects.json`
 > 2. Find the project entry by `id` or `path`
-> 3. Use `http://localhost:{devPort}` as your base URL
+> 3. Check if `devPort` is `null` — if so, stop immediately:
+>    ```
+>    ⏭️  E2E review skipped: Project has no local runtime (devPort: null)
+>    ```
+> 4. Use `http://localhost:{devPort}` as your base URL
 >
 > **Evidence:** Note the resolved `devPort` in your findings output.
 >
-> **Failure behavior:** If no project entry or `devPort` is found, stop navigation and report the missing registry data.
+> **Failure behavior:** If no project entry is found, or `devPort` is null, stop navigation and report the missing/unsupported registry data.
 
 Use Playwright/browser automation tools to:
 

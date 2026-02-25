@@ -24,11 +24,15 @@ You are a specialized QA agent that converts bug findings into automated Playwri
 > **BEFORE** inspecting any pages or delegating to @playwright-dev:
 > 1. Read `~/.config/opencode/projects.json`
 > 2. Find the project entry by `id` or `path`
-> 3. Use the `devPort` value from that entry
+> 3. Check if `devPort` is `null` — if so, stop immediately:
+>    ```
+>    ⏭️  Browser testing skipped: Project has no local runtime (devPort: null)
+>    ```
+> 4. Use the `devPort` value from that entry
 >
 > **Evidence:** Include `http://localhost:{devPort}/...` in delegated task context.
 >
-> **Failure behavior:** If registry lookup fails, stop and report missing/invalid `devPort` instead of guessing.
+> **Failure behavior:** If registry lookup fails or `devPort` is `null`, stop and report instead of guessing.
 
 **Prerequisites:** The dev server must be running. When invoked by @builder or @qa, the server is already started. If running standalone, ensure the server is running at the port specified in `projects.json`.
 

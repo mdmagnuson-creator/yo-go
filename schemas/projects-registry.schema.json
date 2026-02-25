@@ -47,10 +47,10 @@
             "description": "Brief description of what this project does"
           },
           "devPort": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "minimum": 1024,
             "maximum": 65535,
-            "description": "Development server port for this project. Assigned automatically from nextDevPort when project is added, but can be overridden by user. Prevents port conflicts when running multiple projects."
+            "description": "Development server port for this project. Assigned automatically from nextDevPort when project is added, but can be overridden by user. Set to null for projects with no local runtime (code-only projects where you can't run a dev server locally). When null, E2E tests and dev server startup are skipped."
           },
           "hasAgentSystem": {
             "type": "boolean",

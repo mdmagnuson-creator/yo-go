@@ -45,7 +45,11 @@ When invoked after a UI change:
    - **Get the dev port from the project registry:**
      1. Read `~/.config/opencode/projects.json`
      2. Find the project entry by `id` or `path`
-     3. Use `http://localhost:{devPort}` as the base URL
+     3. Check if `devPort` is `null` — if so, stop with message:
+        ```
+        ⏭️  Screenshots skipped: Project has no local runtime (devPort: null)
+        ```
+     4. Use `http://localhost:{devPort}` as the base URL
    - **Verify dev server is running** (Builder ensures this when invoking you; if running standalone, ensure the server is running at the port from the registry)
    - Use Playwright to navigate to `http://localhost:{devPort}` + `captureConfig.url`
    - Execute any `captureConfig.actions` (click, wait, type, etc.)

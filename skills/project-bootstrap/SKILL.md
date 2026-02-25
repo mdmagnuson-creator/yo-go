@@ -616,6 +616,7 @@ Use lettered options for quick responses:
    B. 5000
    C. 5001
    D. Other: ___
+   E. No local runtime (code-only project, can't run locally)
 
 3. Is this a multi-tenant application?
    A. Yes (data isolated per organization/tenant)
@@ -1817,12 +1818,18 @@ Add the project to `~/.config/opencode/projects.json`:
   "name": "<Display Name>",
   "path": "<full-path>",
   "description": "<description>",
+  "devPort": <port-number-or-null>,
   "hasAgentSystem": true,
   "projectManifest": "docs/project.json",
   "prdRegistry": "docs/prd-registry.json" or null,
   "sessionLocks": "docs/session-locks.json" or null
 }
 ```
+
+**devPort assignment:**
+- Use the port from user's answer to question 2 (e.g., 3000, 5000, 5001, or custom)
+- If user selected "No local runtime" (option E), set `devPort: null`
+- When `devPort` is null, E2E tests and dev server startup are skipped for this project
 
 Set as `activeProject`.
 

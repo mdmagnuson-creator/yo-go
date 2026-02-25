@@ -48,10 +48,15 @@ Use documentation lookup tools.
         - `commands.test`, `commands.testUnit`, `commands.testE2E` — test commands
       - **Read `<project>/docs/CONVENTIONS.md`** if it exists — this tells you testing patterns and conventions
    
-   c. **Check for project-specific testers** in `<project>/docs/agents/` directory
+   c. **Load project registry entry:**
+      - **Read `~/.config/opencode/projects.json`** to find the current project's registry entry
+      - Check for `devPort` — if `null`, this project has no local runtime (E2E tests will be skipped)
+      - Save this for the E2E phase decision
+   
+   d. **Check for project-specific testers** in `<project>/docs/agents/` directory
       - These override global testers for this project
    
-   d. **Prepare context injection for sub-agents.** When delegating to testing specialists, include:
+   e. **Prepare context injection for sub-agents.** When delegating to testing specialists, include:
       - Stack information (testing frameworks, test commands) from `project.json`
       - Testing conventions (file naming, patterns, coverage requirements) from `CONVENTIONS.md`
       - Project-specific setup (local services, environment variables)
@@ -105,6 +110,12 @@ Use documentation lookup tools.
    - Use a commit message that describes what test coverage was added
 
 7. **E2E Testing Phase** (if story has UI changes):
+   - **First, check if E2E is possible:**
+     - If `devPort` is `null` (from projects.json), skip E2E entirely with message:
+       ```
+       ⏭️  Skipping E2E tests: Project has no local runtime (devPort: null)
+       ```
+     - Continue to step 8
    - Check if the story modified UI files (`.tsx` in components, pages, or app directories)
    - If UI was modified, proceed with E2E testing:
    

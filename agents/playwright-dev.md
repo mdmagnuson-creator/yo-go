@@ -36,8 +36,12 @@ You receive a task description describing what needs to be tested or implemented
    c. **Get the dev server port:**
       - **Read `~/.config/opencode/projects.json`** to find the project's `devPort`
       - **Port policy:** Do not hardcode ports (3000, 4000, 5001, etc.); always resolve `devPort` from `projects.json`
+      - **No-runtime check:** If `devPort` is `null`, stop immediately:
+        ```
+        ⏭️  Playwright work skipped: Project has no local runtime (devPort: null)
+        ```
       - **Verification:** `baseURL` and health checks use the resolved `devPort`
-      - **Failure behavior:** If `devPort` cannot be resolved, stop and report the missing project registry entry
+      - **Failure behavior:** If `devPort` cannot be resolved or is `null`, stop and report
       - Use `baseURL` in playwright.config.ts set to `http://localhost:<devPort>`
       
       ```bash
