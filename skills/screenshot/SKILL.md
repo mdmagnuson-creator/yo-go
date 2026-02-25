@@ -50,6 +50,9 @@ const PAGES_TO_CAPTURE = [
   // Add more pages as needed
 ];
 
+// Max screenshot height (Claude vision API limit is 8000px, use 4000 for safety)
+const MAX_SCREENSHOT_HEIGHT = 4000;
+
 async function capturePublicPages() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   
@@ -65,11 +68,16 @@ async function capturePublicPages() {
       await page.goto(`${BASE_URL}${pageConfig.path}`);
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(500);
+      
+      // Constrain height to avoid Claude vision API rejection
+      const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
+      const captureHeight = Math.min(bodyHeight, MAX_SCREENSHOT_HEIGHT);
+      
       await page.screenshot({ 
         path: `${OUTPUT_DIR}/${pageConfig.name}-light.png`, 
-        fullPage: false 
+        clip: { x: 0, y: 0, width: 1920, height: captureHeight }
       });
-      console.log(`Captured: ${pageConfig.name}-light.png`);
+      console.log(`Captured: ${pageConfig.name}-light.png (${captureHeight}px)`);
       
       // Dark mode
       await page.evaluate(() => {
@@ -78,9 +86,9 @@ async function capturePublicPages() {
       await page.waitForTimeout(300);
       await page.screenshot({ 
         path: `${OUTPUT_DIR}/${pageConfig.name}-dark.png`, 
-        fullPage: false 
+        clip: { x: 0, y: 0, width: 1920, height: captureHeight }
       });
-      console.log(`Captured: ${pageConfig.name}-dark.png`);
+      console.log(`Captured: ${pageConfig.name}-dark.png (${captureHeight}px)`);
       
       // Reset for next page
       await page.evaluate(() => {
@@ -180,6 +188,9 @@ import * as path from 'path';
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5001';
 const TEST_EMAIL = process.env.TEST_EMAIL || 'test@example.com'; // Configure per project
 const OUTPUT_DIR = '.tmp/screenshots';  // Use project-local .tmp/ (never /tmp/)
+
+// Max screenshot dimension (Claude vision limit is 8000px)
+const MAX_SCREENSHOT_HEIGHT = 4000;
 
 // Pages to capture (customize per request)
 const PAGES_TO_CAPTURE = [
@@ -290,10 +301,17 @@ async function captureScreenshots() {
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(500); // Let animations settle
         
+        // Constrain height to avoid Claude vision API rejection (8000px limit)
+        const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
+        const captureHeight = Math.min(bodyHeight, MAX_SCREENSHOT_HEIGHT);
+        
         const filename = `${pageConfig.name}-${theme}.png`;
         const filepath = path.join(OUTPUT_DIR, filename);
-        await page.screenshot({ path: filepath, fullPage: true });
-        console.log(`Captured: ${filepath}`);
+        await page.screenshot({ 
+          path: filepath, 
+          clip: { x: 0, y: 0, width: 1920, height: captureHeight }
+        });
+        console.log(`Captured: ${filepath} (${captureHeight}px)`);
       }
     }
     

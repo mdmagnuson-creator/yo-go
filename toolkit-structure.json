@@ -773,9 +773,15 @@
         "changes": [
           {
             "type": "fix",
+            "scope": "skills",
+            "description": "constrain screenshot height to 4000px to avoid Claude vision API rejection (8000px limit)",
+            "hash": "f65c2f8"
+          },
+          {
+            "type": "fix",
             "scope": "agents",
             "description": "fix critic collision bug - critics now return findings to parent instead of writing to shared docs/review.md",
-            "hash": "6bd7342"
+            "hash": "68ccfff"
           },
           {
             "type": "feat",
