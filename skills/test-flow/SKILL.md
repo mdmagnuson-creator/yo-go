@@ -13,6 +13,18 @@ Builder automatically generates and runs tests based on the mode and context. Th
 
 ## Test Flow Configuration
 
+**Ad-hoc mode uses simple defaults** — skip the rigor matrix below and go directly to "Ad-hoc Mode Test Flow" sections.
+
+> ⚠️ **For ad-hoc work, ignore rigor profiles.** Just run tests with sensible defaults:
+> - Auto-generate unit tests for changed files
+> - Run them immediately
+> - Fix failures (max 3 attempts)
+> - Generate E2E tests and prompt user
+>
+> The rigor configuration below applies only to PRD mode.
+
+### PRD Mode Rigor Configuration
+
 Resolve testing rigor in this order (highest priority first):
 
 1. `builder-state.json` -> `activePrd.testingRigor` (selected at PRD start)
@@ -70,8 +82,9 @@ In `hybrid` mode, Builder uses planner-assigned `testIntensity` as baseline and 
 
 > ⚠️ **ALWAYS run tests in CI/non-watch mode to prevent orphaned processes.**
 >
-> Many test runners default to **watch mode** which keeps processes running indefinitely.
-> When the terminal session ends, these processes become orphaned and consume CPU.
+> Before executing any test command, verify CI=true or runner-specific flags.
+> If CI mode is missing, stop and correct the command before execution.
+> When the terminal session ends, watch-mode processes become orphaned and consume CPU.
 
 ### Required Flags by Runner
 
@@ -180,16 +193,51 @@ Next story (or PRD completion)
 
 ## Ad-hoc Mode Test Flow — Standalone (US-004)
 
+> **Simple defaults for ad-hoc:** Generate tests, run them, fix failures, prompt for E2E. No rigor matrix.
+
 When doing ad-hoc work **without** an active PRD:
 
 **After all ad-hoc todos complete:**
 
-1. **Auto-generate unit tests** — Run @tester in ad-hoc mode (no prompt)
+1. **Auto-generate unit tests** — Run @tester with context block:
+   ```yaml
+   <context>
+   version: 1
+   project:
+     path: {project path}
+     stack: {stack}
+     commands:
+       test: {test command}
+   conventions:
+     summary: |
+       {conventions summary}
+     fullPath: {path}/docs/CONVENTIONS.md
+   </context>
+
+   Generate unit tests for these changed files: [file list]
+   Mode: adhoc
+   ```
 2. **Auto-run unit tests** — Run immediately
 3. **If unit tests fail:**
    - Run @developer to fix (up to 3 attempts)
    - If still failing → STOP, report to user
-4. **Auto-generate E2E tests** — Run @playwright-dev (no prompt)
+4. **Auto-generate E2E tests** — Run @playwright-dev with context block:
+   ```yaml
+   <context>
+   version: 1
+   project:
+     path: {project path}
+     stack: {stack}
+   conventions:
+     summary: |
+       {conventions summary}
+     fullPath: {path}/docs/CONVENTIONS.md
+   </context>
+
+   Generate E2E tests for ad-hoc changes:
+   - Description: {summary of changes}
+   - Changed files: [file list]
+   ```
 5. **Queue E2E tests** — Add to `pendingTests.e2e.generated[]`
 6. **Prompt user:**
 
@@ -254,16 +302,18 @@ Ad-hoc todos complete
 
 ## Ad-hoc Mode Test Flow — During PRD (US-005)
 
+> **Same simple defaults:** Generate tests, run them, fix failures, offer deferral option.
+
 When doing ad-hoc work **while** a PRD is active (tracked in `adhocQueue`):
 
 **After ad-hoc todos complete:**
 
-1. **Auto-generate unit tests** — Run @tester in ad-hoc mode (no prompt)
+1. **Auto-generate unit tests** — Run @tester with context block (same format as standalone)
 2. **Auto-run unit tests** — Run immediately
 3. **If unit tests fail:**
-   - Run @developer to fix (up to 3 attempts)
+   - Run @developer to fix (up to 3 attempts) — **pass context block**
    - If still failing → STOP, report to user
-4. **Auto-generate E2E tests** — Run @playwright-dev (no prompt)
+4. **Auto-generate E2E tests** — Run @playwright-dev with context block (same format as standalone)
 5. **Prompt user with deferral option:**
 
 ```
@@ -334,6 +384,9 @@ Ad-hoc during PRD complete
 
 The retry loop for fixing test failures:
 
+> ⚠️ **Always pass context block to @developer in fix loops.**
+> Without context, @developer makes bad assumptions and the fix loop fails.
+
 ```
 MAX_ATTEMPTS = 3
 attempt = 1
@@ -357,10 +410,28 @@ while attempt <= MAX_ATTEMPTS:
         Report: "Attempt {attempt}/{MAX_ATTEMPTS}: {failure description}"
         Report: "Running @developer to fix..."
         
-        Run @developer with:
-            - What failed (test names, lint errors, type errors)
-            - Error messages and stack traces
-            - Files involved
+        Run @developer with context block:
+            <context>
+            version: 1
+            project:
+              path: {project path}
+              stack: {stack}
+              commands:
+                test: {test command}
+            conventions:
+              summary: |
+                {conventions summary}
+              fullPath: {path}/docs/CONVENTIONS.md
+            currentWork:
+              mode: fix-loop
+              attempt: {attempt}
+              failure: {what failed}
+            </context>
+            
+            Fix these failures:
+            - What failed: {test names, lint errors, type errors}
+            - Error messages: {stack traces}
+            - Files involved: {file list}
         
         attempt += 1
 

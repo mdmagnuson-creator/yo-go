@@ -7,6 +7,32 @@ description: "Ad-hoc mode workflow for Builder. Use when handling direct request
 
 > Load this skill when: handling direct requests without a PRD, ad-hoc mode, quick fixes, one-off tasks.
 
+## Context Loading (CRITICAL — Do This First)
+
+> ⚠️ **Ad-hoc tasks fail when project context is missing or stale.**
+>
+> Before starting ANY ad-hoc work, verify these files exist and read them:
+> 1. `docs/project.json` — stack, commands, capabilities
+> 2. `docs/CONVENTIONS.md` — coding standards
+>
+> **Failure behavior:** If you cannot read these files, STOP and ask the user to verify the project path. Do not proceed with assumptions.
+>
+> Keep this context in memory and pass it to ALL sub-agents via context blocks.
+
+**On entering ad-hoc mode:**
+
+1. Read `docs/project.json` and note:
+   - `stack` — framework/language
+   - `commands` — test, lint, build commands
+   - `styling` — CSS framework, dark mode
+   - `testing` — test framework, patterns
+
+2. Read `docs/CONVENTIONS.md` and prepare a 2-5 sentence summary of key patterns
+
+3. Store this context for the session — you'll pass it to @developer, @tester, @critic
+
+**Why this matters:** Without context, @developer makes assumptions that violate project conventions. This causes fix loops, wasted tokens, and frustrated users.
+
 ## Git Auto-Commit Enforcement
 
 > ⛔ **CRITICAL: Check `git.autoCommit` setting before ANY commit operation**
@@ -159,10 +185,71 @@ Parse the user's request to understand:
      - `priority`: `high|medium|low` (default `medium`)
      - `flow`: `adhoc`
      - `refId`: `adhoc-###`
-2. **Run @developer** to implement the change
+
+2. **Run @developer with context block** (REQUIRED)
+
+   > ⚠️ **CRITICAL: Always pass a context block when delegating to @developer**
+   >
+   > Ad-hoc tasks fail when @developer lacks project context. Build and pass the context block.
+
+   Build the context block from project files you've already read:
+
+   ```yaml
+   <context>
+   version: 1
+   project:
+     path: {absolute path to project}
+     stack: {stack from project.json}
+     commands:
+       dev: {commands.dev}
+       test: {commands.test}
+       build: {commands.build}
+       lint: {commands.lint}
+   conventions:
+     summary: |
+       {2-5 sentence summary of key conventions relevant to the task}
+     fullPath: {path}/docs/CONVENTIONS.md
+   currentWork:
+     mode: adhoc
+     task: {short description of the task}
+     branch: {current branch name}
+   </context>
+   ```
+
+   **Example delegation:**
+
+   ```markdown
+   <context>
+   version: 1
+   project:
+     path: /Users/dev/code/my-app
+     stack: nextjs-prisma
+     commands:
+       test: npm test
+       lint: npm run lint
+   conventions:
+     summary: |
+       TypeScript strict. Tailwind + shadcn/ui. App Router.
+       Server components by default. Prisma ORM. Zod validation.
+     fullPath: /Users/dev/code/my-app/docs/CONVENTIONS.md
+   currentWork:
+     mode: adhoc
+     task: Add loading spinner to submit button
+     branch: adhoc/2026-02-25
+   </context>
+
+   Implement: Add a loading spinner to the submit button.
+
+   Requirements:
+   - Show spinner while form is submitting
+   - Disable button during submission
+   - Use existing Spinner component if available
+   ```
+
 3. **Mark todo complete** immediately when @developer finishes
    - Update right panel via `todowrite`
    - Update `uiTodos.items[]` and `uiTodos.lastSyncedAt`
+
 4. **Track changed files** — store list of files modified for later verification
 
 ### Todo Sync Rules (Ad-hoc)
