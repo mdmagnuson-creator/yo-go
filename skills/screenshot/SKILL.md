@@ -12,11 +12,12 @@ Capture screenshots of web application pages for visual verification.
 ## The Job
 
 1. Start the dev server if not running
-2. Determine if authentication is needed (public pages don't need it)
-3. Navigate to requested page(s)
-4. Capture screenshots in BOTH light and dark modes (always capture both)
-5. **Actually view the screenshots** using the Read tool to verify the issue
-6. Report findings based on visual inspection
+2. Check `project.json` for authentication configuration
+3. Authenticate using the appropriate auth skill (if needed)
+4. Navigate to requested page(s)
+5. Capture screenshots in BOTH light and dark modes (always capture both)
+6. **Actually view the screenshots** using the Read tool to verify the issue
+7. Report findings based on visual inspection
 
 ---
 
@@ -28,6 +29,118 @@ When reviewing contrast, color, or visibility issues:
 2. **ALWAYS capture BOTH light AND dark modes** - Issues often affect modes differently
 3. **ALWAYS use the Read tool to view captured screenshots** - Don't just capture, actually look
 4. **Check globals.css for CSS resets** - Rules like `a { color: inherit }` override Tailwind utilities
+
+---
+
+## Authentication Flow
+
+### Step 1: Check project.json for auth config
+
+```typescript
+import * as fs from 'fs';
+import * as path from 'path';
+
+interface AuthConfig {
+  method: string;
+  provider: string;
+  skill?: string;
+  testUser?: {
+    mode: 'fixed' | 'dynamic';
+    emailVar?: string;
+    emailDefault?: string;
+  };
+  routes?: {
+    login: string;
+    authenticated: string;
+  };
+  headless?: {
+    enabled: boolean;
+    method: string;
+  };
+}
+
+function getAuthConfig(projectRoot: string): AuthConfig | null {
+  const projectJsonPath = path.join(projectRoot, 'docs', 'project.json');
+  
+  if (!fs.existsSync(projectJsonPath)) {
+    console.log('No project.json found, skipping authentication');
+    return null;
+  }
+  
+  const projectJson = JSON.parse(fs.readFileSync(projectJsonPath, 'utf-8'));
+  
+  if (!projectJson.authentication) {
+    console.log('No authentication config in project.json');
+    return null;
+  }
+  
+  if (projectJson.authentication.method === 'none') {
+    console.log('Authentication method is "none", skipping');
+    return null;
+  }
+  
+  return projectJson.authentication;
+}
+```
+
+### Step 2: Select authentication skill based on config
+
+```typescript
+function selectAuthSkill(config: AuthConfig): string {
+  // If explicitly specified, use that
+  if (config.skill) {
+    return config.skill;
+  }
+  
+  // Otherwise, select based on provider + method
+  const { provider, method } = config;
+  
+  if (provider === 'supabase') {
+    if (method === 'passwordless-otp') return 'auth-supabase-otp';
+    if (method === 'email-password') return 'auth-supabase-password';
+  }
+  
+  if (provider === 'nextauth') {
+    if (method === 'email-password') return 'auth-nextauth-credentials';
+  }
+  
+  // Fallback to generic
+  return 'auth-generic';
+}
+```
+
+### Step 3: Authenticate using selected skill
+
+The screenshot script should delegate to the appropriate auth skill. For headless mode (faster):
+
+```typescript
+import { BrowserContext, Page } from 'playwright';
+
+async function authenticate(
+  context: BrowserContext,
+  page: Page,
+  baseUrl: string,
+  projectRoot: string
+): Promise<void> {
+  const config = getAuthConfig(projectRoot);
+  
+  if (!config) {
+    console.log('No auth required');
+    return;
+  }
+  
+  // Use headless auth if enabled (faster)
+  if (config.headless?.enabled) {
+    console.log('Using headless authentication');
+    await authenticateHeadless(context, baseUrl, projectRoot, config);
+    return;
+  }
+  
+  // Otherwise use UI-based auth
+  console.log(`Using UI authentication with ${selectAuthSkill(config)}`);
+  await authenticateViaUI(page, baseUrl, projectRoot, config);
+}
+```
 
 ---
 
@@ -105,89 +218,33 @@ async function capturePublicPages() {
 capturePublicPages().catch(console.error);
 ```
 
-### Usage for Public Pages
-
-```bash
-# Create script in project e2e directory
-cat > apps/web/e2e/public-screenshot.ts << 'EOF'
-// ... paste script content ...
-EOF
-
-# Run from apps/web directory
-cd apps/web && npx tsx e2e/public-screenshot.ts
-
-# View the screenshots
-# Use the Read tool on .tmp/screenshots/homepage-light.png etc.
-
-# Clean up
-rm apps/web/e2e/public-screenshot.ts
-```
-
 ---
 
 ## Authenticated Pages
 
-For pages that require login (dashboard, settings, etc.), use the full authentication flow below.
+For pages that require login (dashboard, settings, etc.), use the config-driven authentication.
 
 ### Prerequisites
 
 This skill requires:
 
 1. **Playwright installed** in the project (`npx playwright --version`)
-2. **Supabase service role key** in `.env.local` for fetching verification codes (auth pages only)
-3. **Dev server** running or startable via `npm run dev`
+2. **Authentication configured** in `docs/project.json` (or pages must be public)
+3. **Environment variables** set in `.env.local` as documented in the auth skill
+4. **Dev server** running or startable via `npm run dev`
 
-### Authentication Flow
-
-The project may use passwordless email authentication:
-
-1. Navigate to `/login`
-2. Enter test email (check `docs/test-config.json` or use a project-specific test email)
-3. Click "Continue" → redirects to `/verify`
-4. Fetch verification code from database using service role
-5. Enter 6-digit code
-6. Click "Verify" → redirects to `/dashboard`
-
-**Note:** The test email should be configured per-project. Check for `TEST_EMAIL` in `.env.local` or `docs/test-config.json`.
-
-### Supabase Code Fetch
+### Full Screenshot Script with Auth Config
 
 ```typescript
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
-
-const { data: user } = await supabase
-  .from('users')
-  .select('verification_code')
-  .eq('email', TEST_EMAIL)
-  .single();
-
-const code = user.verification_code; // 6-digit string
-```
-
----
-
-## Screenshot Script
-
-Create a temporary Playwright script to capture screenshots:
-
-### Script Template: `screenshot-capture.ts`
-
-```typescript
-import { chromium } from 'playwright';
+import { chromium, BrowserContext, Page } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as path from 'path';
 
 // Configuration
+const PROJECT_ROOT = process.cwd();
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5001';
-const TEST_EMAIL = process.env.TEST_EMAIL || 'test@example.com'; // Configure per project
-const OUTPUT_DIR = '.tmp/screenshots';  // Use project-local .tmp/ (never /tmp/)
+const OUTPUT_DIR = '.tmp/screenshots';
 
 // Max screenshot dimension (Claude vision limit is 8000px)
 const MAX_SCREENSHOT_HEIGHT = 4000;
@@ -201,8 +258,40 @@ const PAGES_TO_CAPTURE = [
 // Theme modes to capture
 const THEMES = ['light', 'dark'];
 
-async function loadEnv() {
-  const envPath = path.resolve(process.cwd(), '.env.local');
+// ============================================================
+// Auth Configuration Loading
+// ============================================================
+
+interface AuthConfig {
+  method: string;
+  provider: string;
+  skill?: string;
+  testUser?: {
+    mode: 'fixed' | 'dynamic';
+    emailVar?: string;
+    emailDefault?: string;
+    passwordVar?: string;
+  };
+  verification?: {
+    source: string;
+    table: string;
+    column: string;
+    lookupBy: string;
+  };
+  routes?: {
+    login: string;
+    verify?: string;
+    authenticated: string;
+  };
+  selectors?: Record<string, string>;
+  headless?: {
+    enabled: boolean;
+    method: string;
+  };
+}
+
+function loadEnv(): void {
+  const envPath = path.join(PROJECT_ROOT, '.env.local');
   if (fs.existsSync(envPath)) {
     const content = fs.readFileSync(envPath, 'utf-8');
     content.split('\n').forEach(line => {
@@ -214,7 +303,43 @@ async function loadEnv() {
   }
 }
 
-async function getSupabaseClient() {
+function getAuthConfig(): AuthConfig | null {
+  const projectJsonPath = path.join(PROJECT_ROOT, 'docs', 'project.json');
+  
+  if (!fs.existsSync(projectJsonPath)) {
+    return null;
+  }
+  
+  const projectJson = JSON.parse(fs.readFileSync(projectJsonPath, 'utf-8'));
+  
+  if (!projectJson.authentication || projectJson.authentication.method === 'none') {
+    return null;
+  }
+  
+  return projectJson.authentication;
+}
+
+function getTestEmail(config: AuthConfig): string {
+  if (config.testUser?.mode === 'dynamic') {
+    const uuid = crypto.randomUUID().slice(0, 8);
+    const pattern = (config.testUser as any).emailPattern || 'test-{uuid}@example.com';
+    return pattern.replace('{uuid}', uuid);
+  }
+  
+  const envVar = config.testUser?.emailVar || 'TEST_EMAIL';
+  return process.env[envVar] || config.testUser?.emailDefault || 'test@example.com';
+}
+
+function getTestPassword(config: AuthConfig): string {
+  const envVar = config.testUser?.passwordVar || 'TEST_PASSWORD';
+  return process.env[envVar] || (config.testUser as any)?.passwordDefault || '';
+}
+
+// ============================================================
+// Supabase Helpers
+// ============================================================
+
+function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('Missing Supabase env vars');
@@ -223,63 +348,127 @@ async function getSupabaseClient() {
   });
 }
 
-async function authenticate(page: any, supabase: any) {
-  // Go to login
-  await page.goto(`${BASE_URL}/login`);
-  await page.waitForSelector('input[type="email"]');
-  
-  // Enter email
-  await page.fill('input[type="email"]', TEST_EMAIL);
-  await page.click('button:has-text("Continue")');
-  
-  // Wait for verify page
-  await page.waitForURL(/\/verify/);
-  await page.waitForTimeout(1000); // Allow code to be stored
-  
-  // Fetch code from database
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('verification_code')
-    .eq('email', TEST_EMAIL)
-    .single();
-  
-  if (error || !user?.verification_code) {
-    throw new Error(`Failed to get verification code: ${error?.message}`);
+async function getVerificationCode(email: string, config: AuthConfig): Promise<string> {
+  if (!config.verification) {
+    throw new Error('No verification config for OTP');
   }
   
+  const supabase = getSupabaseClient();
+  const { table, column, lookupBy } = config.verification;
+  
+  const { data, error } = await supabase
+    .from(table)
+    .select(column)
+    .eq(lookupBy, email)
+    .single();
+  
+  if (error || !data?.[column]) {
+    throw new Error(`Failed to get verification code: ${error?.message || 'No code found'}`);
+  }
+  
+  return data[column];
+}
+
+// ============================================================
+// Authentication Methods
+// ============================================================
+
+async function authenticateSupabaseOTP(page: Page, config: AuthConfig): Promise<void> {
+  const email = getTestEmail(config);
+  const routes = config.routes || { login: '/login', verify: '/verify', authenticated: '/dashboard' };
+  const selectors = config.selectors || {};
+  
+  // Go to login
+  await page.goto(`${BASE_URL}${routes.login}`);
+  await page.waitForSelector(selectors.emailInput || 'input[type="email"]');
+  
+  // Enter email
+  await page.fill(selectors.emailInput || 'input[type="email"]', email);
+  await page.click(selectors.submitButton || 'button:has-text("Continue"), button[type="submit"]');
+  
+  // Wait for verify page
+  await page.waitForURL(new RegExp(routes.verify || '/verify'));
+  await page.waitForTimeout(1000);
+  
+  // Fetch code from database
+  const code = await getVerificationCode(email, config);
+  
   // Enter code
-  const codeInputs = page.locator('input[maxlength="1"]');
-  const code = user.verification_code;
-  for (let i = 0; i < 6; i++) {
-    await codeInputs.nth(i).fill(code[i]);
+  const otpSelector = selectors.otpInputs || 'input[maxlength="1"]';
+  const otpInputs = page.locator(otpSelector);
+  const inputCount = await otpInputs.count();
+  
+  if (inputCount >= 6) {
+    for (let i = 0; i < 6; i++) {
+      await otpInputs.nth(i).fill(code[i]);
+    }
+  } else {
+    await otpInputs.first().fill(code);
   }
   
   // Submit
-  await page.click('button:has-text("Verify")');
-  await page.waitForURL(/\/dashboard/);
-  console.log('Authentication successful');
+  await page.click(selectors.verifyButton || 'button:has-text("Verify"), button[type="submit"]');
+  await page.waitForURL(new RegExp(routes.authenticated));
+  console.log('OTP authentication successful');
 }
 
-async function setTheme(page: any, theme: 'light' | 'dark') {
-  // Navigate to profile to change theme, or use localStorage
-  await page.evaluate((t: string) => {
+async function authenticatePassword(page: Page, config: AuthConfig): Promise<void> {
+  const email = getTestEmail(config);
+  const password = getTestPassword(config);
+  const routes = config.routes || { login: '/login', authenticated: '/dashboard' };
+  const selectors = config.selectors || {};
+  
+  // Go to login
+  await page.goto(`${BASE_URL}${routes.login}`);
+  await page.waitForSelector(selectors.emailInput || 'input[type="email"]');
+  
+  // Enter credentials
+  await page.fill(selectors.emailInput || 'input[type="email"], input[name="email"]', email);
+  await page.fill(selectors.passwordInput || 'input[type="password"]', password);
+  await page.click(selectors.submitButton || 'button[type="submit"]');
+  
+  // Wait for authenticated page
+  await page.waitForURL(new RegExp(routes.authenticated));
+  console.log('Password authentication successful');
+}
+
+async function authenticate(page: Page, config: AuthConfig): Promise<void> {
+  const { provider, method } = config;
+  
+  if (provider === 'supabase' && method === 'passwordless-otp') {
+    await authenticateSupabaseOTP(page, config);
+  } else if (method === 'email-password') {
+    await authenticatePassword(page, config);
+  } else {
+    // Generic fallback - try password auth
+    await authenticatePassword(page, config);
+  }
+}
+
+// ============================================================
+// Theme Management
+// ============================================================
+
+async function setTheme(page: Page, theme: 'light' | 'dark'): Promise<void> {
+  await page.evaluate((t) => {
     localStorage.setItem('theme', t);
+    if (t === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, theme);
   
-  // Reload to apply theme
   await page.reload();
   await page.waitForLoadState('networkidle');
-  
-  // Verify theme class is set
-  const htmlClass = await page.locator('html').getAttribute('class');
-  console.log(`Theme set to ${theme}, html class: ${htmlClass}`);
 }
 
-async function captureScreenshots() {
-  await loadEnv();
-  const supabase = await getSupabaseClient();
-  
-  // Ensure output directory exists
+// ============================================================
+// Main Screenshot Capture
+// ============================================================
+
+async function captureScreenshots(): Promise<void> {
+  loadEnv();
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   
   const browser = await chromium.launch();
@@ -289,8 +478,15 @@ async function captureScreenshots() {
   const page = await context.newPage();
   
   try {
-    // Authenticate
-    await authenticate(page, supabase);
+    // Check for auth config
+    const authConfig = getAuthConfig();
+    
+    if (authConfig) {
+      console.log(`Auth config found: ${authConfig.provider}/${authConfig.method}`);
+      await authenticate(page, authConfig);
+    } else {
+      console.log('No auth config found, capturing without authentication');
+    }
     
     // Capture each page in each theme
     for (const theme of THEMES) {
@@ -299,9 +495,8 @@ async function captureScreenshots() {
       for (const pageConfig of PAGES_TO_CAPTURE) {
         await page.goto(`${BASE_URL}${pageConfig.path}`);
         await page.waitForLoadState('networkidle');
-        await page.waitForTimeout(500); // Let animations settle
+        await page.waitForTimeout(500);
         
-        // Constrain height to avoid Claude vision API rejection (8000px limit)
         const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
         const captureHeight = Math.min(bodyHeight, MAX_SCREENSHOT_HEIGHT);
         
@@ -328,30 +523,68 @@ captureScreenshots().catch(console.error);
 
 ## Usage
 
-### Step 1: Create the Script
+### Step 1: Ensure auth is configured
 
-Write the screenshot script to a temporary file in the project's e2e directory:
+Check that `docs/project.json` has authentication configured:
+
+```json
+{
+  "authentication": {
+    "method": "passwordless-otp",
+    "provider": "supabase",
+    "testUser": {
+      "mode": "fixed",
+      "emailVar": "TEST_EMAIL"
+    },
+    "verification": {
+      "source": "supabase",
+      "table": "users",
+      "column": "verification_code",
+      "lookupBy": "email"
+    },
+    "routes": {
+      "login": "/login",
+      "verify": "/verify",
+      "authenticated": "/dashboard"
+    }
+  }
+}
+```
+
+If no auth config exists, run `/setup-auth` or capture public pages only.
+
+### Step 2: Create and run the script
 
 ```bash
-# In the web app directory (apps/web)
+# In the web app directory
 cat > e2e/screenshot-capture.ts << 'EOF'
 // ... paste script content ...
 EOF
-```
 
-### Step 2: Run the Script
-
-```bash
-cd /path/to/project/apps/web
 npx tsx e2e/screenshot-capture.ts
+
+# Clean up
+rm e2e/screenshot-capture.ts
 ```
 
-### Step 3: Review Screenshots
+### Step 3: Review screenshots
 
 Screenshots are saved to `.tmp/screenshots/` (project-local):
 - `dashboard-light.png`
 - `dashboard-dark.png`
 - etc.
+
+Use the Read tool to view them.
+
+---
+
+## Backward Compatibility
+
+If `project.json` does not have an `authentication` section:
+
+1. Check for legacy `TEST_EMAIL` env var
+2. Try legacy Supabase OTP flow if Supabase env vars are present
+3. Otherwise, capture without authentication (public pages only)
 
 ---
 
@@ -366,7 +599,6 @@ const PAGES_TO_CAPTURE = [
   { path: '/dashboard', name: 'dashboard' },
   { path: '/dashboard/calendar', name: 'calendar' },
   { path: '/settings', name: 'settings' },
-  { path: '/profile', name: 'profile' },
 ];
 ```
 
@@ -375,15 +607,12 @@ const PAGES_TO_CAPTURE = [
 Add interaction steps before capture:
 
 ```typescript
-// Open a modal
 await page.click('button:has-text("Create Event")');
 await page.waitForSelector('[role="dialog"]');
-await page.screenshot({ path: 'create-event-modal.png' });
+await page.screenshot({ path: '.tmp/screenshots/create-event-modal.png' });
 ```
 
 ### Mobile Viewport
-
-Change viewport for mobile screenshots:
 
 ```typescript
 const context = await browser.newContext({
@@ -395,6 +624,12 @@ const context = await browser.newContext({
 
 ## Troubleshooting
 
+### "No authentication config found"
+
+Either:
+- Run `/setup-auth` to configure authentication
+- Or capture only public pages
+
 ### "Missing Supabase env vars"
 
 Ensure `.env.local` contains:
@@ -405,18 +640,13 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
 ### "Failed to get verification code"
 
-- Check that the test email exists in the users table
-- The email must have been used at least once to trigger code generation
-- Verify service role key has permission to read users table
+- Check that the test user exists in the database
+- Verify the `verification` config matches your schema
+- Ensure service role key has permission to read the table
 
-### Dev Server Not Running
+### Dev server not running
 
-Start it first:
-```bash
-npm run dev
-```
-
-Or modify the script to start it automatically.
+Start it first: `npm run dev`
 
 ---
 
@@ -428,8 +658,6 @@ After running, report screenshot paths:
 Screenshots captured:
 - .tmp/screenshots/dashboard-light.png
 - .tmp/screenshots/dashboard-dark.png
-- .tmp/screenshots/calendar-light.png
-- .tmp/screenshots/calendar-dark.png
 ```
 
 The user or aesthetic-critic agent can then view these images to verify styling.
