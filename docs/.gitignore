@@ -1,3 +1,7 @@
-prd*
+# Exclude temp/working files
 progress*
 felix*
+
+# Allow PRD directories
+!prds/
+!drafts/
