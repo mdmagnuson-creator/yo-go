@@ -714,6 +714,170 @@
       }
     },
 
+    "authentication": {
+      "type": "object",
+      "description": "Authentication configuration for AI agents (screenshot, E2E, QA) to log in during testing. Configure via /setup-auth command.",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["passwordless-otp", "email-password", "oauth", "none"],
+          "description": "Authentication method used by this project"
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["supabase", "nextauth", "clerk", "auth0", "custom"],
+          "description": "Authentication provider/library"
+        },
+        "skill": {
+          "type": "string",
+          "description": "Name of the auth skill to use (e.g., 'auth-supabase-otp'). Auto-derived from method+provider if not specified."
+        },
+        "testUser": {
+          "type": "object",
+          "description": "Test user configuration",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["fixed", "dynamic"],
+              "default": "fixed",
+              "description": "fixed = use same test user, dynamic = create new user each time"
+            },
+            "emailVar": {
+              "type": "string",
+              "default": "TEST_EMAIL",
+              "description": "Environment variable containing test email"
+            },
+            "emailDefault": {
+              "type": "string",
+              "default": "test@example.com",
+              "description": "Default test email if env var not set"
+            },
+            "emailPattern": {
+              "type": "string",
+              "description": "Pattern for dynamic emails (e.g., 'test-{uuid}@example.com')"
+            },
+            "passwordVar": {
+              "type": "string",
+              "description": "Environment variable containing test password (for email-password method)"
+            }
+          }
+        },
+        "verification": {
+          "type": "object",
+          "description": "How to retrieve verification codes (for OTP flows)",
+          "properties": {
+            "source": {
+              "type": "string",
+              "description": "Where to get verification codes (e.g., 'supabase')"
+            },
+            "table": {
+              "type": "string",
+              "description": "Database table containing verification codes"
+            },
+            "column": {
+              "type": "string",
+              "description": "Column containing the verification code"
+            },
+            "lookupBy": {
+              "type": "string",
+              "description": "Column to look up user by (e.g., 'email')"
+            }
+          }
+        },
+        "routes": {
+          "type": "object",
+          "description": "Authentication route paths",
+          "properties": {
+            "login": {
+              "type": "string",
+              "default": "/login",
+              "description": "Login page path"
+            },
+            "verify": {
+              "type": "string",
+              "default": "/verify",
+              "description": "Verification page path (for OTP)"
+            },
+            "authenticated": {
+              "type": "string",
+              "default": "/dashboard",
+              "description": "Page to land on after successful auth"
+            }
+          }
+        },
+        "reuseSession": {
+          "type": "boolean",
+          "default": false,
+          "description": "Save auth state to file and reuse across tests in same run"
+        },
+        "headless": {
+          "type": "object",
+          "description": "Headless auth configuration (skip UI, inject session directly for faster tests)",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable headless auth for faster tests"
+            },
+            "uiTestPath": {
+              "type": "string",
+              "description": "Path to the one E2E test that exercises full login UI (e.g., 'e2e/auth.spec.ts')"
+            }
+          }
+        },
+        "cleanup": {
+          "type": "object",
+          "description": "Test user cleanup configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable test user cleanup"
+            },
+            "trigger": {
+              "type": "string",
+              "enum": ["manual", "auto", "scheduled"],
+              "default": "manual",
+              "description": "When to run cleanup: manual (script), auto (test teardown), scheduled (cron)"
+            },
+            "emailPattern": {
+              "type": "string",
+              "description": "Regex pattern identifying test users (e.g., '^test-.*@example\\.com$')"
+            },
+            "maxAgeHours": {
+              "type": "number",
+              "description": "Delete test users older than this many hours"
+            }
+          }
+        },
+        "selectors": {
+          "type": "object",
+          "description": "Custom CSS selectors for auth forms (for custom/generic provider)",
+          "properties": {
+            "emailInput": { "type": "string", "description": "Selector for email input field" },
+            "passwordInput": { "type": "string", "description": "Selector for password input field" },
+            "submitButton": { "type": "string", "description": "Selector for submit/continue button" },
+            "otpInputs": { "type": "string", "description": "Selector for OTP input fields" },
+            "verifyButton": { "type": "string", "description": "Selector for verify button" }
+          }
+        },
+        "tenant": {
+          "type": "object",
+          "description": "Multi-tenant authentication configuration",
+          "properties": {
+            "identifier": {
+              "type": "string",
+              "description": "Test tenant ID or subdomain"
+            },
+            "loginUrlPattern": {
+              "type": "string",
+              "description": "URL pattern with {tenant} placeholder (e.g., 'https://{tenant}.example.com/login')"
+            }
+          }
+        }
+      }
+    },
+
     "agents": {
       "type": "object",
       "description": "AI agent behavior configuration",
