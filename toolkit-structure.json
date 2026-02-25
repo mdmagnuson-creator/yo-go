@@ -775,7 +775,7 @@
             "type": "feat",
             "scope": "schema",
             "description": "add git.autoCommit setting to disable agent commits",
-            "hash": "pending"
+            "hash": "e767126"
           },
           {
             "type": "feat",
