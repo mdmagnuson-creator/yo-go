@@ -28,6 +28,16 @@ You are a specialized agent that writes Playwright E2E tests for UI areas identi
         - Authentication patterns and fixtures
         - API mocking conventions
         - Test naming and organization
+   
+   c. **Check authentication configuration:**
+      - If `project.json` has an `authentication` section, use it for all authenticated tests
+      - Load the appropriate auth skill based on `authentication.provider` and `authentication.method`:
+        - `supabase` + `passwordless-otp` → `auth-supabase-otp` skill
+        - `supabase` + `email-password` → `auth-supabase-password` skill
+        - `nextauth` + `email-password` → `auth-nextauth-credentials` skill
+        - Other combinations → `auth-generic` skill
+      - If `authentication.headless.enabled` is `true`, use headless auth (see `auth-headless` skill)
+      - If `authentication.method` is `none`, skip authentication
 
 You receive a list of UI areas from `docs/e2e-areas.json` that need E2E test coverage. Your job is to:
 
@@ -240,7 +250,97 @@ test('click button', async ({ page }) => {});
 
 ## Authentication Handling
 
-If the feature requires authentication:
+If the feature requires authentication, check `project.json` for auth configuration:
+
+### Using project.json Auth Config (Recommended)
+
+```typescript
+import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Load auth config from project.json
+function getAuthConfig() {
+  const projectJsonPath = path.join(process.cwd(), 'docs', 'project.json');
+  if (!fs.existsSync(projectJsonPath)) return null;
+  const config = JSON.parse(fs.readFileSync(projectJsonPath, 'utf-8'));
+  return config.authentication || null;
+}
+
+test.describe('Protected Feature', () => {
+  const authConfig = getAuthConfig();
+  
+  test.beforeEach(async ({ page, context }) => {
+    if (!authConfig || authConfig.method === 'none') {
+      return; // No auth needed
+    }
+    
+    // Use headless auth if enabled (faster)
+    if (authConfig.headless?.enabled) {
+      // See auth-headless skill for implementation
+      await authenticateHeadless(context, authConfig);
+      return;
+    }
+    
+    // Otherwise use UI auth based on provider/method
+    // See auth-supabase-otp, auth-supabase-password, 
+    // auth-nextauth-credentials, or auth-generic skills
+    await authenticateViaUI(page, authConfig);
+  });
+});
+```
+
+### Auth Skill Selection
+
+Based on `authentication.provider` and `authentication.method`:
+
+| Provider | Method | Skill |
+|----------|--------|-------|
+| supabase | passwordless-otp | `auth-supabase-otp` |
+| supabase | email-password | `auth-supabase-password` |
+| nextauth | email-password | `auth-nextauth-credentials` |
+| custom | * | `auth-generic` |
+
+### Headless Auth (Recommended for Speed)
+
+If `authentication.headless.enabled` is `true`, use direct API authentication:
+
+```typescript
+test.describe('Protected Feature', () => {
+  // Use custom fixture that handles headless auth
+  test.beforeEach(async ({ authenticatedContext }) => {
+    const page = await authenticatedContext.newPage();
+    // Page is already authenticated
+  });
+});
+```
+
+See the `auth-headless` skill for implementation details.
+
+### UI-Based Auth
+
+For the one test that exercises the actual login flow:
+
+```typescript
+/**
+ * @ui-auth-test
+ * This test exercises the actual login UI flow.
+ * DO NOT use headless authentication for this test.
+ */
+test('user can log in via UI', async ({ page }) => {
+  const authConfig = getAuthConfig();
+  const routes = authConfig?.routes || { login: '/login', authenticated: '/dashboard' };
+  
+  await page.goto(routes.login);
+  // Follow auth skill patterns for your provider
+  // ...
+  await expect(page).toHaveURL(new RegExp(routes.authenticated));
+});
+```
+
+### Legacy/Fallback (No Auth Config)
+
+If `project.json` doesn't have an `authentication` section, fall back to:
 
 ```typescript
 test.describe('Protected Feature', () => {
@@ -269,6 +369,8 @@ test.describe('Protected Feature', () => {
   });
 });
 ```
+
+Consider running `/setup-auth` to configure authentication properly.
 
 ## API Mocking Patterns
 

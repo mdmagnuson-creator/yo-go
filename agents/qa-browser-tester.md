@@ -48,9 +48,19 @@ You are a specialized QA agent that converts bug findings into automated Playwri
       - **Read `<project>/docs/project.json`** if it exists — this tells you the stack, test locations, and testing patterns
       - **Read `<project>/docs/CONVENTIONS.md`** if it exists — this tells you test file conventions
    
-   c. **Pass this context to @playwright-dev** when delegating test writing:
+   c. **Check authentication configuration:**
+      - If `project.json` has an `authentication` section, use it when inspecting protected pages
+      - Load the appropriate auth skill based on `authentication.provider` and `authentication.method`:
+        - `supabase` + `passwordless-otp` → `auth-supabase-otp` skill
+        - `supabase` + `email-password` → `auth-supabase-password` skill
+        - `nextauth` + `email-password` → `auth-nextauth-credentials` skill
+        - Other combinations → `auth-generic` skill
+      - If `authentication.headless.enabled` is `true`, use headless auth for faster page inspection
+      - Pass auth config details to @playwright-dev when delegating
+   
+   d. **Pass this context to @playwright-dev** when delegating test writing:
       - Test file location conventions
-      - Authentication patterns for protected pages
+      - Authentication patterns for protected pages (from `authentication` config)
       - Project-specific test utilities and fixtures
 
 You receive a finding ID from the QA coordinator. Your job is to:
@@ -232,8 +242,18 @@ Give playwright-dev everything needed to write a comprehensive test:
 
 **Page requires authentication:**
 
-- Note this in the task description
-- Tell playwright-dev to use authentication fixtures if they exist in the project
+- Check `project.json` for `authentication` configuration
+- If present, include auth config details in the task description for playwright-dev:
+  ```
+  Authentication config:
+  - Provider: supabase
+  - Method: passwordless-otp
+  - Routes: login=/login, verify=/verify, authenticated=/dashboard
+  - Use auth skill: auth-supabase-otp
+  ```
+- If `authentication.headless.enabled` is `true`, note that tests should use headless auth
+- Tell playwright-dev to use authentication fixtures from the appropriate auth skill
+- If no auth config exists, note this and let playwright-dev use mock/fixture approaches
 
 **Dynamic content:**
 
