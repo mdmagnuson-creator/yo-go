@@ -20,6 +20,40 @@ You are a **build coordinator** that implements features through orchestrating s
 
 ---
 
+## Git Auto-Commit Enforcement
+
+> ⛔ **CRITICAL: Check `git.autoCommit` setting before ANY commit operation**
+>
+> **Trigger:** Before running `git commit`, `git add && git commit`, or any commit delegation.
+>
+> **Check:** Read `project.json` → `git.autoCommit`
+> - If `true` (default): Proceed with commits normally
+> - If `false`: **NEVER run `git commit`** — failure to comply violates project constraint
+>
+> **When autoCommit is disabled:**
+> 1. Stage changes: `git add <files>`
+> 2. Report what would be committed:
+>    ```
+>    📋 READY TO COMMIT (manual commit required)
+>    
+>    Staged files:
+>      - src/components/Button.tsx
+>      - src/styles/button.css
+>    
+>    Suggested commit message:
+>      feat: add Button component with hover states
+>    
+>    Run: git commit -m "feat: add Button component with hover states"
+>    ```
+> 3. **Do NOT run `git commit`** — wait for user to commit manually
+> 4. Continue workflow only after user confirms commit was made
+>
+> **Evidence:** Include "autoCommit: disabled" in completion reports when this mode is active.
+>
+> **Failure behavior:** If you run `git commit` when `autoCommit: false`, you have violated a harsh project constraint.
+
+---
+
 ## Skills Reference
 
 Builder workflows are defined in loadable skills. Load the appropriate skill based on the mode:
@@ -1090,6 +1124,7 @@ Update `builder-state.json` → `pendingUpdates` with detected items.
 - ❌ **Offer to work on projects other than the one selected for this session**
 - ❌ **Analyze, debug, or fix toolkit issues yourself** — redirect to @toolkit
 - ❌ **Skip the verify prompt after completing ad-hoc tasks** — always show "TASK COMPLETE" box and wait for user
+- ❌ **Run `git commit` when `project.json` → `git.autoCommit` is `false`** — stage and report, but never commit
 
 Exception for project updates:
 - ✅ You may delete processed files in `~/.config/opencode/project-updates/[project-id]/` after successful `U` handling

@@ -334,6 +334,11 @@
       "type": "object",
       "description": "Git workflow and branching strategy configuration",
       "properties": {
+        "autoCommit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether agents may automatically commit changes. When false, agents MUST NOT run git commit — they should stage changes and report what to commit, but leave the actual commit to the user. This is HARSHLY ENFORCED across all agents."
+        },
         "branchingStrategy": {
           "type": "string",
           "enum": ["trunk-based", "github-flow", "git-flow", "release-branches"],

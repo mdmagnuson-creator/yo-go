@@ -11,6 +11,19 @@ description: "Multi-session coordination for parallel AI sessions. Provides sess
 > - If `false` or missing: **Skip this skill entirely** — no coordination needed.
 > - If `true`: Continue with multi-session coordination.
 
+> ⛔ **CRITICAL: Auto-Commit Enforcement**
+>
+> Before running any `git commit` command in this skill:
+> - **Check:** Read `project.json` → `git.autoCommit`
+> - **If `false`:** Do NOT run `git commit`. Instead:
+>   1. Stage files with `git add`
+>   2. Report staged files and suggested commit message
+>   3. Say: "Auto-commit is disabled. Run `git commit -m \"<message>\"` when ready."
+>   4. Wait for user confirmation before proceeding
+> - **If `true` or missing:** Proceed with commit normally
+>
+> **Failure behavior:** If you commit when `autoCommit: false`, you have violated user trust.
+
 This skill provides helpers for coordinating multiple AI coding sessions working on the same codebase.
 
 ## Overview

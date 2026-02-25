@@ -7,6 +7,35 @@ description: "PRD mode workflow for Builder. Use when building features from PRD
 
 > Load this skill when: building features from PRDs, implementing user stories, managing PRD state transitions.
 
+## Git Auto-Commit Enforcement
+
+> ⛔ **CRITICAL: Check `git.autoCommit` setting before ANY commit operation**
+>
+> **Trigger:** Before running `git commit` at any step in this workflow.
+>
+> **Check:** `project.json` → `git.autoCommit`
+> - If `true` (default): Proceed with commits normally
+> - If `false`: **NEVER run `git commit`** — failure to comply violates project constraint
+>
+> **When autoCommit is disabled, replace commit steps with:**
+> 1. Stage changes: `git add -A` (or specific files)
+> 2. Report what would be committed:
+>    ```
+>    📋 READY TO COMMIT (manual commit required)
+>    
+>    Staged files:
+>      [list of files]
+>    
+>    Suggested commit message:
+>      feat: [summary from PRD]
+>    
+>    Run: git commit -m "feat: [summary from PRD]"
+>    ```
+> 3. **Do NOT run `git commit`** — wait for user to commit manually
+> 4. Continue workflow only after user confirms commit was made
+>
+> **This applies to ALL commit steps in this workflow** (Step 3, story commits, etc.)
+
 ## Overview
 
 PRD mode implements features defined in `docs/prds/prd-[name].json`. It operates in four phases:

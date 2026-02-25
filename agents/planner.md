@@ -565,6 +565,8 @@ Examples:
 
 ### Auto-Commit Flow
 
+> ⛔ **Check `git.autoCommit` first:** If `project.json` → `git.autoCommit` is `false`, skip steps 3-5 and report what would be committed instead. Stage files but do NOT commit.
+
 After each PRD operation:
 
 1. **Stage PRD files:**

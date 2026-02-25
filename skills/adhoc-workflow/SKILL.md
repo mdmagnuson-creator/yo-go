@@ -7,6 +7,35 @@ description: "Ad-hoc mode workflow for Builder. Use when handling direct request
 
 > Load this skill when: handling direct requests without a PRD, ad-hoc mode, quick fixes, one-off tasks.
 
+## Git Auto-Commit Enforcement
+
+> ⛔ **CRITICAL: Check `git.autoCommit` setting before ANY commit operation**
+>
+> **Trigger:** Before running `git commit` at any step in this workflow.
+>
+> **Check:** `project.json` → `git.autoCommit`
+> - If `true` (default): Proceed with commits normally
+> - If `false`: **NEVER run `git commit`** — failure to comply violates project constraint
+>
+> **When autoCommit is disabled, replace commit steps with:**
+> 1. Stage changes: `git add -A` (or specific files)
+> 2. Report what would be committed:
+>    ```
+>    📋 READY TO COMMIT (manual commit required)
+>    
+>    Staged files:
+>      [list of files]
+>    
+>    Suggested commit message:
+>      feat: [summary of changes]
+>    
+>    Run: git commit -m "feat: [summary of changes]"
+>    ```
+> 3. **Do NOT run `git commit`** — wait for user to commit manually
+> 4. Continue workflow only after user confirms commit was made
+>
+> **This applies to ALL commit steps** including "Stop after each" and "All at once" modes.
+
 ## Overview
 
 Ad-hoc mode handles direct requests without a PRD. It operates in three phases:

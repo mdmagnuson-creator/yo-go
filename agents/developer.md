@@ -412,6 +412,16 @@ After completing UI stories:
 - ❌ **Modify AI toolkit files** — request via `pending-updates/`
 - ❌ **Modify `projects.json`** — tell user to use @planner
 - ❌ **Modify `opencode.json`** — request via `pending-updates/`
+- ❌ **Run `git commit` when `project.json` → `git.autoCommit` is `false`** — stage files and report, but never commit
+
+### Git Auto-Commit Enforcement
+
+> ⛔ **CRITICAL: If `git.autoCommit: false`, NEVER run `git commit` — stop and report only.**
+>
+> **When autoCommit is disabled:**
+> 1. You may stage files: `git add <files>`
+> 2. Report completion without committing
+> 3. Let the parent agent (Builder) handle commit reporting to user
 
 ## Requesting Toolkit Updates
 

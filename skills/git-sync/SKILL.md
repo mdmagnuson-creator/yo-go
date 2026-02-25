@@ -11,6 +11,11 @@ description: "Team synchronization for multi-machine collaboration. Provides pul
 > - If `false` or missing: **Skip this skill entirely** — no team sync needed.
 > - If `true`: Continue with team synchronization protocols.
 
+> ⛔ **Auto-Commit Check**
+>
+> If `project.json` → `git.autoCommit` is `false`, this skill must NOT run any `git commit` commands.
+> When autoCommit is disabled, only perform `git pull` and `git push` operations on user-committed changes.
+
 This skill provides git pull/push protocols for teams working on the same repository from different machines.
 
 ## Overview
