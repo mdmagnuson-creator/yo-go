@@ -304,6 +304,28 @@ APPEND to `docs/progress.txt` (never replace):
 - Keep changes focused and minimal
 - Follow existing code patterns
 
+### Root Cause Analysis (MANDATORY)
+
+> ⛔ **Before implementing ANY fix, ask: "Why is this happening?"**
+>
+> Band-aid fixes create technical debt and hide real bugs.
+
+**Never use these patterns without understanding why they're needed:**
+
+| Band-Aid Pattern | Ask Instead |
+|------------------|-------------|
+| `setTimeout`/delays | Why isn't the event/state ready? Wait for the actual signal. |
+| z-index increments | Why is stacking wrong? Fix DOM order or stacking context. |
+| `!important` | Why isn't specificity working? Fix the cascade. |
+| Magic pixel offsets | Why is layout broken? Fix the layout relationship. |
+| Boolean flags for async | Why is timing wrong? Use proper async patterns. |
+| Swallowing errors | Why is this erroring? Handle the actual failure. |
+
+**If you catch yourself reaching for a band-aid:**
+1. Stop and investigate the root cause
+2. Document why the symptom exists
+3. Fix the underlying issue, not the symptom
+
 ---
 
 ## Browser Testing (If Available)
