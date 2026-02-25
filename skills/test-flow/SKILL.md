@@ -11,17 +11,135 @@ description: "Automatic test generation and execution flows for Builder. Use whe
 
 Builder automatically generates and runs tests based on the mode and context. This skill defines the exact behavior for all test flows.
 
+---
+
+## Per-Task Quality Checks (MANDATORY)
+
+> ⛔ **After EVERY task/story completes, run these four checks automatically. No prompts, no skipping.**
+>
+> This applies to BOTH ad-hoc mode AND PRD mode. Quality checks are not optional.
+
+### The Four Checks
+
+After @developer completes a task, run these in order:
+
+| Step | Check | Command | Fix Loop |
+|------|-------|---------|----------|
+| 1 | **Typecheck** | `npm run typecheck` (or project equivalent) | Yes, max 3 attempts |
+| 2 | **Lint** | `npm run lint` (or project equivalent) | Yes, max 3 attempts |
+| 3 | **Unit Tests** | Auto-generate with @tester, then run | Yes, max 3 attempts |
+| 4 | **Critic** | Run @critic for code review | Report findings, @developer fixes |
+
+### Flow Diagram
+
+```
+Task/Story complete
+    │
+    ▼
+┌─────────────────────┐
+│ 1. Typecheck        │
+└─────────────────────┘
+    │
+    ├─── PASS ──► Continue
+    │
+    └─── FAIL ──► Fix loop (max 3) ──► Still failing? STOP
+    │
+    ▼
+┌─────────────────────┐
+│ 2. Lint             │
+└─────────────────────┘
+    │
+    ├─── PASS ──► Continue
+    │
+    └─── FAIL ──► Fix loop (max 3) ──► Still failing? STOP
+    │
+    ▼
+┌─────────────────────┐
+│ 3. Generate & run   │
+│    unit tests       │
+└─────────────────────┘
+    │
+    ├─── PASS ──► Continue
+    │
+    └─── FAIL ──► Fix loop (max 3) ──► Still failing? STOP
+    │
+    ▼
+┌─────────────────────┐
+│ 4. Critic review    │
+└─────────────────────┘
+    │
+    ├─── No issues ──► Continue
+    │
+    └─── Issues found ──► @developer fixes ──► Re-run critic
+    │
+    ▼
+┌─────────────────────┐
+│ ✅ TASK VERIFIED    │
+│                     │
+│ Show completion     │
+│ prompt to user      │
+└─────────────────────┘
+```
+
+### Completion Prompt (After All Checks Pass)
+
+After the four checks pass, show this prompt:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                          TASK COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+✅ [Task description]
+
+Quality checks:
+  ✅ Typecheck: passed
+  ✅ Lint: passed
+  ✅ Unit tests: [N] generated, all passing
+  ✅ Critic: no issues
+
+Changed files: [count] ([file list])
+
+Options:
+  [E] Write E2E tests (Playwright automated UI testing)
+  [C] Commit this change
+  [N] Next task (add more work)
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Handle Response
+
+| Choice | Action |
+|--------|--------|
+| **E** | Run @playwright-dev to generate E2E tests, then prompt to run them |
+| **C** | Commit the changes (respecting `git.autoCommit` setting) |
+| **N** | Return to task prompt for more work |
+
+### E2E Sub-flow (When User Chooses "E")
+
+1. Run @playwright-dev to generate E2E tests for changed files
+2. Show prompt:
+   ```
+   📝 E2E tests generated:
+      • e2e/[test-name].spec.ts
+   
+   [R] Run E2E tests now
+   [S] Save for later (queue tests, return to task prompt)
+   ```
+3. If "R": Start dev server if needed, run tests, handle failures
+4. If "S": Queue tests in `builder-state.json`, return to completion prompt
+
+---
+
 ## Test Flow Configuration
 
-**Ad-hoc mode uses simple defaults** — skip the rigor matrix below and go directly to "Ad-hoc Mode Test Flow" sections.
+Rigor profiles control **additional** behavior beyond the mandatory per-task checks. The four checks above always run; rigor profiles add E2E generation, quality checks, etc.
 
-> ⚠️ **For ad-hoc work, ignore rigor profiles.** Just run tests with sensible defaults:
-> - Auto-generate unit tests for changed files
-> - Run them immediately
-> - Fix failures (max 3 attempts)
-> - Generate E2E tests and prompt user
->
-> The rigor configuration below applies only to PRD mode.
+> ⚠️ **Rigor profiles do NOT disable the mandatory per-task checks.**
+> Even `rapid` profile runs typecheck, lint, unit tests, and critic after each task.
+> Rigor profiles control: auto E2E generation, quality checks, and failure bypass options.
 
 ### PRD Mode Rigor Configuration
 
@@ -124,61 +242,66 @@ If tests "hang" without returning to the prompt:
 
 ## PRD Mode Test Flow (US-003)
 
-**After each story completion:**
+**After each story completion, run the mandatory per-task quality checks** (see "Per-Task Quality Checks" above).
 
-Resolve effective per-story behavior from:
-1. Active story intensity (`builder-state.json` -> `activePrd.storyAssessments[storyId].effective`)
-2. Active PRD rigor profile
+This is the same flow used in ad-hoc mode:
+1. Typecheck
+2. Lint
+3. Auto-generate and run unit tests
+4. Critic review
 
-When effective behavior requires per-story generation (`medium|high|critical`, or `low` with strict/compliance rigor):
+### Additional PRD-Specific Behavior
 
-1. **Auto-generate unit tests** — Run @tester in story mode for changed files (no prompt)
-2. **Auto-run unit tests** — Run the generated/updated tests immediately
-3. **If unit tests fail:**
-   - Run @developer to fix the failures
-   - Re-run tests (up to 3 attempts)
-   - If still failing after 3 attempts → STOP, report to user
-4. **Generate E2E test scripts** — Run @playwright-dev for `high|critical` stories
-5. **Queue E2E tests** — Add to `pendingTests.e2e.generated[]` with `deferredTo: "prd-completion"` when generated
-6. **Update state** — Write to `builder-state.json` with executed test actions
+After the mandatory checks pass, PRD mode adds E2E handling based on story intensity:
 
-When effective behavior skips per-story generation (`low` under rapid/standard rigor):
+| Story Intensity | E2E Behavior |
+|-----------------|--------------|
+| `low` | No automatic E2E generation |
+| `medium` | No automatic E2E generation (user can request) |
+| `high` | Auto-generate E2E tests, queue for PRD completion |
+| `critical` | Auto-generate E2E tests, queue for PRD completion |
 
-1. Skip @tester/@playwright-dev per story
-2. Track changed files in state for end-of-PRD verification
-3. Continue to next story
-
-Example flow (high/critical story):
+### PRD Story Completion Flow
 
 ```
 Story complete
     │
     ▼
-┌─────────────────────┐
-│ Auto-generate unit  │──── no prompt, just do it
-│ tests (@tester)     │
-└─────────────────────┘
+┌─────────────────────────────────┐
+│ MANDATORY: Per-Task Quality     │
+│ Checks (typecheck, lint, unit   │
+│ tests, critic)                  │
+└─────────────────────────────────┘
+    │
+    ├─── Any check fails ──► Fix loop ──► Still failing? STOP
     │
     ▼
-┌─────────────────────┐
-│ Auto-run unit tests │
-└─────────────────────┘
-    │
-    ├─── PASS ──► Continue
-    │
-    └─── FAIL ──► Fix loop (max 3 attempts)
-                     │
-                     └─── Still failing? STOP, ask user
+┌─────────────────────────────────┐
+│ If high/critical intensity:     │
+│ Auto-generate E2E tests         │
+│ Queue for PRD completion        │
+└─────────────────────────────────┘
     │
     ▼
-┌─────────────────────┐
-│ Generate E2E tests  │──── queue for later, don't run
-│ (@playwright-dev)   │
-└─────────────────────┘
+┌─────────────────────────────────┐
+│ Show completion prompt          │
+│ [E] Write E2E  [C] Commit       │
+│ [N] Next story                  │
+└─────────────────────────────────┘
     │
     ▼
 Next story (or PRD completion)
 ```
+
+### Story Intensity Resolution
+
+Resolve effective per-story behavior from:
+1. Active story intensity (`builder-state.json` -> `activePrd.storyAssessments[storyId].effective`)
+2. Active PRD rigor profile
+
+Per-story assessment policy comes from `project.json` -> `testing.storyAssessment`:
+- `source`: `planner` | `builder` | `hybrid` (default: `hybrid`)
+- `allowDowngrade`: whether Builder can downgrade planner's intensity (default: `false`)
 
 **After ALL stories complete:**
 
@@ -193,190 +316,112 @@ Next story (or PRD completion)
 
 ## Ad-hoc Mode Test Flow — Standalone (US-004)
 
-> **Simple defaults for ad-hoc:** Generate tests, run them, fix failures, prompt for E2E. No rigor matrix.
+**After each ad-hoc task completes, run the mandatory per-task quality checks** (see "Per-Task Quality Checks" above).
 
-When doing ad-hoc work **without** an active PRD:
+This is the same flow used in PRD mode:
+1. Typecheck
+2. Lint
+3. Auto-generate and run unit tests
+4. Critic review
 
-**After all ad-hoc todos complete:**
+Then show the completion prompt with E2E/Commit/Next options.
 
-1. **Auto-generate unit tests** — Run @tester with context block:
-   ```yaml
-   <context>
-   version: 1
-   project:
-     path: {project path}
-     stack: {stack}
-     commands:
-       test: {test command}
-   conventions:
-     summary: |
-       {conventions summary}
-     fullPath: {path}/docs/CONVENTIONS.md
-   </context>
-
-   Generate unit tests for these changed files: [file list]
-   Mode: adhoc
-   ```
-2. **Auto-run unit tests** — Run immediately
-3. **If unit tests fail:**
-   - Run @developer to fix (up to 3 attempts)
-   - If still failing → STOP, report to user
-4. **Auto-generate E2E tests** — Run @playwright-dev with context block:
-   ```yaml
-   <context>
-   version: 1
-   project:
-     path: {project path}
-     stack: {stack}
-   conventions:
-     summary: |
-       {conventions summary}
-     fullPath: {path}/docs/CONVENTIONS.md
-   </context>
-
-   Generate E2E tests for ad-hoc changes:
-   - Description: {summary of changes}
-   - Changed files: [file list]
-   ```
-5. **Queue E2E tests** — Add to `pendingTests.e2e.generated[]`
-6. **Prompt user:**
+### Ad-hoc Task Completion Flow
 
 ```
-═══════════════════════════════════════════════════════════════════════
-                          TESTS GENERATED
-═══════════════════════════════════════════════════════════════════════
-
-✅ Unit tests: 3 generated, all passing
-
-📝 E2E tests queued:
-   • e2e/loading-spinner.spec.ts
-   • e2e/footer-alignment.spec.ts
-
-Options:
-   [T] Run E2E tests now
-   [W] Keep working (tests stay queued)
-
-> _
-═══════════════════════════════════════════════════════════════════════
+Task complete
+    │
+    ▼
+┌─────────────────────────────────┐
+│ MANDATORY: Per-Task Quality     │
+│ Checks (typecheck, lint, unit   │
+│ tests, critic)                  │
+└─────────────────────────────────┘
+    │
+    ├─── Any check fails ──► Fix loop ──► Still failing? STOP
+    │
+    ▼
+┌─────────────────────────────────┐
+│ Show completion prompt          │
+│ [E] Write E2E  [C] Commit       │
+│ [N] Next task                   │
+└─────────────────────────────────┘
 ```
 
-7. **Handle response:**
-   - "T" or "Tests" → Start dev server if needed, run E2E suite, then proceed to commit prompt
-   - "W" or "Work" → E2E tests stay queued, return to task prompt
+### Context Block for @tester
 
-```
-Ad-hoc todos complete
-    │
-    ▼
-┌─────────────────────┐
-│ Auto-generate unit  │──── no prompt
-│ tests (@tester)     │
-└─────────────────────┘
-    │
-    ▼
-┌─────────────────────┐
-│ Auto-run unit tests │
-└─────────────────────┘
-    │
-    ├─── PASS ──► Continue
-    │
-    └─── FAIL ──► Fix loop (max 3 attempts)
-    │
-    ▼
-┌─────────────────────┐
-│ Generate E2E tests  │──── no prompt
-│ (@playwright-dev)   │
-└─────────────────────┘
-    │
-    ▼
-┌─────────────────────┐
-│ PROMPT: [T] / [W]   │
-└─────────────────────┘
-    │
-    ├─── T ──► Run E2E tests ──► Commit prompt
-    │
-    └─── W ──► Continue adding tasks
+When running @tester for unit test generation, pass context:
+
+```yaml
+<context>
+version: 1
+project:
+  path: {project path}
+  stack: {stack}
+  commands:
+    test: {test command}
+conventions:
+  summary: |
+    {conventions summary}
+  fullPath: {path}/docs/CONVENTIONS.md
+</context>
+
+Generate unit tests for these changed files: [file list]
+Mode: adhoc
 ```
 
 ---
 
 ## Ad-hoc Mode Test Flow — During PRD (US-005)
 
-> **Same simple defaults:** Generate tests, run them, fix failures, offer deferral option.
+**Same per-task checks apply.** The only difference is the E2E prompt offers a deferral option.
 
-When doing ad-hoc work **while** a PRD is active (tracked in `adhocQueue`):
-
-**After ad-hoc todos complete:**
-
-1. **Auto-generate unit tests** — Run @tester with context block (same format as standalone)
-2. **Auto-run unit tests** — Run immediately
-3. **If unit tests fail:**
-   - Run @developer to fix (up to 3 attempts) — **pass context block**
-   - If still failing → STOP, report to user
-4. **Auto-generate E2E tests** — Run @playwright-dev with context block (same format as standalone)
-5. **Prompt user with deferral option:**
+After mandatory checks pass, show:
 
 ```
 ═══════════════════════════════════════════════════════════════════════
-                          TESTS GENERATED
+                          TASK COMPLETE
 ═══════════════════════════════════════════════════════════════════════
 
-✅ Unit tests: 2 generated, all passing
+✅ [Task description]
 
-📝 E2E tests queued:
-   • e2e/quick-fix.spec.ts
+Quality checks:
+  ✅ Typecheck: passed
+  ✅ Lint: passed
+  ✅ Unit tests: [N] generated, all passing
+  ✅ Critic: no issues
 
-⚠️  You have an active PRD: prd-error-logging (US-003)
+⚠️  Active PRD: [prd-name] ([current-story])
 
 Options:
-   [N] Run E2E tests now (then return to PRD)
-   [D] Defer to PRD completion (run with PRD's E2E tests)
-   [W] Keep working (tests stay queued)
+  [E] Write E2E tests (can defer to PRD completion)
+  [C] Commit this change
+  [N] Next task (add more work)
+  [R] Return to PRD work
 
 > _
 ═══════════════════════════════════════════════════════════════════════
 ```
 
-6. **Handle response:**
-   - "N" or "Now" → Start dev server, run E2E tests, commit ad-hoc work, return to PRD
-   - "D" or "Defer" → Add E2E tests to PRD's deferred queue (`deferredTo: "prd-completion"`), return to PRD
-   - "W" or "Work" → E2E tests stay queued without deferral, return to task prompt
+### E2E Deferral (When User Chooses "E" During PRD)
+
+After generating E2E tests, show:
 
 ```
-Ad-hoc during PRD complete
-    │
-    ▼
-┌─────────────────────┐
-│ Auto-generate unit  │──── no prompt
-│ tests (@tester)     │
-└─────────────────────┘
-    │
-    ▼
-┌─────────────────────┐
-│ Auto-run unit tests │
-└─────────────────────┘
-    │
-    ├─── PASS ──► Continue
-    │
-    └─── FAIL ──► Fix loop (max 3 attempts)
-    │
-    ▼
-┌─────────────────────┐
-│ Generate E2E tests  │──── no prompt
-│ (@playwright-dev)   │
-└─────────────────────┘
-    │
-    ▼
-┌─────────────────────┐
-│ PROMPT: [N]/[D]/[W] │
-└─────────────────────┘
-    │
-    ├─── N ──► Run E2E now ──► Commit ──► Return to PRD
-    │
-    ├─── D ──► Queue with PRD's E2E tests ──► Return to PRD
-    │
-    └─── W ──► Continue working (tests queued)
+📝 E2E tests generated:
+   • e2e/[test-name].spec.ts
+
+Options:
+   [R] Run E2E tests now (then return to PRD)
+   [D] Defer to PRD completion (run with PRD's E2E tests)
+   [S] Save for later (queue without deferring)
 ```
+
+| Choice | Action |
+|--------|--------|
+| **R** | Start dev server, run tests, commit ad-hoc work, return to PRD |
+| **D** | Add to PRD's deferred queue (`deferredTo: "prd-completion"`), return to PRD |
+| **S** | Queue tests, return to task prompt |
 
 ---
 

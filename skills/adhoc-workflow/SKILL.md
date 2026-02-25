@@ -64,16 +64,19 @@ description: "Ad-hoc mode workflow for Builder. Use when handling direct request
 
 ## Overview
 
-Ad-hoc mode handles direct requests without a PRD. It operates in three phases:
+Ad-hoc mode handles direct requests without a PRD. Quality checks run automatically after each task:
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   BATCH PHASE   │ ──► │  VERIFY PHASE   │ ──► │   SHIP PHASE    │
+│   TASK PHASE    │ ──► │  E2E (OPTIONAL) │ ──► │   SHIP PHASE    │
 │                 │     │                 │     │                 │
-│ Add tasks,      │     │ Typecheck,      │     │ Commit, merge   │
-│ implement each  │     │ lint, test,     │     │ to main, push   │
-│                 │     │ critic (3x)     │     │                 │
+│ Implement task, │     │ Write/run E2E   │     │ Commit, merge   │
+│ auto quality    │     │ tests if user   │     │ to main, push   │
+│ checks per task │     │ chooses [E]     │     │                 │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
+        │                                               ▲
+        │ [N] Next task ─────────────────────────────── │
+        │ [C] Commit ────────────────────────────────────┘
 ```
 
 **⚠️ PRD PROTECTION:** If a PRD is currently checked out (`docs/prd.json` exists), do NOT modify it. Ad-hoc work is tracked separately.
@@ -92,48 +95,26 @@ Rules:
 
 ---
 
-## Workflow Preference Prompt
+## Per-Task Quality Checks (MANDATORY)
 
-> ⚠️ **MANDATORY: Always ask this BEFORE starting any ad-hoc work**
+> ⛔ **Quality checks run automatically after EVERY task. No prompts, no skipping.**
+>
+> This behavior is defined in the `test-flow` skill and applies to both ad-hoc and PRD modes.
 
-When entering ad-hoc mode — whether from the main menu, a direct task description, or an off-script request during PRD work — prompt the user:
+After @developer completes each task, Builder automatically runs:
 
-```
-═══════════════════════════════════════════════════════════════════════
-                        AD-HOC WORKFLOW
-═══════════════════════════════════════════════════════════════════════
+1. **Typecheck** — `npm run typecheck` (or project equivalent)
+2. **Lint** — `npm run lint` (or project equivalent)
+3. **Unit tests** — Auto-generate with @tester, then run
+4. **Critic** — Run @critic for code review
 
-How would you like me to handle these changes?
+If any check fails, Builder runs a fix loop (max 3 attempts). If still failing, STOP and report to user.
 
-  [S] Stop after each — I'll pause after each todo for verification,
-                        testing, and commit decisions
-
-  [A] All at once     — I'll complete all todos, then prompt for
-                        testing and commit
-
-> _
-═══════════════════════════════════════════════════════════════════════
-```
-
-**Store this preference** for the duration of the ad-hoc session (in memory, not persisted).
-
-### Behavior by Mode
-
-| Mode | Behavior |
-|------|----------|
-| **Stop after each (S)** | Complete todo → verify (typecheck/lint) → prompt: "Run @tester? Commit?" → wait for response → next todo |
-| **All at once (A)** | Complete all todos → verify all → prompt: "Run @tester? Commit?" |
-
-### When to Show This Prompt
-
-1. **Pure ad-hoc session** — User selects "A" from main menu or describes a task directly
-2. **Ad-hoc during PRD** — User asks for something outside PRD scope while working a story
-
-For case 2: Recognize the off-script request, inform user it's outside PRD scope, then show the workflow preference prompt before starting.
+**After all checks pass**, show the task completion prompt (see Step 4 below).
 
 ---
 
-## Phase 1: Batch (Adding Tasks)
+## Phase 1: Task Execution
 
 When user enters ad-hoc mode or gives a task:
 
@@ -329,7 +310,7 @@ If your fix involves setTimeout, z-index changes, magic numbers, or
    - Update right panel via `todowrite`
    - Update `uiTodos.items[]` and `uiTodos.lastSyncedAt`
 
-4. **Track changed files** — store list of files modified for later verification
+4. **Track changed files** — store list of files modified for quality checks
 
 ### Todo Sync Rules (Ad-hoc)
 
@@ -338,44 +319,22 @@ If your fix involves setTimeout, z-index changes, magic numbers, or
 - On user "status", read from `uiTodos.items` (not memory-only)
 - Before ending ad-hoc mode, ensure panel and `uiTodos.items` are synchronized
 
-### Step 4: Post-Todo Flow (Depends on Workflow Preference)
+### Step 4: Run Quality Checks (Automatic)
 
-**If "Stop after each" (S) mode:**
+> ⛔ **These checks run automatically after EVERY task. No user prompt needed.**
 
-After each todo completes, run quick verification and prompt:
+After @developer finishes and the todo is marked complete, immediately run:
 
-```
-═══════════════════════════════════════════════════════════════════════
-                          TODO COMPLETE
-═══════════════════════════════════════════════════════════════════════
+1. **Typecheck** — `npm run typecheck` (or project equivalent)
+2. **Lint** — `npm run lint` (or project equivalent)
+3. **Unit tests** — Run @tester to generate tests, then run them
+4. **Critic** — Run @critic for code review
 
-✅ Add loading spinner to submit button
+**Fix loop:** If any check fails, run @developer to fix (max 3 attempts). If still failing, STOP and report to user.
 
-Verification:
-  ✅ Typecheck: passed
-  ✅ Lint: passed
+### Step 5: Show Completion Prompt
 
-Changed files: 2 (SubmitButton.tsx, SubmitButton.css)
-
-Options:
-  [T] Run @tester for regression tests
-  [C] Commit this change now
-  [N] Next todo (keep working)
-  [V] Full verify (all quality checks)
-
-> _
-═══════════════════════════════════════════════════════════════════════
-```
-
-Wait for user response before proceeding. User can:
-- "T" → Run @tester, then return to this prompt
-- "C" → Commit just this change, then prompt for next task
-- "N" → Continue to next task (or prompt for new task if none queued)
-- "V" → Jump to Phase 2: Verify
-
-**If "All at once" (A) mode:**
-
-After each todo completes, show brief status and continue:
+After all quality checks pass, show:
 
 ```
 ═══════════════════════════════════════════════════════════════════════
@@ -384,154 +343,111 @@ After each todo completes, show brief status and continue:
 
 ✅ Add loading spinner to submit button
 
-Completed: 1 task
+Quality checks:
+  ✅ Typecheck: passed
+  ✅ Lint: passed
+  ✅ Unit tests: 3 generated, all passing
+  ✅ Critic: no issues
+
 Changed files: 2 (SubmitButton.tsx, SubmitButton.css)
 
 Options:
-  • Describe another task to add to this batch
-  • Type "verify" to run tests and quality checks
-  • Type "status" to see all completed tasks
+  [E] Write E2E tests (Playwright automated UI testing)
+  [C] Commit this change
+  [N] Next task (add more work)
 
 > _
 ═══════════════════════════════════════════════════════════════════════
 ```
 
-**Keep accepting tasks** until user says "verify".
+**Handle response:**
 
-> ⚠️ **Required: Always show post-todo prompts**
+| Choice | Action |
+|--------|--------|
+| **E** | Run @playwright-dev to generate E2E tests, then prompt to run them (see E2E Sub-flow below) |
+| **C** | Commit the changes (respecting `git.autoCommit` setting), then prompt for next task |
+| **N** | Return to task prompt for more work |
+
+### E2E Sub-flow (When User Chooses "E")
+
+1. Run @playwright-dev to generate E2E tests for changed files
+2. Show prompt:
+   ```
+   📝 E2E tests generated:
+      • e2e/loading-spinner.spec.ts
+   
+   [R] Run E2E tests now
+   [S] Save for later (queue tests, continue working)
+   ```
+3. If "R": Start dev server if needed, run tests, handle failures with fix loop
+4. If "S": Queue tests in `builder-state.json`, return to completion prompt
+
+### E2E During Active PRD
+
+If an active PRD exists (`docs/builder-state.json` has `activePrd`), add a deferral option:
+
+```
+📝 E2E tests generated:
+   • e2e/quick-fix.spec.ts
+
+⚠️  Active PRD: prd-error-logging (US-003)
+
+[R] Run E2E tests now (then return to PRD)
+[D] Defer to PRD completion (run with PRD's E2E tests)
+[S] Save for later
+```
+
+> ⚠️ **Required: Always show completion prompts**
 >
-> After @developer finishes a task, perform this sequence:
-> 1. Mark the todo complete
-> 2. Display the appropriate prompt based on workflow preference (see above)
-> 3. Wait for user input
->
+> After quality checks pass, you MUST show the completion prompt.
 > Do NOT skip this prompt. Do NOT just say "Done, what's next?" or wait silently.
 
 ---
 
-## Phase 2: Verify (US-004)
+## Phase 2: E2E Test Batch (Optional)
 
-When user says "verify", run automatic test generation and quality checks.
+> ℹ️ **Quality checks now run automatically after every task (see Per-Task Quality Checks above).**
+>
+> Phase 2 is for running **batched E2E tests** when you want to test multiple changes together,
+> or when you have queued E2E tests from multiple tasks.
+
+When user chooses `[E]` from the task completion prompt, or has multiple queued E2E tests:
 
 ### Step 1: Check for Active PRD
-
-First, determine if this is standalone ad-hoc or ad-hoc during PRD:
 
 ```bash
 # Check if PRD is active
 cat docs/builder-state.json 2>/dev/null | grep -q '"activePrd"'
 ```
 
-- If `activePrd` exists and is not null → **Ad-hoc during PRD** (use Deferral Flow below)
-- If no active PRD → **Standalone ad-hoc** (continue with this flow)
+- If `activePrd` exists and is not null → Use **Deferral Flow** (option to defer to PRD completion)
+- If no active PRD → Continue with this flow
 
-### Step 2: Auto-Generate Unit Tests (no prompt)
+### Step 2: Run Queued E2E Tests
 
-Run @tester in ad-hoc mode to generate/update tests for changed files:
+1. Start dev server if needed
+2. Run all queued E2E tests (with retry loop on failure)
+3. If pass → Continue to Phase 3: Ship
+4. If fail after 3 attempts → Report failure, ask user
 
-```
-Run @tester with:
-  mode: adhoc
-  changedFiles: [all files modified in this ad-hoc batch]
-```
+### Deferral Flow (Ad-hoc During PRD)
 
-This generates tests without prompting the user.
-
-### Step 3: Run Unit Tests and Quality Checks
-
-Run these in order (with auto-fix retry loop):
-
-1. **Typecheck** — `npm run typecheck` (or project equivalent)
-2. **Lint** — `npm run lint` (or project equivalent)
-3. **Unit tests** — Run generated/updated tests for changed files
-4. **Critic** — Run @critic for code review
-
-See test-flow skill for the fix loop algorithm (3 attempts max).
-
-### Step 4: Auto-Generate E2E Tests (no prompt)
-
-After unit tests pass, generate E2E tests:
-
-```
-Run @playwright-dev with:
-  mode: adhoc
-  description: [summary of ad-hoc changes]
-  changedFiles: [files modified]
-```
-
-Add generated tests to queue:
-
-```json
-// Update builder-state.json
-{
-  "pendingTests": {
-    "e2e": {
-      "generated": ["e2e/spinner.spec.ts", "e2e/footer.spec.ts"],
-      "status": "pending"
-    }
-  }
-}
-```
-
-### Step 5: Show E2E Test Prompt
-
-Display the test options:
+If `activePrd` exists, show deferral option:
 
 ```
 ═══════════════════════════════════════════════════════════════════════
-                          TESTS GENERATED
+                          E2E TESTS READY
 ═══════════════════════════════════════════════════════════════════════
 
-✅ Unit tests: 3 generated, all passing
-✅ Typecheck: passed
-✅ Lint: passed
-✅ Critic: no issues
-
-📝 E2E tests queued:
-   • e2e/loading-spinner.spec.ts
-   • e2e/footer-alignment.spec.ts
-
-Options:
-   [T] Run E2E tests now (then ship)
-   [W] Keep working (tests stay queued for later)
-
-> _
-═══════════════════════════════════════════════════════════════════════
-```
-
-**Handle response:**
-
-- "T" or "Tests":
-  1. Start dev server if needed
-  2. Run E2E tests (with retry loop on failure)
-  3. If pass → Continue to Phase 3: Ship
-  4. If fail after 3 attempts → Report failure, ask user
-
-- "W" or "Work":
-  1. E2E tests remain queued in `builder-state.json`
-  2. Return to "TASK COMPLETE" prompt
-  3. User can add more tasks or type "verify" again later
-
-### Deferral Flow (Ad-hoc During PRD) (US-005)
-
-If `activePrd` exists in state, use the deferral prompt instead:
-
-```
-═══════════════════════════════════════════════════════════════════════
-                          TESTS GENERATED
-═══════════════════════════════════════════════════════════════════════
-
-✅ Unit tests: 2 generated, all passing
-
-📝 E2E tests queued:
+📝 Queued E2E tests:
    • e2e/quick-fix.spec.ts
 
 ⚠️  Active PRD: prd-error-logging (US-003)
 
 Options:
-   [N] Run E2E tests now (then return to PRD)
+   [R] Run E2E tests now (then return to PRD)
    [D] Defer to PRD completion (run with PRD's E2E tests)
-   [W] Keep working (tests stay queued)
+   [S] Save for later (stay in ad-hoc mode)
 
 > _
 ═══════════════════════════════════════════════════════════════════════
@@ -539,7 +455,7 @@ Options:
 
 **Handle response:**
 
-- "N" or "Now":
+- "R" or "Run":
   1. Start dev server if needed
   2. Run E2E tests
   3. If pass → Commit ad-hoc work separately, return to PRD
@@ -560,7 +476,7 @@ Options:
   2. Commit ad-hoc work with separate commit message
   3. Return to PRD work
 
-- "W" or "Work":
+- "S" or "Save":
   1. E2E tests remain queued (not deferred)
   2. Return to task prompt
 
@@ -728,90 +644,137 @@ Builder:
 
 2. [build] Creating todo, running @developer...
    ✅ Developer completed: Modified SubmitButton.tsx, SubmitButton.css
-   ✅ Todo marked complete
+
+3. [quality] Running automatic quality checks...
+   ✅ Typecheck: passed
+   ✅ Lint: passed
+   ✅ Unit tests: 2 generated, all passing
+   ✅ Critic: no issues
 
 ═══════════════════════════════════════════════════════════════════════
-✅ Task complete. Add more todos or type "verify"?
+                          TASK COMPLETE
 ═══════════════════════════════════════════════════════════════════════
 
-User: "Also fix the footer alignment"
+✅ Add loading spinner to submit button
 
-Builder:
-3. [build] Creating todo, running @developer...
-   ✅ Developer completed: Modified Footer.tsx
-   ✅ Todo marked complete
+Quality checks:
+  ✅ Typecheck: passed
+  ✅ Lint: passed
+  ✅ Unit tests: 2 generated, all passing
+  ✅ Critic: no issues
 
-═══════════════════════════════════════════════════════════════════════
-✅ 2 tasks complete. Add more todos or type "verify"?
-═══════════════════════════════════════════════════════════════════════
-
-User: "verify"
-
-Builder:
-4. [unit-tests] Generating unit tests (@tester)...
-   ✅ Generated: SubmitButton.test.tsx, Footer.test.tsx
-
-5. [typecheck] Running typecheck...
-   ✅ No type errors
-
-6. [lint] Running lint...
-   ✅ No lint errors
-
-7. [unit-tests] Running unit tests...
-   ✅ 8 tests passed
-
-8. [critic] Running @critic...
-   ✅ No issues found
-
-9. [e2e-tests] Generating E2E tests (@playwright-dev)...
-   ✅ Generated: e2e/spinner.spec.ts, e2e/footer.spec.ts
-
-═══════════════════════════════════════════════════════════════════════
-                          TESTS GENERATED
-═══════════════════════════════════════════════════════════════════════
-
-✅ Unit tests: 2 generated, all passing
-✅ Typecheck: passed
-✅ Lint: passed
-✅ Critic: no issues
-
-📝 E2E tests queued:
-   • e2e/spinner.spec.ts
-   • e2e/footer.spec.ts
+Changed files: 2 (SubmitButton.tsx, SubmitButton.css)
 
 Options:
-   [T] Run E2E tests now (then ship)
-   [W] Keep working (tests stay queued for later)
+  [E] Write E2E tests (Playwright automated UI testing)
+  [C] Commit this change
+  [N] Next task (add more work)
 
 > _
 ═══════════════════════════════════════════════════════════════════════
 
-User: "T"
+User: "N"  (next task)
+User: "Also fix the footer alignment"
 
 Builder:
-10. [dev-server] Starting dev server on port 4000...
-    ✅ Server ready
+4. [build] Creating todo, running @developer...
+   ✅ Developer completed: Modified Footer.tsx
 
-11. [e2e] Running E2E tests...
-    ✅ 2 tests passed
+5. [quality] Running automatic quality checks...
+   ✅ Typecheck: passed
+   ✅ Lint: passed
+   ✅ Unit tests: 1 generated, all passing
+   ✅ Critic: no issues
 
 ═══════════════════════════════════════════════════════════════════════
-✅ All tests passed. Ship now? (y/n)
+                          TASK COMPLETE
 ═══════════════════════════════════════════════════════════════════════
 
-User: "y"
+✅ Fix footer alignment
+
+Quality checks:
+  ✅ Typecheck: passed
+  ✅ Lint: passed
+  ✅ Unit tests: 1 generated, all passing
+  ✅ Critic: no issues
+
+Changed files: 1 (Footer.tsx)
+
+Options:
+  [E] Write E2E tests (Playwright automated UI testing)
+  [C] Commit this change
+  [N] Next task (add more work)
+
+> _
+═══════════════════════════════════════════════════════════════════════
+
+User: "E"  (write E2E tests)
 
 Builder:
-12. [commit] Committing on adhoc/2026-02-20...
-    ✅ Committed: "feat: Add loading spinner, fix footer alignment"
+6. [e2e-gen] Generating E2E tests (@playwright-dev)...
+   ✅ Generated: e2e/footer.spec.ts
 
-13. [merge] Merging to main...
+📝 E2E tests generated:
+   • e2e/footer.spec.ts
+
+[R] Run E2E tests now
+[S] Save for later (queue tests, continue working)
+
+> _
+
+User: "R"  (run now)
+
+Builder:
+7. [dev-server] Starting dev server on port 4000...
+   ✅ Server ready
+
+8. [e2e] Running E2E tests...
+   ✅ 1 test passed
+
+═══════════════════════════════════════════════════════════════════════
+                          TASK COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+✅ Fix footer alignment
+
+All checks passed:
+  ✅ Quality checks: passed
+  ✅ E2E tests: 1 passed
+
+Options:
+  [C] Commit this change
+  [N] Next task (add more work)
+
+> _
+═══════════════════════════════════════════════════════════════════════
+
+User: "C"  (commit)
+
+Builder:
+9. [commit] Committing changes...
+   ✅ Committed: "feat: Add loading spinner, fix footer alignment"
+
+═══════════════════════════════════════════════════════════════════════
+                          COMMIT COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+✅ Committed: feat: Add loading spinner, fix footer alignment
+
+Push to remote? [Y/n]
+
+> _
+═══════════════════════════════════════════════════════════════════════
+
+User: "Y"
+
+Builder:
+10. [merge] Merging to main...
     ✅ Merged adhoc/2026-02-20 → main
 
-14. [push] Pushing main to GitHub...
+11. [push] Pushing main to GitHub...
     ✅ Pushed to origin/main
 
-15. [cleanup] Cleaning up...
+12. [cleanup] Cleaning up...
     ✅ Deleted branch adhoc/2026-02-20
     ✅ Report saved to docs/completed/adhoc/adhoc-2026-02-20-spinner-footer.md
 

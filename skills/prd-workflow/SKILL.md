@@ -209,6 +209,23 @@ Only prompt users for policy overrides, not routine generation/refresh.
 
 For each story in priority order:
 
+### Per-Story Quality Checks (MANDATORY)
+
+> ⛔ **Quality checks run automatically after EVERY story. No prompts, no skipping.**
+>
+> This behavior is defined in the `test-flow` skill and applies to both ad-hoc and PRD modes.
+
+After @developer completes each story, Builder automatically runs:
+
+1. **Typecheck** — `npm run typecheck` (or project equivalent)
+2. **Lint** — `npm run lint` (or project equivalent)
+3. **Unit tests** — Auto-generate with @tester, then run
+4. **Critic** — Run @critic for code review (batched per `criticMode` setting)
+
+If any check fails, Builder runs a fix loop (max 3 attempts). If still failing, STOP and report to user.
+
+**After all checks pass**, Builder continues to the next story (or shows completion prompt if E2E is offered).
+
 ### Step 1: Implement the Story
 
 0. **Credential gate before implementation:**
@@ -258,13 +275,15 @@ For each story in priority order:
 
 ### Step 2: Automatic Testing After Story (US-003)
 
+> ⚠️ **Quality checks already ran above. This step handles E2E test generation and deferral.**
+
 Use `test-flow` as the canonical source for all test behavior.
 
 1. Read effective story intensity from `builder-state.json` (`activePrd.storyAssessments[storyId].effective`).
-2. Execute **PRD Mode Test Flow (US-003)** from `test-flow` after each story.
+2. Execute **PRD Mode Test Flow (US-003)** from `test-flow` for E2E handling.
 3. Do not duplicate test logic here. Follow `test-flow` for:
-   - Per-story behavior based on effective intensity (`low|medium|high|critical`)
-   - Rigor profile and policy resolution
+   - E2E test generation based on story intensity
+   - E2E deferral to PRD completion (default behavior)
    - Retry/fix loops and failure handling
    - `builder-state.json` updates for queued tests
 4. After test-flow completes for the story, update `activePrd.storiesCompleted` and continue.
