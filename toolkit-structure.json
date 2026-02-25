@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-02-26T02:30:00Z",
+  "generatedAt": "2026-02-25T19:44:11Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 63,
@@ -349,7 +349,7 @@
     }
   },
   "skills": {
-    "total": 34,
+    "total": 41,
     "categories": {
       "workflow": {
         "description": "Workflow and lifecycle skills",
@@ -525,6 +525,31 @@
         "description": "Utility and specialty skills",
         "skills": [
           {
+            "name": "auth-generic",
+            "path": "skills/auth-generic/SKILL.md",
+            "description": "Generic/custom authentication implementation for any provider. Use when project uses custom auth or unsupported provider. Triggers on: custom auth, generic login, auth-generic."
+          },
+          {
+            "name": "auth-headless",
+            "path": "skills/auth-headless/SKILL.md",
+            "description": "Headless authentication using API calls and session injection. Skips UI login for faster tests. Triggers on: headless auth, skip login ui, inject session, auth-headless."
+          },
+          {
+            "name": "auth-nextauth-credentials",
+            "path": "skills/auth-nextauth-credentials/SKILL.md",
+            "description": "NextAuth credentials (email/password) authentication for AI agents. Triggers on: nextauth login, nextauth credentials, auth-nextauth-credentials."
+          },
+          {
+            "name": "auth-supabase-otp",
+            "path": "skills/auth-supabase-otp/SKILL.md",
+            "description": "Supabase passwordless OTP authentication for AI agents. Handles magic link and email code flows. Triggers on: supabase otp, supabase magic link, auth-supabase-otp."
+          },
+          {
+            "name": "auth-supabase-password",
+            "path": "skills/auth-supabase-password/SKILL.md",
+            "description": "Supabase email/password authentication for AI agents. Triggers on: supabase password, supabase email login, auth-supabase-password."
+          },
+          {
             "name": "browser-debugging",
             "path": "skills/browser-debugging/SKILL.md",
             "description": "Browser debugging escalation protocol for when tests pass but the feature doesn't work in the user's browser. Triggers on: tests pass but doesn't work, feature broken in browser, works in playwright but not browser, console screenshot, browser debugging."
@@ -543,6 +568,16 @@
             "name": "merge-conflicts",
             "path": "skills/merge-conflicts/SKILL.md",
             "description": "Resolve merge conflicts on a pull request by merging the target branch into the source branch and fixing conflicts. Use when a PR has merge conflicts, a branch needs to be updated, or when asked to fix conflicts. Triggers on: fix merge conflicts, resolve conflicts, merge conflicts on PR, update branch, rebase PR."
+          },
+          {
+            "name": "setup-auth",
+            "path": "skills/setup-auth/SKILL.md",
+            "description": "Interactive authentication configuration for AI agents. Scans codebase for auth providers, walks through configuration options, and writes to project.json. Triggers on: setup auth, configure authentication, /setup-auth, auth config."
+          },
+          {
+            "name": "test-user-cleanup",
+            "path": "skills/test-user-cleanup/SKILL.md",
+            "description": "Clean up dynamically created test users from the database. Prevents test user accumulation. Triggers on: cleanup test users, delete test accounts, test-user-cleanup."
           }
         ]
       }
@@ -769,30 +804,108 @@
     "generatedFrom": "git log --since=30 days",
     "entries": [
       {
-        "date": "2026-02-26",
+        "date": "2026-02-25",
         "changes": [
+          {
+            "type": "feat",
+            "scope": "auth",
+            "description": "add inline auth setup flow to Builder - checks for auth config before auth-dependent tasks",
+            "hash": "535b51c"
+          },
+          {
+            "type": "feat",
+            "scope": "auth",
+            "description": "add setup-auth skill for interactive auth configuration",
+            "hash": "3bb8790"
+          },
+          {
+            "type": "feat",
+            "scope": "auth",
+            "description": "add session reuse support to auth skills",
+            "hash": "483ce24"
+          },
+          {
+            "type": "docs",
+            "scope": "auth",
+            "description": "add authentication configuration documentation",
+            "hash": "6962b24"
+          },
+          {
+            "type": "feat",
+            "scope": "auth",
+            "description": "update E2E testing agents to use auth config",
+            "hash": "e3b6d90"
+          },
+          {
+            "type": "feat",
+            "scope": "auth",
+            "description": "update screenshot skill to use auth config",
+            "hash": "32d1db0"
+          },
+          {
+            "type": "feat",
+            "scope": "auth",
+            "description": "add auth-headless skill for fast E2E tests",
+            "hash": "6fbe789"
+          },
+          {
+            "type": "feat",
+            "scope": "auth",
+            "description": "add test-user-cleanup skill",
+            "hash": "3964d12"
+          },
+          {
+            "type": "feat",
+            "scope": "auth",
+            "description": "add auth-generic skill for custom auth systems",
+            "hash": "70e7416"
+          },
+          {
+            "type": "feat",
+            "scope": "auth",
+            "description": "add auth-nextauth-credentials skill",
+            "hash": "52a1931"
+          },
+          {
+            "type": "feat",
+            "scope": "auth",
+            "description": "add auth-supabase-password skill",
+            "hash": "0c21fd4"
+          },
+          {
+            "type": "feat",
+            "scope": "auth",
+            "description": "add authentication schema and auth-supabase-otp skill",
+            "hash": "de105ec"
+          },
+          {
+            "type": "feat",
+            "scope": "prd",
+            "description": "add project authentication configuration PRD",
+            "hash": "a661384"
+          },
           {
             "type": "fix",
             "scope": "skills",
-            "description": "constrain screenshot height to 4000px to avoid Claude vision API rejection (8000px limit)",
-            "hash": "f65c2f8"
+            "description": "constrain screenshot height to 4000px for Claude vision API",
+            "hash": "606cce5"
           },
           {
             "type": "fix",
             "scope": "agents",
-            "description": "fix critic collision bug - critics now return findings to parent instead of writing to shared docs/review.md",
+            "description": "critics return findings to parent instead of writing to shared docs/review.md",
             "hash": "68ccfff"
           },
           {
             "type": "feat",
             "scope": "config",
-            "description": "add codeRoot and toolkitPath to projects.json for configurable directory structure",
-            "hash": "9c8bde2"
+            "description": "add codeRoot and toolkitPath for configurable directory structure",
+            "hash": "5be28d0"
           },
           {
             "type": "fix",
             "scope": "agents",
-            "description": "extend autoCommit enforcement to all commit locations (prd-impact-analyzer, merge-conflicts, public-page, project-scaffold)",
+            "description": "extend autoCommit enforcement to all commit locations",
             "hash": "c07f25f"
           },
           {
@@ -800,12 +913,7 @@
             "scope": "agents",
             "description": "add hardened identity locks and intent mismatch detection to prevent role drift after compaction",
             "hash": "0ad247f"
-          }
-        ]
-      },
-      {
-        "date": "2026-02-25",
-        "changes": [
+          },
           {
             "type": "feat",
             "scope": "schema",
@@ -819,58 +927,22 @@
             "hash": "e76474e"
           },
           {
-            "type": "feat",
+            "type": "fix",
             "scope": "skills",
-            "description": "add git-sync skill for team synchronization across multiple machines",
-            "hash": "869b5fe"
-          },
-          {
-            "type": "feat",
-            "scope": "agents",
-            "description": "add team sync (auto pull/push) to planner, builder, and toolkit agents",
-            "hash": "869b5fe"
-          },
-          {
-            "type": "feat",
-            "scope": "schema",
-            "description": "add git.teamSync configuration to project schema",
-            "hash": "869b5fe"
+            "description": "kill orphaned dev server processes on timeout/failure",
+            "hash": "f68cfa2"
           },
           {
             "type": "fix",
             "scope": "agents",
-            "description": "add CI mode enforcement to prevent orphaned test processes (Vitest/Jest watch mode)",
-            "hash": "d42084c"
-          },
-          {
-            "type": "feat",
-            "scope": "agents",
-            "description": "add visual debugging escalation protocol to builder and developer agents",
-            "hash": "a912bfc"
-          },
-          {
-            "type": "feat",
-            "scope": "skills",
-            "description": "enhance browser-debugging skill with explicit escalation triggers",
-            "hash": "a912bfc"
-          },
-          {
-            "type": "fix",
-            "scope": "skills",
-            "description": "add automatic dependency recovery to start-dev-server skill for model consistency",
-            "hash": "0435dc8"
-          },
-          {
-            "type": "fix",
-            "scope": "agents",
-            "description": "add comprehensive CI=true enforcement across all test command examples and agent templates",
+            "description": "add comprehensive CI=true enforcement to prevent orphaned test processes",
             "hash": "d0c8512"
           },
           {
             "type": "fix",
             "scope": "skills",
-            "description": "kill orphaned dev server processes on timeout/failure in start-dev-server skill",
-            "hash": "f68cfa2"
+            "description": "add automatic dependency recovery to start-dev-server skill",
+            "hash": "0435dc8"
           }
         ]
       },
