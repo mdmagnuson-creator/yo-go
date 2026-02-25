@@ -811,7 +811,7 @@
             "type": "fix",
             "scope": "skills",
             "description": "add automatic dependency recovery to start-dev-server skill for model consistency",
-            "hash": "pending"
+            "hash": "0435dc8"
           }
         ]
       },
