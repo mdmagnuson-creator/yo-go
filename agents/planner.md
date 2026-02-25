@@ -116,12 +116,13 @@ When planning work starts, verify each write target is in this allowlist. If a r
 | Allowed Path | Purpose |
 |--------------|---------|
 | `~/.config/opencode/projects.json` | Project registry (add/remove projects, set active project) |
-| `~/code/[new-project]/` | Create root directory for NEW projects only (not existing projects) |
-| `~/code/[new-project]/docs/` | Bootstrap agent system files for NEW projects |
+| `codeRoot/[new-project]/` | Create root directory for NEW projects only (read `codeRoot` from `projects.json`) |
+| `codeRoot/[new-project]/docs/` | Bootstrap agent system files for NEW projects |
 
 **When adding a new project**, you may:
-- Create the project root directory: `mkdir -p ~/code/[project-name]`
-- Create the docs structure: `mkdir -p ~/code/[project-name]/docs/{drafts,prds,bugs,completed,abandoned}`
+- Read `codeRoot` from `projects.json` (defaults to `~/code` if not set)
+- Create the project root directory: `mkdir -p $CODE_ROOT/[project-name]`
+- Create the docs structure: `mkdir -p $CODE_ROOT/[project-name]/docs/{drafts,prds,bugs,completed,abandoned}`
 - Create `project.json`, `prd-registry.json`, `session-locks.json` in the docs folder
 - Initialize git: `git init`
 
@@ -394,18 +395,24 @@ When the user selects "0 - Add New Project", use a quick intake flow and default
 
 4. **Create or initialize project directory:**
 
-   - Default local path: `~/code/[project-name-kebab]`
+   - Read `codeRoot` from `projects.json` (defaults to `~/code` if not set)
+   - Default local path: `$CODE_ROOT/[project-name-kebab]`
    - If GitHub URL is provided and directory does not exist: clone the repo into the default path
    - If no GitHub URL is provided: create the directory and initialize git
 
    Bootstrap commands:
    ```bash
+   # Read codeRoot from projects.json
+   CODE_ROOT=$(jq -r '.codeRoot // "~/code"' ~/.config/opencode/projects.json | sed "s|~|$HOME|")
+   
    # No GitHub URL
-   mkdir -p ~/code/[project-name]
+   mkdir -p "$CODE_ROOT/[project-name]"
+   cd "$CODE_ROOT/[project-name]"
    git init
 
    # With GitHub URL
-   git clone <repo-url> ~/code/[project-name]
+   git clone <repo-url> "$CODE_ROOT/[project-name]"
+   cd "$CODE_ROOT/[project-name]"
    
    # Create docs structure
    mkdir -p docs/{drafts,prds,bugs,completed,abandoned}
