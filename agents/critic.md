@@ -140,7 +140,7 @@ The toolkit has three security-related critics with different mindsets. Route ba
 - **Any toolkit governance files** (`agents/toolkit.md`, `agents/builder.md`, `agents/planner.md`, `toolkit-structure.json`, `README.md`, `project-updates/**/*.md`, `scripts/validate-*.sh`) → run @handoff-contract-critic and @policy-testability-critic
 - **Any changes to `project-updates/**/*.md`** → run @update-schema-critic
 - **Any changes to toolkit governance artifacts** (`toolkit-structure.json`, `README.md`, `agents/toolkit.md`, `project-updates/toolkit-website/*.md`) → run @workflow-enforcement-critic
-- **Any UI styling changes** (`.tsx`, `.jsx`, `.vue`, `.svelte` files with `className` or style props, OR `.css`, `.scss` files) → run @aesthetic-critic with parameter `severity_threshold: critical_only`. This captures screenshots and checks visual consistency. Only Critical issues go to `docs/review.md`; Warnings go to `docs/aesthetic-notes.md` for the post-completion polish phase.
+- **Any UI styling changes** (`.tsx`, `.jsx`, `.vue`, `.svelte` files with `className` or style props, OR `.css`, `.scss` files) → run @aesthetic-critic with parameter `severity_threshold: critical_only`. This captures screenshots and checks visual consistency. Only Critical issues are returned for consolidation; Warnings go to `docs/aesthetic-notes.md` for the post-completion polish phase.
 - **Any pages with diagrams, flows, or sequential visualizations** (components rendering process steps, workflow diagrams, timelines, numbered sequences with arrows) → run @semantic-critic. This validates that visual representations match their logical intent (arrows follow numbered order, steps are in sensible sequence, etc.).
 - **Always** (if there is a `docs/prd.json` or `docs/prd.md`) → run @requirements-critic
 - **Always** (if source code files changed, not just config/markdown) → run @comment-critic
@@ -148,10 +148,18 @@ The toolkit has three security-related critics with different mindsets. Route ba
 
 ### Phase 3: Run Critics and Consolidate
 
-1. Run all applicable critics in parallel (language critics and cross-cutting critics can run concurrently)
-2. **After all critics finish**, read all `docs/review.md` files (each critic overwrites it)
-3. Consolidate all findings into a single `docs/review.md` with all findings combined under the same format (Critical Issues, Warnings, Suggestions, What's Done Well)
-4. Deduplicate findings that overlap between critics
+1. Run all applicable critics in parallel using the Task tool
+2. **Critics return findings in their response** — they do NOT write to files
+3. Collect all findings from critic responses
+4. Consolidate into a single `docs/review.md` with sections:
+   - Critical Issues (from all critics, deduplicated)
+   - Warnings (from all critics, deduplicated)
+   - Suggestions (from all critics, deduplicated)
+   - What's Done Well (merged highlights)
+5. Prefix each finding with the critic name, e.g., `[frontend-critic]` or `[security-critic]`
+6. Deduplicate findings that overlap between critics (same file:line, similar issue)
+
+**Important:** You (the orchestrator) are the ONLY agent that writes to `docs/review.md`. Specialist critics return their findings to you.
 
 ## Routing Heuristics
 

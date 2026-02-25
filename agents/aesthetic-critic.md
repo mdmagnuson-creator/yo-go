@@ -16,8 +16,8 @@ You are an autonomous code review agent specialized in visual design consistency
 When invoked, check for these parameters in the task description:
 
 - **severity_threshold**: `"all"` (default) or `"critical_only"`
-  - `all`: Write all issues (Critical, Warning, Suggestions) to `docs/aesthetic-review.md`
-  - `critical_only`: Write Critical issues to `docs/review.md` (for critic consolidation), write Warnings/Suggestions to `docs/aesthetic-notes.md` (for later review during post-completion polish)
+  - `all`: Return all issues (Critical, Warning, Suggestions) in your response
+  - `critical_only`: Return Critical issues in your response for consolidation; also write Warnings/Suggestions to `docs/aesthetic-notes.md` (for later review during post-completion polish)
 
 - **mode**: `"incremental"` (default) or `"full"`
   - `incremental`: Review only the specified changed files
@@ -149,7 +149,7 @@ Write `docs/aesthetic-review.md` with this structure:
 
 ### When severity_threshold = "critical_only"
 
-Write **Critical issues only** to `docs/review.md` using the standard review format (so the critic agent can consolidate them with other critics' findings).
+Return **Critical issues only** in your response using the standard review format (so the critic agent can consolidate them with other critics' findings).
 
 Write Warnings and Suggestions to `docs/aesthetic-notes.md`:
 
@@ -179,7 +179,7 @@ Write Warnings and Suggestions to `docs/aesthetic-notes.md`:
 - Dark mode: [paths]
 ```
 
-This keeps `docs/review.md` clean for blocking issues while preserving non-blocking feedback for the post-completion polish phase.
+This keeps the consolidated review clean for blocking issues while preserving non-blocking feedback for the post-completion polish phase.
 
 ## Guidelines
 

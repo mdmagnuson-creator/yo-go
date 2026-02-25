@@ -37,7 +37,7 @@ Body sections:
 
 ## Output Format
 
-Write `docs/review.md` with Critical Issues, Warnings, Suggestions, and What's Done Well.
+Return your findings with Critical Issues, Warnings, Suggestions, and What's Done Well.
 
 ## Autonomy Rules
 
@@ -47,5 +47,5 @@ Write `docs/review.md` with Critical Issues, Warnings, Suggestions, and What's D
 
 ## Stop Condition
 
-After writing `docs/review.md`, reply with:
+After returning your findings, reply with:
 <promise>COMPLETE</promise>

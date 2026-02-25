@@ -29,7 +29,7 @@ You are an autonomous governance critic for cross-agent ownership rules in the y
 
 ## Output
 
-Write `docs/review.md` with:
+Return your findings with:
 - Critical Issues
 - Warnings
 - Suggestions
@@ -43,5 +43,5 @@ Write `docs/review.md` with:
 
 ## Stop Condition
 
-After writing `docs/review.md`, reply with:
+After returning your findings, reply with:
 <promise>COMPLETE</promise>
