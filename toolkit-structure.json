@@ -770,7 +770,7 @@
             "type": "fix",
             "scope": "agents",
             "description": "add CI mode enforcement to prevent orphaned test processes (Vitest/Jest watch mode)",
-            "hash": "pending"
+            "hash": "d42084c"
           },
           {
             "type": "feat",
