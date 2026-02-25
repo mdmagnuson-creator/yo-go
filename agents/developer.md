@@ -306,25 +306,96 @@ APPEND to `docs/progress.txt` (never replace):
 
 ### Root Cause Analysis (MANDATORY)
 
-> ⛔ **Before implementing ANY fix, ask: "Why is this happening?"**
+> ⛔ **Before implementing ANY fix, diagnose the root cause FIRST.**
 >
-> Band-aid fixes create technical debt and hide real bugs.
+> Do NOT attempt fixes until you understand WHY the problem exists.
+> Band-aid fixes create technical debt, hide real bugs, and waste user time.
 
-**Never use these patterns without understanding why they're needed:**
+#### Step 1: Understand Expected vs Actual
 
-| Band-Aid Pattern | Ask Instead |
-|------------------|-------------|
-| `setTimeout`/delays | Why isn't the event/state ready? Wait for the actual signal. |
-| z-index increments | Why is stacking wrong? Fix DOM order or stacking context. |
-| `!important` | Why isn't specificity working? Fix the cascade. |
-| Magic pixel offsets | Why is layout broken? Fix the layout relationship. |
-| Boolean flags for async | Why is timing wrong? Use proper async patterns. |
-| Swallowing errors | Why is this erroring? Handle the actual failure. |
+Before touching code, be clear on:
+- **What should happen?** (e.g., "tabs should be in a horizontal row")
+- **What is happening?** (e.g., "tabs are stacking vertically")
 
-**If you catch yourself reaching for a band-aid:**
-1. Stop and investigate the root cause
-2. Document why the symptom exists
-3. Fix the underlying issue, not the symptom
+If unclear, ask clarifying questions before proceeding.
+
+#### Step 2: Identify the Affected Element/Code
+
+1. Identify the specific element, component, or code path involved
+2. Find the source file that renders/implements it
+3. Find ALL related files (CSS, parent components, shared utilities)
+
+#### Step 3: Trace the Problem (UI/CSS Issues)
+
+Before editing ANY CSS:
+
+1. **Search for ALL occurrences** of the selector:
+   ```bash
+   grep -rn "\.selector-name" src/
+   ```
+
+2. **Check for cascade conflicts** — later rules override earlier ones in the same file
+
+3. **Check for duplicate rules** — the same selector may appear multiple times
+
+4. **Check for specificity conflicts** — more specific selectors win
+
+5. **Check parent constraints** — parent elements may force layout on children
+
+#### Step 4: Trace the Problem (Component/Logic Issues)
+
+For non-CSS issues:
+
+1. **Read the component hierarchy** — parent components may constrain children
+2. **Check conditional rendering** — wrong branch may be executing
+3. **Check props/state values** — log them, don't assume
+4. **Check data flow** — trace where values come from
+
+#### Step 5: Form a Hypothesis BEFORE Fixing
+
+State explicitly:
+- "The root cause is [X]"
+- "Evidence: [what you found in steps 3-4]"
+- "The fix is [specific single change]"
+
+#### Step 6: Make ONE Targeted Fix
+
+- Make ONE change that addresses the root cause
+- Do NOT shotgun multiple changes hoping one works
+- If the fix doesn't work, return to Step 3 — you missed something
+
+### Band-Aid Pattern Detection
+
+**STOP and reconsider** if your fix involves:
+
+| Band-Aid Pattern | What It Masks | Ask Instead |
+|------------------|---------------|-------------|
+| `setTimeout`/delays | Timing/race condition | What signal should I wait for? |
+| z-index increments | Stacking context issue | Why is stacking wrong? Use portal? |
+| `!important` | Specificity conflict | Why isn't the cascade working? |
+| Magic pixel values | Layout relationship broken | What flexbox/grid is misconfigured? |
+| `overflow: hidden` | Content overflow | Why is content overflowing? |
+| Boolean flags for races | Async flow issue | What's the correct async pattern? |
+| Swallowing errors | Unhandled failure | What error am I hiding? |
+| `pointer-events: none` | Event/z-index issue | Why isn't the element receiving events? |
+
+### Common UI Root Cause Patterns
+
+| Symptom | Likely Causes | What to Check |
+|---------|---------------|---------------|
+| Elements stacking wrong | `flex-direction`, `display` | All CSS rules for that class |
+| Elements overflowing | Missing `overflow`, `min-width: 0` | Parent container constraints |
+| Elements not visible | `display: none`, `opacity`, z-index | Computed styles, parent visibility |
+| Styles not applying | Duplicate rules, specificity, typos | All occurrences of selector |
+| Layout breaking at edges | Missing `flex-shrink`, `flex-wrap` | Flexbox properties on ancestors |
+
+### Anti-Patterns
+
+- ❌ Editing the first CSS rule you find without checking for duplicates
+- ❌ Making multiple speculative changes in one edit
+- ❌ Assuming CSS properties are set correctly without verifying
+- ❌ Fixing symptoms instead of root causes
+- ❌ Adding `overflow: hidden` without knowing why content overflows
 
 ---
 
