@@ -362,6 +362,109 @@ If your app uses a different OTP input pattern, configure custom selectors:
 
 ---
 
+## Session Reuse
+
+When `authentication.reuseSession` is `true`, save and reuse auth state across tests:
+
+### Save Auth State After Login
+
+```typescript
+import { BrowserContext } from 'playwright';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const AUTH_STATE_FILE = '.tmp/auth-state.json';
+
+async function saveAuthState(context: BrowserContext): Promise<void> {
+  const state = await context.storageState();
+  fs.mkdirSync(path.dirname(AUTH_STATE_FILE), { recursive: true });
+  fs.writeFileSync(AUTH_STATE_FILE, JSON.stringify(state, null, 2));
+  console.log(`Auth state saved to ${AUTH_STATE_FILE}`);
+}
+
+async function loadAuthState(context: BrowserContext): Promise<boolean> {
+  if (!fs.existsSync(AUTH_STATE_FILE)) {
+    return false;
+  }
+  
+  try {
+    const state = JSON.parse(fs.readFileSync(AUTH_STATE_FILE, 'utf-8'));
+    // Check if state is still valid (not expired)
+    // For Supabase, check cookie expiry
+    const now = Date.now() / 1000;
+    const isExpired = state.cookies?.some((c: any) => 
+      c.name.includes('auth') && c.expires && c.expires < now
+    );
+    
+    if (isExpired) {
+      console.log('Saved auth state expired, will re-authenticate');
+      fs.unlinkSync(AUTH_STATE_FILE);
+      return false;
+    }
+    
+    // Load cookies into context
+    await context.addCookies(state.cookies || []);
+    console.log('Loaded auth state from cache');
+    return true;
+  } catch (error) {
+    console.warn('Failed to load auth state:', error);
+    return false;
+  }
+}
+```
+
+### Usage in Tests
+
+```typescript
+async function getAuthenticatedContext(browser: Browser): Promise<BrowserContext> {
+  const config = loadAuthConfig(PROJECT_ROOT);
+  const context = await browser.newContext();
+  
+  // Try to load cached state first
+  if (config.reuseSession) {
+    const loaded = await loadAuthState(context);
+    if (loaded) {
+      // Verify session is still valid by checking a protected page
+      const page = await context.newPage();
+      await page.goto(`${BASE_URL}${config.routes?.authenticated || '/dashboard'}`);
+      
+      // If we're still on the authenticated page (not redirected to login), we're good
+      if (!page.url().includes(config.routes?.login || '/login')) {
+        await page.close();
+        return context;
+      }
+      await page.close();
+      console.log('Cached session invalid, re-authenticating');
+    }
+  }
+  
+  // Authenticate fresh
+  const page = await context.newPage();
+  await authenticateWithSupabaseOTP(page, BASE_URL, PROJECT_ROOT);
+  
+  // Save state for reuse
+  if (config.reuseSession) {
+    await saveAuthState(context);
+  }
+  
+  return context;
+}
+```
+
+### Clear State at Test Run Start
+
+```typescript
+// In playwright.config.ts globalSetup or test setup
+function clearAuthState(): void {
+  if (fs.existsSync(AUTH_STATE_FILE)) {
+    fs.unlinkSync(AUTH_STATE_FILE);
+    console.log('Cleared cached auth state');
+  }
+}
+```
+
+---
+
 ## Integration with Other Skills
 
 This skill is used by:

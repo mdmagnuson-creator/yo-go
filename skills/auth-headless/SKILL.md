@@ -536,7 +536,168 @@ For maximum speed, combine headless auth with session reuse:
 }
 ```
 
-See `auth-session-reuse` patterns in other auth skills for state file management.
+### Session Reuse Implementation
+
+```typescript
+import { BrowserContext, Browser } from 'playwright';
+import * as fs from 'fs';
+
+const AUTH_STATE_FILE = '.tmp/auth-state.json';
+
+interface AuthState {
+  cookies: Array<{
+    name: string;
+    value: string;
+    domain: string;
+    path: string;
+    expires?: number;
+  }>;
+  localStorage?: Record<string, string>;
+  createdAt: number;
+}
+
+async function saveAuthState(
+  context: BrowserContext,
+  baseUrl: string
+): Promise<void> {
+  const state: AuthState = {
+    cookies: await context.cookies(),
+    createdAt: Date.now(),
+  };
+  
+  // Also save localStorage if headless injected tokens there
+  const page = await context.newPage();
+  await page.goto(baseUrl);
+  state.localStorage = await page.evaluate(() => {
+    const items: Record<string, string> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.includes('auth')) {
+        items[key] = localStorage.getItem(key) || '';
+      }
+    }
+    return items;
+  });
+  await page.close();
+  
+  fs.mkdirSync('.tmp', { recursive: true });
+  fs.writeFileSync(AUTH_STATE_FILE, JSON.stringify(state, null, 2));
+  console.log('Saved headless auth state for reuse');
+}
+
+async function loadAuthState(
+  context: BrowserContext,
+  baseUrl: string
+): Promise<boolean> {
+  if (!fs.existsSync(AUTH_STATE_FILE)) {
+    return false;
+  }
+  
+  try {
+    const state: AuthState = JSON.parse(fs.readFileSync(AUTH_STATE_FILE, 'utf-8'));
+    const now = Date.now();
+    
+    // Check if state is too old (default 1 hour)
+    const maxAge = 60 * 60 * 1000;
+    if (now - state.createdAt > maxAge) {
+      console.log('Cached auth state expired');
+      fs.unlinkSync(AUTH_STATE_FILE);
+      return false;
+    }
+    
+    // Check if cookies are expired
+    const nowSec = now / 1000;
+    const hasExpiredCookies = state.cookies.some(
+      c => c.expires && c.expires < nowSec
+    );
+    if (hasExpiredCookies) {
+      console.log('Auth cookies expired');
+      fs.unlinkSync(AUTH_STATE_FILE);
+      return false;
+    }
+    
+    // Load cookies
+    await context.addCookies(state.cookies);
+    
+    // Load localStorage if present
+    if (state.localStorage && Object.keys(state.localStorage).length > 0) {
+      const page = await context.newPage();
+      await page.goto(baseUrl);
+      await page.evaluate((items) => {
+        for (const [key, value] of Object.entries(items)) {
+          localStorage.setItem(key, value);
+        }
+      }, state.localStorage);
+      await page.close();
+    }
+    
+    console.log('Loaded cached headless auth state');
+    return true;
+  } catch (error) {
+    console.warn('Failed to load auth state:', error);
+    return false;
+  }
+}
+
+async function getAuthenticatedContext(
+  browser: Browser,
+  baseUrl: string,
+  projectRoot: string
+): Promise<BrowserContext> {
+  const config = loadAuthConfig(projectRoot);
+  const context = await browser.newContext();
+  
+  // Try cached state first
+  if (config.reuseSession) {
+    const loaded = await loadAuthState(context, baseUrl);
+    if (loaded) {
+      // Quick validation: check we can access authenticated page
+      const page = await context.newPage();
+      await page.goto(`${baseUrl}${config.routes?.authenticated || '/dashboard'}`);
+      
+      const isAuthenticated = !page.url().includes(config.routes?.login || '/login');
+      await page.close();
+      
+      if (isAuthenticated) {
+        return context;
+      }
+      console.log('Cached state invalid, re-authenticating');
+    }
+  }
+  
+  // Perform headless auth
+  const result = await authenticateHeadless(context, baseUrl, projectRoot);
+  if (!result.success) {
+    throw new Error(`Headless auth failed: ${result.error}`);
+  }
+  
+  // Save for reuse
+  if (config.reuseSession) {
+    await saveAuthState(context, baseUrl);
+  }
+  
+  return context;
+}
+```
+
+### Performance Comparison with Session Reuse
+
+| Approach | First test | Subsequent tests |
+|----------|------------|------------------|
+| UI auth each test | ~3-5s | ~3-5s |
+| Headless each test | ~0.1-0.3s | ~0.1-0.3s |
+| Headless + reuse | ~0.1-0.3s | ~0.01s |
+
+### Clear State Between Runs
+
+```typescript
+// In globalSetup or beforeAll
+function clearAuthState(): void {
+  if (fs.existsSync(AUTH_STATE_FILE)) {
+    fs.unlinkSync(AUTH_STATE_FILE);
+  }
+}
+```
 
 ---
 

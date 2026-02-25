@@ -408,6 +408,103 @@ Choose email/password when:
 
 ---
 
+## Session Reuse
+
+When `authentication.reuseSession` is `true`, save and reuse auth state across tests for faster execution.
+
+### Configuration
+
+```json
+{
+  "authentication": {
+    "method": "email-password",
+    "provider": "supabase",
+    "reuseSession": true
+  }
+}
+```
+
+### Implementation
+
+```typescript
+import { BrowserContext, Browser } from 'playwright';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const AUTH_STATE_FILE = '.tmp/auth-state.json';
+
+async function saveAuthState(context: BrowserContext): Promise<void> {
+  const state = await context.storageState();
+  fs.mkdirSync(path.dirname(AUTH_STATE_FILE), { recursive: true });
+  fs.writeFileSync(AUTH_STATE_FILE, JSON.stringify(state, null, 2));
+  console.log(`Auth state saved to ${AUTH_STATE_FILE}`);
+}
+
+async function loadAuthState(context: BrowserContext): Promise<boolean> {
+  if (!fs.existsSync(AUTH_STATE_FILE)) {
+    return false;
+  }
+  
+  try {
+    const state = JSON.parse(fs.readFileSync(AUTH_STATE_FILE, 'utf-8'));
+    const now = Date.now() / 1000;
+    
+    // Check if auth cookies are expired
+    const isExpired = state.cookies?.some((c: any) => 
+      c.name.includes('auth') && c.expires && c.expires < now
+    );
+    
+    if (isExpired) {
+      console.log('Saved auth state expired');
+      fs.unlinkSync(AUTH_STATE_FILE);
+      return false;
+    }
+    
+    await context.addCookies(state.cookies || []);
+    console.log('Loaded cached auth state');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function getAuthenticatedContext(browser: Browser): Promise<BrowserContext> {
+  const config = loadAuthConfig(PROJECT_ROOT);
+  const context = await browser.newContext();
+  
+  if (config.reuseSession && await loadAuthState(context)) {
+    // Verify session is still valid
+    const page = await context.newPage();
+    await page.goto(`${BASE_URL}${config.routes?.authenticated || '/dashboard'}`);
+    
+    if (!page.url().includes(config.routes?.login || '/login')) {
+      await page.close();
+      return context; // Session is valid
+    }
+    await page.close();
+  }
+  
+  // Authenticate fresh
+  const page = await context.newPage();
+  await authenticateWithSupabasePassword(page, BASE_URL, PROJECT_ROOT);
+  
+  if (config.reuseSession) {
+    await saveAuthState(context);
+  }
+  
+  return context;
+}
+```
+
+### Performance Gain
+
+| Approach | Login time |
+|----------|------------|
+| Fresh login each test | ~2-3 seconds |
+| Session reuse | ~0 seconds |
+
+---
+
 ## Integration with Other Skills
 
 This skill is used by:
