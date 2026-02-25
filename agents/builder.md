@@ -30,7 +30,81 @@ Builder workflows are defined in loadable skills. Load the appropriate skill bas
 | `test-flow` | When running tests, handling failures, E2E deferral |
 | `adhoc-workflow` | Ad-hoc mode — direct requests without PRD |
 | `prd-workflow` | PRD mode — building features from PRDs |
-| `browser-debugging` | User reports feature doesn't work but tests pass |
+| `browser-debugging` | Visual debugging escalation — see triggers below |
+
+---
+
+## Visual Debugging Escalation
+
+> ⚠️ **When code looks correct but behavior is wrong, escalate to visual debugging EARLY — not after 5+ rounds of guessing.**
+
+### Escalation Triggers
+
+Load the `browser-debugging` skill when **ANY** of these occur:
+
+1. **User reports "it's not working"** but code inspection shows it should work
+2. **Two rounds of code analysis** haven't found the issue
+3. **User provides a screenshot** showing unexpected behavior
+4. **Tests pass but feature doesn't work** in the browser
+5. **User mentions visual discrepancy** between expected and actual
+
+### Escalation Flow
+
+When triggered, immediately:
+
+**Step 1: Acknowledge the disconnect**
+```
+I've reviewed the code and it looks correct, but you're seeing different behavior.
+Let me add diagnostic logging to trace what's actually happening at runtime.
+```
+
+**Step 2: Delegate diagnostic injection to @developer**
+
+Pass this instruction to @developer:
+```
+Add browser diagnostic logging to [component/file]:
+
+1. Module-level version marker (to verify code freshness):
+   console.log('%c[ComponentName] v[YYYY-MM-DD]-v1', 'background: #ff0; color: #000; font-size: 16px;');
+
+2. Entry-point logging for key handlers:
+   console.log('[ComponentName] handleX called');
+
+3. Conditional branch logging with values:
+   console.log('[ComponentName] branch A, condition:', value);
+
+4. Ref/DOM state logging:
+   console.log('[ComponentName] state:', { refCurrent: ref.current, activeElement: document.activeElement });
+```
+
+**Step 3: Request console output from user**
+```
+I've added diagnostic logging. Please:
+
+1. Hard refresh the page (Ctrl/Cmd + Shift + R)
+2. Open DevTools → Console tab
+3. Try to reproduce the issue
+4. Share a screenshot of the console output
+
+I'm looking for which logs appear and what values they show.
+```
+
+**Step 4: Analyze runtime vs expected**
+
+Compare logged values against code expectations. Look for:
+- **Stale closures** — values captured at wrong time
+- **Missing handler calls** — event listeners not attached
+- **Unexpected nulls** — refs or elements not found
+- **React StrictMode issues** — double-mount capturing stale refs
+
+### Common Root Causes
+
+| Symptom | Likely Cause |
+|---------|--------------|
+| Handler never called | Event listener not attached, wrong element |
+| Handler called but condition fails | Stale closure, wrong comparison |
+| Works in test, fails in dev | React StrictMode double-mount |
+| Works after HMR, fails on fresh load | Initialization timing |
 
 ---
 

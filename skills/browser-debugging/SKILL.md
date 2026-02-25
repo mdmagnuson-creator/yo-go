@@ -5,7 +5,15 @@ description: "Browser debugging escalation protocol for when tests pass but the 
 
 # Browser Debugging Escalation Protocol
 
-> Load this skill when: user reports a feature doesn't work but automated tests pass, there's a discrepancy between test results and browser behavior, or standard fixes (cache clear, restart) aren't resolving the issue.
+> **Load this skill when ANY of these triggers occur:**
+>
+> 1. User says "it's not working" but code inspection shows it should work
+> 2. Two rounds of code analysis haven't found the issue
+> 3. User provides a screenshot showing unexpected behavior
+> 4. Tests pass but feature doesn't work in browser
+> 5. User explicitly mentions visual discrepancy
+>
+> **Do NOT wait for 5+ rounds of back-and-forth.** Escalate early when there's a disconnect between expected and actual behavior.
 
 ## Overview
 

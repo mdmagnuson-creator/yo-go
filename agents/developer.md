@@ -317,6 +317,77 @@ If Playwright automation tools are unavailable, run local Playwright tests/scree
 
 ---
 
+## Diagnostic Logging for Browser Debugging
+
+When Builder reports "user says feature doesn't work but tests pass", add targeted console.log statements to help identify the issue. This is part of Builder's Visual Debugging Escalation protocol.
+
+### 1. Module-Level Version Marker
+
+Add at the top of the file (outside functions) to verify code freshness:
+
+```typescript
+// Temporary debug - remove after issue resolved
+console.log('%c[ComponentName] v2026-02-24-v1', 'background: #ff0; color: #000; font-size: 16px;');
+```
+
+Update the version string each time you modify the file during debugging.
+
+### 2. Handler Entry Logging
+
+Log when event handlers are called:
+
+```typescript
+const handleClick = useCallback(() => {
+  console.log('[ComponentName] handleClick called');
+  // ... rest of function
+}, [deps]);
+```
+
+### 3. Conditional Branch Logging
+
+Log which branches are taken and their conditions:
+
+```typescript
+if (someCondition) {
+  console.log('[ComponentName] branch A, condition:', someCondition);
+  // ...
+} else {
+  console.log('[ComponentName] branch B, condition:', someCondition);
+  // ...
+}
+```
+
+### 4. Ref/DOM State Logging
+
+Log ref values and DOM state at decision points:
+
+```typescript
+console.log('[ComponentName] state:', {
+  refCurrent: ref.current,
+  activeElement: document.activeElement,
+  matches: ref.current === document.activeElement
+});
+```
+
+### React StrictMode / Stale Closure Patterns
+
+Watch for these common issues:
+
+| Pattern | Problem | Fix |
+|---------|---------|-----|
+| `const el = ref.current` in closure | Captures value at mount time | Read `ref.current` at event time |
+| `useEffect` with missing deps | Closure captures stale state | Add deps or use ref |
+| Event listener in effect | First-mount listener survives double-mount | Use cleanup function properly |
+
+### Cleanup
+
+After resolving the issue:
+1. Remove all temporary `console.log` statements
+2. Remove version markers
+3. Document root cause in commit message
+
+---
+
 ## Screenshot Maintenance
 
 After completing UI stories:
