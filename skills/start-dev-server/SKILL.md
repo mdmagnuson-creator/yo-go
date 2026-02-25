@@ -48,7 +48,56 @@ cat "$projectPath/docs/project.json" | jq '{commands: .commands, devServer: .dev
 - Use `devPort` from projects.json (per-app default port)
 - Use `commands.dev` as the command
 
-### Step 3: Kill Existing Processes on Ports (Avoid Conflicts)
+### Step 3: Ensure Dependencies Are Installed (AUTOMATIC)
+
+> ⚠️ **CRITICAL: Do NOT ask for permission.** If dependencies are missing, install them automatically.
+> This step exists because different AI models handle missing dependencies inconsistently.
+> The correct behavior is: detect → install → continue. No confirmation needed.
+
+Before starting the server, verify dependencies are installed:
+
+```bash
+cd "$projectPath"
+
+# Detect package manager (check lock files)
+if [ -f "pnpm-lock.yaml" ]; then
+  PKG_MGR="pnpm"
+  INSTALL_CMD="pnpm install"
+elif [ -f "yarn.lock" ]; then
+  PKG_MGR="yarn"
+  INSTALL_CMD="yarn install"
+elif [ -f "bun.lockb" ]; then
+  PKG_MGR="bun"
+  INSTALL_CMD="bun install"
+elif [ -f "package-lock.json" ] || [ -f "package.json" ]; then
+  PKG_MGR="npm"
+  INSTALL_CMD="npm install"
+else
+  PKG_MGR=""
+fi
+
+# Check if node_modules exists and has content
+if [ -n "$PKG_MGR" ]; then
+  if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+    echo "Dependencies missing, running $INSTALL_CMD..."
+    $INSTALL_CMD
+    if [ $? -ne 0 ]; then
+      echo "ERROR: $INSTALL_CMD failed"
+      exit 1
+    fi
+    echo "Dependencies installed successfully"
+  fi
+fi
+```
+
+**Why automatic?** When a dev server fails with "command not found" (e.g., `next: command not found`), it means dependencies aren't installed. Asking the user adds friction and breaks autonomous workflows. Just install them.
+
+**What this handles:**
+- Fresh clones (no `node_modules/`)
+- Corrupted `node_modules/` (empty directory)
+- Switches between branches with different dependencies
+
+### Step 4: Kill Existing Processes on Ports (Avoid Conflicts)
 
 Before starting, check if ports are in use and kill existing processes:
 
@@ -66,7 +115,7 @@ done
 
 **Note:** This prevents the "port in use" error you encountered.
 
-### Step 4: Start the Dev Server(s)
+### Step 5: Start the Dev Server(s)
 
 ```bash
 cd "$projectPath"
@@ -95,7 +144,7 @@ done
 
 **Note:** Use `.tmp/` subdirectory (create if needed) to store PID files. This directory is gitignored and safe for temp files.
 
-### Step 5: Wait for Server Readiness
+### Step 6: Wait for Server Readiness
 
 ```bash
 # Wait for each service to be ready
@@ -133,7 +182,7 @@ for service in $services; do
 done
 ```
 
-### Step 6: Return Result
+### Step 7: Return Result
 
 On success, output:
 ```
@@ -229,15 +278,20 @@ services: web:3001, api:4105
 primary: web
 ```
 
-### Step 3: Kill existing on ports 3001, 4105
+### Step 3: Ensure dependencies
+```
+Dependencies installed successfully (or already present)
+```
 
-### Step 4: Start servers
+### Step 4: Kill existing on ports 3001, 4105
+
+### Step 5: Start servers
 ```
 Started web on port 3001 (PID: 12345)
 Started api on port 4105 (PID: 12346)
 ```
 
-### Step 5: Wait for ready
+### Step 6: Wait for ready
 ```
 web ready at http://localhost:3001
 api ready at http://localhost:4105/api/health
@@ -254,6 +308,8 @@ Dev servers ready:
 
 | Error | Cause | Resolution |
 |-------|-------|------------|
+| "command not found" (e.g., `next`, `vite`) | Dependencies not installed | Step 3 auto-installs; if still failing, check package.json |
+| "npm install failed" | Network or package issues | Check npm registry access, clear cache with `npm cache clean --force` |
 | "Port X in use" | Another process using the port | Kill existing process or change port in project.json |
 | "commands.dev not found" | No dev command configured | Add `commands.dev` or `services[].command` to project.json |
 | "Dev server failed to become ready" | Server didn't respond to health check | Check `healthCheck` path is correct |
