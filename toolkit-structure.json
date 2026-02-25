@@ -775,19 +775,19 @@
             "type": "feat",
             "scope": "skills",
             "description": "add git-sync skill for team synchronization across multiple machines",
-            "hash": "pending"
+            "hash": "869b5fe"
           },
           {
             "type": "feat",
             "scope": "agents",
             "description": "add team sync (auto pull/push) to planner, builder, and toolkit agents",
-            "hash": "pending"
+            "hash": "869b5fe"
           },
           {
             "type": "feat",
             "scope": "schema",
             "description": "add git.teamSync configuration to project schema",
-            "hash": "pending"
+            "hash": "869b5fe"
           },
           {
             "type": "fix",
