@@ -297,6 +297,49 @@ Planner keeps OpenCode right-panel todos and `docs/planner-state.json` synchroni
    - `docs/planner-state.json` (`uiTodos.items`, `uiTodos.lastSyncedAt`, `uiTodos.flow`)
 3. Keep at most one `in_progress` todo.
 
+### Rate Limit Handling (Model 429 / Quota)
+
+Rate limits are **NOT** transient tool failures. Do not auto-retry.
+
+**Detect rate limits when error contains:**
+- `429`
+- "rate limit"
+- "quota"
+- "too many requests"
+
+**On rate limit:**
+1. Write state immediately (update `currentTask.lastAction`, `contextAnchor`, `rateLimitDetectedAt`).
+2. Show a clear message and stop further actions until user responds.
+
+```
+⚠️ RATE LIMITED
+
+The model provider has temporarily limited requests.
+Current task state has been saved.
+
+What to do:
+• Wait a few minutes, then respond to resume
+• Or close this session and start a new one later — I'll remember where we were
+
+Task in progress: [currentTask.description]
+Last action: [currentTask.lastAction]
+Rate limit detected at: [currentTask.rateLimitDetectedAt]
+```
+
+### Current Task Tracking (Resumability)
+
+Planner tracks `currentTask` in `docs/planner-state.json` so work can resume after compaction or rate limiting.
+
+**Required behavior:**
+- On task start: set `currentTask.description`, `startedAt`, `contextAnchor`
+- After every tool call: update `currentTask.lastAction` and `contextAnchor`
+- On rate limit detection: set `currentTask.rateLimitDetectedAt` (ISO timestamp)
+- On task completion: clear `currentTask` (set to `null`)
+
+**Resume behavior:**
+- If user responds with intent to continue after a rate limit, resume from `currentTask.lastAction`
+- For new sessions, if `currentTask` exists, resume with: `Resuming: [currentTask.description]`
+
 ### Flow mapping
 
 | Flow | Todo granularity | Completion condition |

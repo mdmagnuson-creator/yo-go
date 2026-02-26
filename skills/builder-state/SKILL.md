@@ -29,6 +29,7 @@ Write state atomically (read → modify → write) at these key moments:
 | **Add ad-hoc task** | Append to `adhocQueue` with `status: "pending"` |
 | **Start ad-hoc task** | Update task `status: "in_progress"` |
 | **Complete ad-hoc task** | Update task `status: "completed"`, `completedAt`, `filesChanged` |
+| **After every tool call** | Update `currentTask.lastAction`, `contextAnchor`, and `lastHeartbeat` |
 | **Create right-panel todo** | Add item to `uiTodos.items[]`, sync via `todowrite` |
 | **Move todo status** | Update both panel and `uiTodos.items[]` (single source persisted) |
 | **Restore session** | Rehydrate panel from `uiTodos.items[]` before continuing |
@@ -114,6 +115,13 @@ Suggested state fields when tracking git context:
 {
   "sessionId": "builder-abc123",
   "lastHeartbeat": "2026-02-20T15:30:00Z",
+  "currentTask": {
+    "description": "Implementing compaction resilience",
+    "startedAt": "2026-02-20T14:58:00Z",
+    "lastAction": "Updated builder-state schema",
+    "contextAnchor": "schemas/builder-state.schema.json",
+    "rateLimitDetectedAt": null
+  },
   "activePrd": {
     "prdId": "prd-error-logging",
     "testingRigor": "standard",

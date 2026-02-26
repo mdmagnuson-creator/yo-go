@@ -168,6 +168,35 @@ When Builder or sub-agents need temporary artifacts (logs, screenshots, transien
 >
 > Transient failures happen. Your job is to recover automatically when possible.
 
+### Rate Limit Handling (Model 429 / Quota)
+
+Rate limits are **NOT** transient tool failures. Do not auto-retry.
+
+**Detect rate limits when error contains:**
+- `429`
+- "rate limit"
+- "quota"
+- "too many requests"
+
+**On rate limit:**
+1. Write state immediately (update `currentTask.lastAction`, `contextAnchor`, `rateLimitDetectedAt`).
+2. Show a clear message and stop further actions until user responds.
+
+```
+⚠️ RATE LIMITED
+
+The model provider has temporarily limited requests.
+Current task state has been saved.
+
+What to do:
+• Wait a few minutes, then respond to resume
+• Or close this session and start a new one later — I'll remember where we were
+
+Task in progress: [currentTask.description]
+Last action: [currentTask.lastAction]
+Rate limit detected at: [currentTask.rateLimitDetectedAt]
+```
+
 ### Transient Error Patterns
 
 | Error | Meaning | Action |
@@ -206,8 +235,8 @@ When a sub-agent call (e.g., `@developer`, `@tester`) fails mid-execution:
    - If files changed, the sub-agent made progress before failing
 
 2. **Resume strategy:**
-   - If no changes: Retry the full sub-agent call
-   - If partial changes: Pass context about what was already done
+    - If no changes: Retry the full sub-agent call
+    - If partial changes: Pass context about what was already done
    
    ```
    <context>
@@ -245,6 +274,22 @@ Options:
 ```
 
 **Do NOT:** Just stop responding and wait for the user to notice.
+
+---
+
+## Current Task Tracking (Resumability)
+
+Builder tracks `currentTask` in `docs/builder-state.json` so work can resume after compaction or rate limiting.
+
+**Required behavior:**
+- On task start: set `currentTask.description`, `startedAt`, `contextAnchor`
+- After every tool call: update `currentTask.lastAction` and `contextAnchor`
+- On rate limit detection: set `currentTask.rateLimitDetectedAt` (ISO timestamp)
+- On task completion: clear `currentTask` (set to `null`)
+
+**Resume behavior:**
+- If user responds with intent to continue after a rate limit, resume from `currentTask.lastAction`
+- For new sessions, if `currentTask` exists, resume with: `Resuming: [currentTask.description]`
 
 ---
 

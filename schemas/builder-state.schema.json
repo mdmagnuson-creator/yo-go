@@ -16,6 +16,35 @@
       "description": "Unique identifier for the current session (e.g., builder-abc123)"
     },
 
+    "currentTask": {
+      "type": ["object", "null"],
+      "description": "Current task context for resume after interruptions (compaction, rate limits).",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Short summary of the task in progress"
+        },
+        "startedAt": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When the task began"
+        },
+        "lastAction": {
+          "type": ["string", "null"],
+          "description": "Most recent action completed"
+        },
+        "contextAnchor": {
+          "type": ["string", "null"],
+          "description": "Pointer to where to resume (file/section/step)"
+        },
+        "rateLimitDetectedAt": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When a rate limit was detected"
+        }
+      }
+    },
+
     "activePrd": {
       "type": ["object", "null"],
       "description": "Currently active PRD being worked on. Null if no PRD work in progress.",

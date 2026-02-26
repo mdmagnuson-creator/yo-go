@@ -283,8 +283,10 @@ You may NOT modify — **refuse and redirect if asked**, unless specifically boo
    }
    EOF
    ```
-   Update `lastAction` and `contextAnchor` after each significant step (file edits, commands, todo completions).
-   Clear `currentTask` (set to `null`) when the task is complete.
+    Update `lastAction` and `contextAnchor` after each significant step (file edits, commands, todo completions).
+    After every tool call, update `currentTask.lastAction` and `contextAnchor`.
+    On rate limit detection, set `currentTask.rateLimitDetectedAt` (ISO timestamp) before messaging the user.
+    Clear `currentTask` (set to `null`) when the task is complete.
 
 ## Dev Server Startup Output Policy
 
@@ -317,7 +319,8 @@ The state file includes a `currentTask` object for recovering context after Open
     "description": "Implementing compaction resilience for Toolkit",
     "startedAt": "2026-02-26T10:30:00Z",
     "lastAction": "Added recovery check to startup flow",
-    "contextAnchor": "Modifying toolkit.md lines 213-250 to add Step 1.6"
+    "contextAnchor": "Modifying toolkit.md lines 213-250 to add Step 1.6",
+    "rateLimitDetectedAt": null
   }
 }
 ```
@@ -325,15 +328,46 @@ The state file includes a `currentTask` object for recovering context after Open
 **Required behavior:**
 
 1. **On task start:** Write `currentTask` with `description`, `startedAt`, and initial `contextAnchor`
-2. **After significant steps:** Update `lastAction` and `contextAnchor` to reflect progress
-3. **On task completion:** Clear `currentTask` (set to `null` or remove the key)
-4. **On compaction recovery:** Use `contextAnchor` to orient, output brief "Resuming: [description]" message
+2. **After every tool call:** Update `lastAction` and `contextAnchor`
+3. **After significant steps:** Update `lastAction` and `contextAnchor` to reflect progress
+4. **On rate limit detection:** Set `rateLimitDetectedAt` before messaging user
+5. **On task completion:** Clear `currentTask` (set to `null` or remove the key)
+6. **On compaction recovery:** Use `contextAnchor` to orient, output brief "Resuming: [description]" message
 
 **What qualifies as a significant step:**
 - Completing a file edit
 - Running a command that changes state
 - Completing a todo item
 - Reaching a decision point
+
+### Rate Limit Handling (Model 429 / Quota)
+
+Rate limits are **NOT** transient tool failures. Do not auto-retry.
+
+**Detect rate limits when error contains:**
+- `429`
+- "rate limit"
+- "quota"
+- "too many requests"
+
+**On rate limit:**
+1. Write state immediately (update `currentTask.lastAction`, `contextAnchor`, `rateLimitDetectedAt`).
+2. Show a clear message and stop further actions until user responds.
+
+```
+⚠️ RATE LIMITED
+
+The model provider has temporarily limited requests.
+Current task state has been saved.
+
+What to do:
+• Wait a few minutes, then respond to resume
+• Or close this session and start a new one later — I'll remember where we were
+
+Task in progress: [currentTask.description]
+Last action: [currentTask.lastAction]
+Rate limit detected at: [currentTask.rateLimitDetectedAt]
+```
 
 ### Flow mapping
 
