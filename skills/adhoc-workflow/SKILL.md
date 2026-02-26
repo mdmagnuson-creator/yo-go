@@ -105,7 +105,7 @@ After @developer completes each task, Builder automatically runs:
 
 1. **Typecheck** — `npm run typecheck` (or project equivalent)
 2. **Lint** — `npm run lint` (or project equivalent)
-3. **Unit tests** — Auto-generate with @tester, then run
+3. **Unit tests** — Auto-generate with @tester, then `CI=true npm test`
 4. **Critic** — Run @critic for code review
 
 If any check fails, Builder runs a fix loop (max 3 attempts). If still failing, STOP and report to user.
@@ -250,7 +250,7 @@ After @developer finishes and the todo is marked complete, immediately run:
 
 1. **Typecheck** — `npm run typecheck` (or project equivalent)
 2. **Lint** — `npm run lint` (or project equivalent)
-3. **Unit tests** — Run @tester to generate tests, then run them
+3. **Unit tests** — Run @tester to generate tests, then `CI=true npm test`
 4. **Critic** — Run @critic for code review
 
 **Fix loop:** If any check fails, run @developer to fix (max 3 attempts). If still failing, STOP and report to user.

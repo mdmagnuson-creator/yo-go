@@ -27,7 +27,7 @@ After @developer completes a task, run these in order:
 |------|-------|---------|----------|
 | 1 | **Typecheck** | `npm run typecheck` (or project equivalent) | Yes, max 3 attempts |
 | 2 | **Lint** | `npm run lint` (or project equivalent) | Yes, max 3 attempts |
-| 3 | **Unit Tests** | Auto-generate with @tester, then run | Yes, max 3 attempts |
+| 3 | **Unit Tests** | Auto-generate with @tester, then `CI=true npm test` (see [Test Execution Mode](#test-execution-mode-critical)) | Yes, max 3 attempts |
 | 4 | **Critic** | Run @critic for code review | Report findings, @developer fixes |
 
 ### Flow Diagram

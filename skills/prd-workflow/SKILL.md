@@ -219,7 +219,7 @@ After @developer completes each story, Builder automatically runs:
 
 1. **Typecheck** — `npm run typecheck` (or project equivalent)
 2. **Lint** — `npm run lint` (or project equivalent)
-3. **Unit tests** — Auto-generate with @tester, then run
+3. **Unit tests** — Auto-generate with @tester, then `CI=true npm test`
 4. **Critic** — Run @critic for code review (batched per `criticMode` setting)
 
 If any check fails, Builder runs a fix loop (max 3 attempts). If still failing, STOP and report to user.
