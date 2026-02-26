@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-02-26T15:11:08Z",
+  "generatedAt": "2026-02-26T15:31:54Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 63,
@@ -806,6 +806,12 @@
       {
         "date": "2026-02-26",
         "changes": [
+          {
+            "type": "feat",
+            "scope": null,
+            "description": "add rate limit resilience across primary agents",
+            "hash": "9cf499d"
+          },
           {
             "type": "feat",
             "scope": "toolkit",
