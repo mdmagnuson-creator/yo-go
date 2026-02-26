@@ -215,6 +215,14 @@ You may NOT modify — **refuse and redirect if asked**, unless specifically boo
    - If `uiTodos.items` is present, mirror to right panel using `todowrite`
    - Keep at most one `in_progress` item
 
+1.6 **Check for compaction recovery (BEFORE showing any menus):**
+   - If `currentTask` exists in the state file and has a `description`:
+     - Output brief recovery message: `Resuming: [currentTask.description]`
+     - Skip Steps 2-4 (pending updates menu, welcome menu)
+     - Continue working on the task using `currentTask.contextAnchor` for orientation
+     - The user's next message typically provides additional context or continuation
+   - If no `currentTask` or task was completed, proceed normally to Step 2
+
 2. **If pending updates exist**, present them before asking what to work on:
    ```
    ═══════════════════════════════════════════════════════════════════════
@@ -260,6 +268,24 @@ You may NOT modify — **refuse and redirect if asked**, unless specifically boo
    - Update OpenCode configuration
    ```
 
+5. **When the user provides a task**, immediately write `currentTask` to state file:
+   ```bash
+   # Write currentTask to enable compaction recovery
+   cat > ~/.config/opencode/.tmp/toolkit-state.json << 'EOF'
+   {
+     "uiTodos": { "items": [...], "lastSyncedAt": "...", "flow": "..." },
+     "currentTask": {
+       "description": "[brief task description]",
+       "startedAt": "[ISO timestamp]",
+       "lastAction": "Starting task",
+       "contextAnchor": "[file or section being worked on]"
+     }
+   }
+   EOF
+   ```
+   Update `lastAction` and `contextAnchor` after each significant step (file edits, commands, todo completions).
+   Clear `currentTask` (set to `null`) when the task is complete.
+
 ## Dev Server Startup Output Policy
 
 If toolkit maintenance requires starting or checking a dev server, keep terminal output minimal:
@@ -279,6 +305,35 @@ Toolkit keeps OpenCode right-panel todos and `~/.config/opencode/.tmp/toolkit-st
    - right panel via `todowrite`
    - `~/.config/opencode/.tmp/toolkit-state.json` (`uiTodos.items`, `uiTodos.lastSyncedAt`, `uiTodos.flow`)
 3. Keep at most one `in_progress` todo.
+
+### Compaction resilience (currentTask)
+
+The state file includes a `currentTask` object for recovering context after OpenCode compacts conversation history:
+
+```json
+{
+  "uiTodos": { ... },
+  "currentTask": {
+    "description": "Implementing compaction resilience for Toolkit",
+    "startedAt": "2026-02-26T10:30:00Z",
+    "lastAction": "Added recovery check to startup flow",
+    "contextAnchor": "Modifying toolkit.md lines 213-250 to add Step 1.6"
+  }
+}
+```
+
+**Required behavior:**
+
+1. **On task start:** Write `currentTask` with `description`, `startedAt`, and initial `contextAnchor`
+2. **After significant steps:** Update `lastAction` and `contextAnchor` to reflect progress
+3. **On task completion:** Clear `currentTask` (set to `null` or remove the key)
+4. **On compaction recovery:** Use `contextAnchor` to orient, output brief "Resuming: [description]" message
+
+**What qualifies as a significant step:**
+- Completing a file edit
+- Running a command that changes state
+- Completing a todo item
+- Reaching a decision point
 
 ### Flow mapping
 
