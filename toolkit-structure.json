@@ -804,6 +804,29 @@
     "generatedFrom": "git log --since=30 days",
     "entries": [
       {
+        "date": "2026-02-26",
+        "changes": [
+          {
+            "type": "feat",
+            "scope": "builder",
+            "description": "add tool error recovery for 499/timeout failures",
+            "hash": "0107872"
+          },
+          {
+            "type": "docs",
+            "scope": null,
+            "description": "add PRD for agent model tiering system",
+            "hash": "f69ba6a"
+          },
+          {
+            "type": "fix",
+            "scope": "skills",
+            "description": "add CI=true to per-task quality checks to prevent orphaned Vitest processes",
+            "hash": "ba0f1d6"
+          }
+        ]
+      },
+      {
         "date": "2026-02-25",
         "changes": [
           {
