@@ -227,6 +227,29 @@
               "configPath": {
                 "type": "string",
                 "description": "Path to testing framework config file"
+              },
+              "executablePath": {
+                "type": "object",
+                "description": "Paths to packaged app executables for E2E testing (Electron, Tauri, etc.)",
+                "properties": {
+                  "macos": {
+                    "type": "string",
+                    "description": "Path to macOS .app bundle (e.g., /Applications/MyApp.app/Contents/MacOS/MyApp)"
+                  },
+                  "windows": {
+                    "type": "string",
+                    "description": "Path to Windows .exe (e.g., C:/Program Files/MyApp/MyApp.exe)"
+                  },
+                  "linux": {
+                    "type": "string",
+                    "description": "Path to Linux executable (e.g., /usr/bin/myapp)"
+                  }
+                }
+              },
+              "devLaunchArgs": {
+                "type": "array",
+                "description": "Args to pass when launching app in dev mode (e.g., ['./main.js', '--enable-logging'])",
+                "items": { "type": "string" }
               }
             }
           },

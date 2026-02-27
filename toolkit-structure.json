@@ -830,6 +830,12 @@
             "type": "fix",
             "scope": "agents",
             "description": "fix state file commit ordering to prevent PRD state drift",
+            "hash": "906718a"
+          },
+          {
+            "type": "feat",
+            "scope": "schema",
+            "description": "add executablePath and devLaunchArgs to apps.testing for desktop/mobile E2E",
             "hash": "pending"
           }
         ]
