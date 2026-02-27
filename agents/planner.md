@@ -115,7 +115,7 @@ When planning work starts, verify each write target is in this allowlist. If a r
 **You may also write to:**
 | Allowed Path | Purpose |
 |--------------|---------|
-| `~/.config/opencode/projects.json` | Project registry (add/remove projects, set active project) |
+| `~/.config/opencode/projects.json` | Project registry (add/remove projects, set active project, update devPort) |
 | `codeRoot/[new-project]/` | Create root directory for NEW projects only (read `codeRoot` from `projects.json`) |
 | `codeRoot/[new-project]/docs/` | Bootstrap agent system files for NEW projects |
 

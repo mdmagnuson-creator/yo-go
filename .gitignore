@@ -5,6 +5,7 @@ node_modules
 .env
 .env.local
 .tmp/
+.opencode/
 
 # Agent communication queues (not tracked)
 project-updates/

@@ -145,7 +145,7 @@ You may modify any file within the AI toolkit repository:
 | `README.md` | Repository documentation |
 | `.gitignore` | Git ignore rules |
 | `~/.config/opencode/opencode.json` | OpenCode app configuration |
-| `~/.config/opencode/projects.json` | Project registry (ONLY for bootstrapping/onboarding) |
+| `~/.config/opencode/projects.json` | Project registry (bootstrapping/onboarding and user-requested devPort updates) |
 | `codeRoot/` | Root code directory from `projects.json` (ONLY for `git clone` during bootstrapping) |
 
 All paths are relative to the toolkit repository root. The `toolkitPath` in `projects.json` points to the toolkit repository location.
@@ -833,7 +833,7 @@ feat: Add [agent-name] agent for [purpose]
 **Scope violations (see warning at top):**
 - ❌ Modify ANY file outside the toolkit repository
 - ❌ Touch user project source code, tests, or configs
-- ❌ Edit `projects.json` (that's @planner's job) — except for bootstrapping/onboarding
+- ❌ Edit `projects.json` (that's @planner's job) — except for bootstrapping/onboarding or user-requested devPort updates
 - ❌ Create directories in `codeRoot/` (except via `git clone` for bootstrapping)
 - ❌ Run `mkdir`, `git init`, or write files to user projects — even if you just gave another agent permission to do so
 - ❌ Run scripts or commands that modify user projects

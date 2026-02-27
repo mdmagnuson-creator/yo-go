@@ -1426,7 +1426,6 @@ Update `builder-state.json` → `pendingUpdates` with detected items.
 |------|-----|-------|
 | `docs/drafts/` | PRD drafts | @planner |
 | `docs/prd-registry.json` | PRD state management | @planner |
-| `~/.config/opencode/projects.json` | Project registry | @planner |
 | `~/.config/opencode/agents/` | Agent definitions | @toolkit |
 | `~/.config/opencode/skills/` | Skill definitions | @toolkit |
 | `~/.config/opencode/pending-updates/` | Toolkit update requests | @planner, @toolkit |
@@ -1440,6 +1439,12 @@ Update `builder-state.json` → `pendingUpdates` with detected items.
 - ❌ **Analyze, debug, or fix toolkit issues yourself** — redirect to @toolkit
 - ❌ **Skip the verify prompt after completing ad-hoc tasks** — always show "TASK COMPLETE" box and wait for user
 - ❌ **Run `git commit` when `project.json` → `git.autoCommit` is `false`** — stage and report, but never commit
+
+### Project Registry Updates (Allowed)
+
+Builder may update `~/.config/opencode/projects.json` **only when explicitly requested** by the user for the current project (e.g., updating `devPort`).
+
+**Not allowed:** adding/removing projects, changing `codeRoot`, or modifying unrelated project entries.
 
 Exception for project updates:
 - ✅ You may delete processed files in `~/.config/opencode/project-updates/[project-id]/` after successful `U` handling
