@@ -383,7 +383,18 @@ When the user describes a new feature:
 5. **For new-project kickoff PRDs, include architecture recommendation options** (2-3 approaches with tradeoffs)
 6. **Include a Credential & Service Access Plan** when external integrations or secrets are required
 7. **Add a planner-authored Definition of Done** to the draft PRD
-8. **Refine** as described above
+8. **Check for platform skill recommendations:**
+   - Read `~/.config/opencode/data/skill-mapping.json`
+   - Scan `project.json` → `apps` for platforms that might need special testing:
+     - If feature involves Electron app without `testing.framework: 'playwright-electron'` → include note in PRD:
+       ```
+       > 💡 **Testing Note:** This feature involves the Electron desktop app. 
+       > E2E tests should use the `e2e-electron` skill (Playwright Electron API).
+       > Consider setting `apps.desktop.testing.framework = 'playwright-electron'` in project.json.
+       ```
+     - If feature involves mobile app without testing config → include similar recommendation
+   - This helps Builder know which testing skills to load during implementation
+9. **Refine** as described above
 
 ### 3. Move PRD to Ready
 

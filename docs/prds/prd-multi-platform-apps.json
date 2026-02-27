@@ -2,14 +2,15 @@
   "$schema": "https://opencode.ai/schemas/prd.json",
   "id": "prd-multi-platform-apps",
   "title": "Multi-Platform App Support & Electron Testing",
-  "status": "ready",
+  "status": "complete",
   "createdAt": "2026-02-27",
+  "completedAt": "2026-02-27",
   "stories": [
     {
       "id": "US-001",
       "title": "Extend apps schema with platforms array",
       "description": "As a toolkit maintainer, I need the `apps` schema to support a `platforms` array so projects can declare which platforms each app targets.",
-      "status": "pending",
+      "status": "complete",
       "acceptanceCriteria": [
         "Add `platforms` property to app schema (array of platform identifiers)",
         "Define platform enum: `browser`, `server`, `macos`, `windows`, `linux`, `ios`, `android`, `tvos`, `watchos`",
@@ -25,7 +26,7 @@
       "id": "US-002",
       "title": "Add desktop and mobile app types",
       "description": "As a toolkit maintainer, I need new `type` values for desktop and mobile apps so the schema can distinguish them from web apps.",
-      "status": "pending",
+      "status": "complete",
       "acceptanceCriteria": [
         "Add `desktop` and `mobile` to `type` enum",
         "Add framework enum values for desktop: `electron`, `tauri`, `neutralino`",
@@ -42,7 +43,7 @@
       "id": "US-003",
       "title": "Add per-app testing configuration",
       "description": "As a toolkit maintainer, I need apps to declare their testing framework per-platform so Builder knows which testing skill to load.",
-      "status": "pending",
+      "status": "complete",
       "acceptanceCriteria": [
         "Add `testing` object to app schema with `framework` and `testDir` properties",
         "Testing framework enum includes: `playwright`, `playwright-electron`, `detox`, `maestro`, `appium`, `xcuitest`, `espresso`",
@@ -57,7 +58,7 @@
       "id": "US-004",
       "title": "Add platform metadata for signing and notarization",
       "description": "As a toolkit maintainer, I need platform metadata to include signing and notarization configuration so agents can understand app distribution requirements.",
-      "status": "pending",
+      "status": "complete",
       "acceptanceCriteria": [
         "macOS metadata includes: `bundleId`, `teamId`, `category`, `entitlements`, `notarize` (boolean), `signingIdentity`",
         "Windows metadata includes: `appId`, `certificateSubject`, `signTool`",
@@ -74,7 +75,7 @@
       "id": "US-005",
       "title": "Create skill-mapping.json and schema",
       "description": "As a toolkit maintainer, I need a centralized skill-mapping file so agents can look up which skills apply to which frameworks/platforms without duplicating logic.",
-      "status": "pending",
+      "status": "complete",
       "acceptanceCriteria": [
         "Create `data/skill-mapping.json` with framework→skill mappings",
         "Create `schemas/skill-mapping.schema.json` to validate the mapping file",
@@ -91,7 +92,7 @@
       "id": "US-006",
       "title": "Create e2e-electron skill",
       "description": "As a tester agent, I need an `e2e-electron` skill that teaches me how to write and run Playwright tests for Electron apps.",
-      "status": "pending",
+      "status": "complete",
       "acceptanceCriteria": [
         "Create `skills/e2e-electron/SKILL.md` with Electron testing patterns",
         "Include setup instructions (Playwright Electron API)",
@@ -108,7 +109,7 @@
       "id": "US-007",
       "title": "Update e2e-playwright agent to load electron skill",
       "description": "As the e2e-playwright agent, I need to detect when I'm testing an Electron app and load the appropriate skill.",
-      "status": "pending",
+      "status": "complete",
       "acceptanceCriteria": [
         "e2e-playwright agent reads `data/skill-mapping.json` for skill lookup",
         "e2e-playwright agent checks `project.json` for Electron apps",
@@ -124,7 +125,7 @@
       "id": "US-008",
       "title": "Update tester agent routing for platform-specific tests",
       "description": "As the tester agent, I need to route to the correct testing sub-agent based on app platform and testing framework.",
-      "status": "pending",
+      "status": "complete",
       "acceptanceCriteria": [
         "Tester reads `apps` from `project.json`",
         "Tester reads `data/skill-mapping.json` for routing decisions",
@@ -140,7 +141,7 @@
       "id": "US-009",
       "title": "Add skill suggestion capability to Builder/Planner",
       "description": "As Builder or Planner, when I detect an app platform that has a matching skill not currently loaded, I should suggest adding it.",
-      "status": "pending",
+      "status": "complete",
       "acceptanceCriteria": [
         "Builder reads `data/skill-mapping.json` during startup",
         "Builder detects missing skill config during startup or E2E phase",

@@ -497,7 +497,25 @@ After the user selects a project number, show a **fast inline dashboard** — no
    - If `trunk`, resolve `agents.trunkMode` (`branchless` default)
    - Resolve default execution branch from `git.defaultBranch` (fallback `main`)
 
-4. **Check for resumable session** — see `builder-state` skill for state structure.
+4.5 **Check for platform skill suggestions (one-time):**
+   - Read `~/.config/opencode/data/skill-mapping.json`
+   - Scan `project.json` → `apps` for platform-specific frameworks:
+     - If any app has `framework: 'electron'` but no `testing.framework` set → suggest:
+       ```
+       💡 Detected Electron app at {appPath}. Consider setting testing.framework = 'playwright-electron' for E2E testing.
+       ```
+     - If any app has `type: 'desktop'` but no `platforms` array → suggest:
+       ```
+       💡 Desktop app detected but no platforms specified. Consider adding platforms = ['macos', 'windows', 'linux'].
+       ```
+     - If any app has `type: 'mobile'` but no `testing.framework` → suggest:
+       ```
+       💡 Mobile app detected ({framework}). Consider adding testing.framework = 'detox' or 'maestro' for E2E testing.
+       ```
+   - **Only show suggestions once per session** — don't repeat on every PRD
+   - Suggestions are informational; don't block workflow
+
+5. **Check for resumable session** — see `builder-state` skill for state structure.
    - If an in-progress PRD exists, **do not auto-resume it**.
    - Always show a resume chooser that lets the user explicitly pick one of:
      - Resume current in-progress PRD

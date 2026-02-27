@@ -38,6 +38,23 @@ You are a specialized agent that writes Playwright E2E tests for UI areas identi
         - Other combinations → `auth-generic` skill
       - If `authentication.headless.enabled` is `true`, use headless auth (see `auth-headless` skill)
       - If `authentication.method` is `none`, skip authentication
+   
+   d. **Check for platform-specific testing (Electron, mobile, etc.):**
+      - Read `~/.config/opencode/data/skill-mapping.json` for framework→skill lookup
+      - Check `project.json` apps for platform-specific configurations:
+        - If any app has `framework: 'electron'` or `testing.framework: 'playwright-electron'` → load `e2e-electron` skill
+        - If any app has `type: 'desktop'` and `package.json` contains `electron` dependency → load `e2e-electron` skill
+      - **Electron detection fallback:** If Electron not declared in `project.json`:
+        ```bash
+        # Check for electron in any app's package.json
+        grep -r '"electron"' apps/*/package.json 2>/dev/null
+        ```
+      - When Electron is detected, the `e2e-electron` skill provides:
+        - Playwright `_electron` API usage patterns
+        - Main process vs renderer process testing
+        - IPC communication testing
+        - App lifecycle handling
+        - Native dialog mocking
 
 You receive a list of UI areas from `docs/e2e-areas.json` that need E2E test coverage. Your job is to:
 

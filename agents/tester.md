@@ -82,7 +82,26 @@ Use documentation lookup tools.
    d. **Check for project-specific testers** in `<project>/docs/agents/` directory
       - These override global testers for this project
    
-   e. **Prepare context injection for sub-agents.** When delegating to testing specialists, include:
+   e. **Check for platform-specific apps (Electron, mobile, etc.):**
+      - Read `~/.config/opencode/data/skill-mapping.json` for routing decisions
+      - Scan `project.json` apps for platform-specific frameworks:
+        - `framework: 'electron'` or `type: 'desktop'` → route E2E to @e2e-playwright with `e2e-electron` skill hint
+        - `framework: 'react-native'` or `type: 'mobile'` → route E2E to appropriate mobile testing (stub for future)
+        - `framework: 'flutter'` → route E2E to appropriate flutter testing (stub for future)
+      - **Detection fallback** if not declared in `project.json`:
+        ```bash
+        # Check for electron in any app's package.json
+        grep -r '"electron"' apps/*/package.json 2>/dev/null && echo "Electron detected"
+        ```
+      - When delegating E2E tests for Electron apps, include in prompt:
+        ```
+        Platform: Electron desktop app
+        App path: apps/desktop/
+        Load skill: e2e-electron
+        Testing framework: playwright-electron
+        ```
+   
+   f. **Prepare context injection for sub-agents.** When delegating to testing specialists, include:
       - Stack information (testing frameworks, test commands) from `project.json`
       - Testing conventions (file naming, patterns, coverage requirements) from `CONVENTIONS.md`
       - Project-specific setup (local services, environment variables)
@@ -653,6 +672,42 @@ generatePRD: true|false
 ---
 
 ## Routing Logic
+
+### Platform-Specific E2E Routing
+
+Before routing E2E tests, check for platform-specific apps using `data/skill-mapping.json`:
+
+| App Type | Framework | E2E Route | Skill to Load |
+|----------|-----------|-----------|---------------|
+| `desktop` | `electron` | @e2e-playwright | `e2e-electron` |
+| `desktop` | `tauri` | @e2e-playwright | `e2e-tauri` (future) |
+| `mobile` | `react-native`, `expo` | @e2e-mobile (future) | `e2e-mobile` |
+| `mobile` | `flutter` | @e2e-flutter (future) | `e2e-flutter` |
+| `frontend` | any web | @e2e-playwright | none |
+
+**Electron E2E delegation example:**
+
+When routing to @e2e-playwright for an Electron app:
+
+```
+E2E tests needed for Electron desktop app
+
+## Platform Context
+- Platform: Electron desktop app
+- App path: apps/desktop/
+- Main entry: apps/desktop/src/main/index.ts
+- Load skill: e2e-electron
+- Testing framework: playwright-electron
+
+## What Was Implemented
+[Story description]
+
+## UI Areas to Test
+[List from e2e-areas.json]
+
+## Acceptance Criteria
+[From story]
+```
 
 ### Mutation Testing Requirements
 

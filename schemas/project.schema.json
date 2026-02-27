@@ -183,12 +183,12 @@
           "path": { "type": "string", "description": "Relative path from project root" },
           "type": {
             "type": "string",
-            "enum": ["frontend", "backend", "fullstack", "cli", "library", "worker"],
+            "enum": ["frontend", "backend", "fullstack", "cli", "library", "worker", "desktop", "mobile"],
             "description": "Application type"
           },
           "framework": {
             "type": "string",
-            "description": "Framework name (e.g., nextjs, remix, express, gin, fastapi)"
+            "description": "Framework name (e.g., nextjs, remix, express, gin, fastapi, electron, tauri, react-native, flutter)"
           },
           "frameworkVersion": { "type": "string" },
           "entryPoint": { "type": "string", "description": "Main entry directory or file" },
@@ -197,6 +197,102 @@
             "type": "object",
             "description": "Key directories within this app",
             "additionalProperties": { "type": "string" }
+          },
+          "platforms": {
+            "type": "array",
+            "description": "Target platforms for this app (e.g., browser, macos, ios). Omit for server-only apps.",
+            "items": {
+              "type": "string",
+              "enum": ["browser", "server", "macos", "windows", "linux", "ios", "android", "tvos", "watchos"]
+            }
+          },
+          "runtime": {
+            "type": "string",
+            "description": "Runtime environment for mobile apps (e.g., hermes, jsc for React Native)",
+            "enum": ["hermes", "jsc", "v8", "javascriptcore", "dart"]
+          },
+          "testing": {
+            "type": "object",
+            "description": "Per-app testing configuration. Falls back to project-level testing config if not specified.",
+            "properties": {
+              "framework": {
+                "type": "string",
+                "description": "Testing framework for this app",
+                "enum": ["playwright", "playwright-electron", "detox", "maestro", "appium", "xcuitest", "espresso", "jest", "vitest", "pytest", "go-test"]
+              },
+              "testDir": {
+                "type": "string",
+                "description": "Directory containing tests for this app"
+              },
+              "configPath": {
+                "type": "string",
+                "description": "Path to testing framework config file"
+              }
+            }
+          },
+          "platformMetadata": {
+            "type": "object",
+            "description": "Platform-specific configuration for signing, notarization, and distribution",
+            "properties": {
+              "macos": {
+                "type": "object",
+                "description": "macOS-specific metadata",
+                "properties": {
+                  "bundleId": { "type": "string", "description": "Bundle identifier (e.g., com.company.app)" },
+                  "teamId": { "type": "string", "description": "Apple Developer Team ID" },
+                  "category": { "type": "string", "description": "App Store category (e.g., public.app-category.developer-tools)" },
+                  "entitlements": { "type": "string", "description": "Path to entitlements plist file" },
+                  "notarize": { "type": "boolean", "description": "Whether to notarize the app", "default": false },
+                  "signingIdentity": { "type": "string", "description": "Code signing identity name" }
+                }
+              },
+              "windows": {
+                "type": "object",
+                "description": "Windows-specific metadata",
+                "properties": {
+                  "appId": { "type": "string", "description": "Windows Application ID" },
+                  "certificateSubject": { "type": "string", "description": "Certificate subject name for signing" },
+                  "signTool": { "type": "string", "description": "Path to signtool.exe or signing configuration" }
+                }
+              },
+              "linux": {
+                "type": "object",
+                "description": "Linux-specific metadata",
+                "properties": {
+                  "appId": { "type": "string", "description": "Application ID (reverse DNS notation)" },
+                  "category": { "type": "string", "description": "Freedesktop category (e.g., Development, Utility)" },
+                  "desktop": {
+                    "type": "object",
+                    "description": "Freedesktop .desktop file fields",
+                    "additionalProperties": { "type": "string" }
+                  }
+                }
+              },
+              "ios": {
+                "type": "object",
+                "description": "iOS-specific metadata",
+                "properties": {
+                  "bundleId": { "type": "string", "description": "Bundle identifier" },
+                  "teamId": { "type": "string", "description": "Apple Developer Team ID" },
+                  "provisioningProfile": { "type": "string", "description": "Provisioning profile name or path" },
+                  "capabilities": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Required capabilities (e.g., push-notifications, in-app-purchase)"
+                  }
+                }
+              },
+              "android": {
+                "type": "object",
+                "description": "Android-specific metadata",
+                "properties": {
+                  "packageName": { "type": "string", "description": "Android package name (e.g., com.company.app)" },
+                  "keystoreAlias": { "type": "string", "description": "Keystore alias for signing" },
+                  "minSdkVersion": { "type": "integer", "description": "Minimum Android SDK version" },
+                  "targetSdkVersion": { "type": "integer", "description": "Target Android SDK version" }
+                }
+              }
+            }
           }
         }
       }

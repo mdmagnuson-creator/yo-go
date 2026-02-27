@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-02-27T05:51:41Z",
+  "generatedAt": "2026-02-27T19:30:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -354,7 +354,7 @@
     }
   },
   "skills": {
-    "total": 41,
+    "total": 42,
     "categories": {
       "workflow": {
         "description": "Workflow and lifecycle skills",
@@ -570,6 +570,11 @@
             "description": "Quality-beyond-correctness E2E testing patterns. Catches visual glitches, performance issues, layout shifts, and intermediate bad states. Triggers on: flicker test, visual stability, performance budget, negative assertion, CLS test, drag drop test, animation test."
           },
           {
+            "name": "e2e-electron",
+            "path": "skills/e2e-electron/SKILL.md",
+            "description": "Playwright E2E testing patterns for Electron desktop applications. Covers app launch, main/renderer process testing, IPC mocking, and native dialog handling. Triggers on: electron test, desktop app test, e2e-electron."
+          },
+          {
             "name": "merge-conflicts",
             "path": "skills/merge-conflicts/SKILL.md",
             "description": "Resolve merge conflicts on a pull request by merging the target branch into the source branch and fixing conflicts. Use when a PR has merge conflicts, a branch needs to be updated, or when asked to fix conflicts. Triggers on: fix merge conflicts, resolve conflicts, merge conflicts on PR, update branch, rebase PR."
@@ -589,7 +594,7 @@
     }
   },
   "schemas": {
-    "total": 8,
+    "total": 9,
     "items": [
       {
         "name": "builder-state.schema",
@@ -620,6 +625,11 @@
         "name": "requirements.schema",
         "file": "schemas/requirements.schema.json",
         "description": "Structured requirements extracted from a project spec or PRD for stack recommendation and scaffolding"
+      },
+      {
+        "name": "skill-mapping.schema",
+        "file": "schemas/skill-mapping.schema.json",
+        "description": "Schema for framework-to-skill mapping definitions used for automatic skill suggestions"
       },
       {
         "name": "toolkit-structure.schema",
@@ -777,6 +787,11 @@
         "description": "Toolkit data file"
       },
       {
+        "name": "skill-mapping",
+        "file": "data/skill-mapping.json",
+        "description": "Framework-to-skill mapping for automatic skill suggestions based on project apps"
+      },
+      {
         "name": "stacks",
         "file": "data/stacks.yaml",
         "description": "Toolkit data file"
@@ -808,6 +823,41 @@
   "changelog": {
     "generatedFrom": "git log --since=30 days",
     "entries": [
+      {
+        "date": "2026-02-27",
+        "changes": [
+          {
+            "type": "feat",
+            "scope": "schema",
+            "description": "add multi-platform app support (desktop, mobile) to project.json apps",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "add e2e-electron skill for Playwright Electron testing",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "data",
+            "description": "add skill-mapping.json for framework-to-skill lookups",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "agents",
+            "description": "update e2e-playwright, tester, builder, planner for multi-platform support",
+            "hash": "pending"
+          },
+          {
+            "type": "docs",
+            "scope": "prd",
+            "description": "add multi-platform apps and electron testing PRD",
+            "hash": "7c7f44c"
+          }
+        ]
+      },
       {
         "date": "2026-02-26",
         "changes": [
