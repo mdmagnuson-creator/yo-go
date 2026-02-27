@@ -264,9 +264,10 @@ If any check fails, Builder runs a fix loop (max 3 attempts). If still failing, 
 
 4. **Update heartbeat** periodically in session lock
 
-5. **Update story todo state in both stores:**
+5. **Update story todo state in both stores (BEFORE commit):**
    - Before implementation: mark current story `in_progress` via `todowrite` and `uiTodos.items`
    - After implementation + required checks: mark story `completed` in both places
+   - **⚠️ This must happen BEFORE Step 2.5 (commit)** to ensure state is included in the commit
 
 6. **Handle developer failures:**
    - If developer fails more than once on a story, analyze the PRD
@@ -288,18 +289,40 @@ Use `test-flow` as the canonical source for all test behavior.
    - `builder-state.json` updates for queued tests
 4. After test-flow completes for the story, update `activePrd.storiesCompleted` and continue.
 
-### Step 2.5: Commit After Each Story
+### Step 2.5: Update State & Commit After Each Story
 
-After a story completes and post-story checks pass, commit immediately.
+> ⛔ **CRITICAL: Update state files BEFORE committing so they are included in the commit.**
+>
+> State updates that happen after the commit will be lost if the session ends.
+>
+> **Failure behavior:** If you find yourself about to run `git commit` without first updating `docs/prd.json` (`passes: true`), `docs/builder-state.json`, and `docs/prd-registry.json` — STOP and update those files before committing.
+
+After a story completes and post-story checks pass:
+
+**1. Update all state files FIRST:**
+
+- **`docs/prd.json`** — set `passes: true` for the completed story
+- **`docs/builder-state.json`:**
+  - Move story from `storiesPending` to `storiesCompleted`
+  - Clear `currentStory` (or set to next story)
+  - Update `uiTodos.items` to mark story `completed`
+  - Update `activePrd.storiesCompleted` array
+- **`docs/prd-registry.json`** — update `currentStory` field
+
+**2. Then commit (including state files):**
 
 - Follow **Git Auto-Commit Enforcement** above (respect `git.autoCommit`)
 - Use a per-story commit message format:
   - `feat: [prd-summary] (US-00X)`
 
-```
-git add -A
+```bash
+# Verify state files are staged before committing
+git add -A  # includes prd.json, builder-state.json, prd-registry.json
+git status  # confirm state files are in staged changes
 git commit -m "feat: [summary from PRD] (US-00X)"
 ```
+
+**Why this order matters:** If you commit before updating state, and the session ends (crash, rate limit, context compaction), the committed code and PRD state will be out of sync — git will show all stories implemented, but `passes: false` everywhere.
 
 ### Step 3: Repeat for All Stories
 

@@ -148,18 +148,41 @@ Load the `multi-session` skill for detailed session coordination steps:
 
 ---
 
-### Phase 3: Commit & Push
+### Phase 3: Update State & Commit
 
-1. **Commit ALL changes:**
-   - Feature branch: `feat: [Story ID] - [Story Title]`
-   - Push: `git push origin <branch>`
+> ⛔ **CRITICAL: Update state files BEFORE committing so they are included in the commit.**
+>
+> State updates that happen after the commit will be lost if the session ends.
+>
+> **Failure behavior:** If you find yourself about to run `git commit` without first updating `docs/prd.json` (`passes: true`), `docs/builder-state.json`, and `docs/prd-registry.json` — STOP and update those files before committing.
 
-2. **Update PRD:** set `passes: true` for the completed story
+1. **Update PRD:** set `passes: true` for the completed story in `docs/prd.json`
 
-3. **Update heartbeat** (multi-session mode only) — see `multi-session` skill
-   - **Solo Mode:** Skip heartbeat updates
+2. **Update builder-state.json:**
+   - Move story from `storiesPending` to `storiesCompleted`
+   - Clear `currentStory` (or set to next story)
+   - Update `uiTodos.items` to mark story `completed`
+
+3. **Update prd-registry.json:**
+   - Update `currentStory` field to reflect progress
+   - Update `storiesCompleted` count if tracked
 
 4. **Append progress** to `docs/progress.txt`
+
+5. **Update heartbeat** (multi-session mode only) — see `multi-session` skill
+   - **Solo Mode:** Skip heartbeat updates
+
+6. **Commit ALL changes (including state files):**
+   ```bash
+   git add -A  # includes prd.json, builder-state.json, prd-registry.json
+   git commit -m "feat: [Story ID] - [Story Title]"
+   git push origin <branch>
+   ```
+   
+   **Verify state files are staged:**
+   - `docs/prd.json` — story `passes: true`
+   - `docs/builder-state.json` — updated story status
+   - `docs/prd-registry.json` — updated progress
 
 ### Phase 3B: Update Project Capabilities
 

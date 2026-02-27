@@ -15,6 +15,22 @@ Builder maintains `docs/builder-state.json` to enable session resumability. This
 
 **Schema:** See `schemas/builder-state.schema.json` for the full schema definition.
 
+## Commit Ordering (CRITICAL)
+
+> ⛔ **ALWAYS update state files BEFORE committing.**
+>
+> State updates that happen after `git commit` will be left uncommitted. If the session ends (crash, rate limit, context compaction), the state will be out of sync with the committed code.
+>
+> **Failure behavior:** If you find yourself about to run `git commit` without first updating `docs/prd.json` (`passes: true`), `docs/builder-state.json`, and `docs/prd-registry.json` — STOP and update those files before committing.
+>
+> **Correct order:**
+> 1. Update `docs/prd.json` (set `passes: true`)
+> 2. Update `docs/builder-state.json` (move story to completed)
+> 3. Update `docs/prd-registry.json` (update progress)
+> 4. Run `git add -A && git commit`
+>
+> **Wrong order:** Commit first, then update state files → state drift
+
 ## When to Write State
 
 Write state atomically (read → modify → write) at these key moments:
