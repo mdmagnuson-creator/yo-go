@@ -1063,9 +1063,12 @@ Read from `docs/project.json`:
 |----------|----------|
 | `batch-per-session` | One commit for all work after tests pass |
 | `per-todo` | One commit per completed todo |
+| `per-story` | One commit per completed PRD story |
 | `manual` | Builder stages changes, user commits |
 
 See `adhoc-workflow` and `prd-workflow` skills for full commit flow details.
+
+**PRD mode override:** Builder must commit after every completed PRD story (unless `git.autoCommit: false`).
 
 ## Team Sync - Push After Commit
 

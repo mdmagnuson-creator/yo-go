@@ -288,6 +288,19 @@ Use `test-flow` as the canonical source for all test behavior.
    - `builder-state.json` updates for queued tests
 4. After test-flow completes for the story, update `activePrd.storiesCompleted` and continue.
 
+### Step 2.5: Commit After Each Story
+
+After a story completes and post-story checks pass, commit immediately.
+
+- Follow **Git Auto-Commit Enforcement** above (respect `git.autoCommit`)
+- Use a per-story commit message format:
+  - `feat: [prd-summary] (US-00X)`
+
+```
+git add -A
+git commit -m "feat: [summary from PRD] (US-00X)"
+```
+
 ### Step 3: Repeat for All Stories
 
 Continue Steps 1-2 for each story until all are complete.
@@ -416,6 +429,8 @@ Run @quality-critic with:
 ### Step 3: Commit Final Changes
 
 Commit all remaining changes:
+
+If per-story commits are enabled, ensure there are no uncommitted changes before this step.
 
 ```bash
 git add -A
