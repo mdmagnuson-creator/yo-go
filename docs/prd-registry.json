@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/schemas/prd-registry.json",
+  "prds": [
+    {
+      "id": "prd-multi-platform-apps",
+      "title": "Multi-Platform App Support & Electron Testing",
+      "status": "ready",
+      "filePath": "docs/prds/prd-multi-platform-apps.md",
+      "jsonPath": "docs/prds/prd-multi-platform-apps.json",
+      "createdAt": "2026-02-27",
+      "stories": 9
+    }
+  ]
+}
