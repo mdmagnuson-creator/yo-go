@@ -61,6 +61,15 @@
       "filePath": "docs/completed/prd-vectorization.md",
       "createdAt": "2026-02-27",
       "completedAt": "2026-02-28"
+    },
+    {
+      "id": "prd-verifiable-completion",
+      "title": "Verifiable Task Completion",
+      "status": "ready",
+      "filePath": "docs/prds/prd-verifiable-completion.md",
+      "createdAt": "2026-02-28",
+      "stories": 7,
+      "notes": "Foundation PRD for intelligent delegation - defines what 'success' means for task handoffs"
     }
   ]
 }
