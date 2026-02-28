@@ -59,6 +59,38 @@ Use OpenCode right-panel todos as the live checklist, mirrored to `docs/builder-
 4. Persist each transition under `uiTodos.items` with `flow: "prd"` and `refId: <storyId>`.
 5. On session resume, rebuild right-panel todos from `uiTodos.items` before continuing.
 
+## Post-Story Status Update (MANDATORY)
+
+> ⛔ **After completing a story, you MUST update its status in the PRD JSON file.**
+>
+> **Failure behavior:** If you find yourself about to commit code for a completed story without first updating `docs/prd.json` with `status: "completed"`, `completedAt`, and `passes: true` — STOP and update the story status before committing.
+
+After each story completes:
+
+1. **Update the story in `docs/prd.json`:**
+   ```json
+   {
+     "id": "US-001",
+     "status": "completed",
+     "completedAt": "2026-02-28T10:30:00Z",
+     "passes": true,
+     "notes": "Implemented with React component, added unit tests"
+   }
+   ```
+
+2. **Update the PRD-level status in `docs/prd-registry.json`:**
+   - If some stories complete: ensure `status: "in_progress"` 
+   - If all stories complete: set `status: "pr_open"` (or later states)
+   - Update `currentStory` to the next pending story (or null if done)
+
+3. **Include these updates in the story commit** (or subsequent housekeeping commit)
+
+**Why this matters:**
+- **Resumability:** Interrupted sessions know exactly which stories are done
+- **Visibility:** User can check PRD status and see accurate progress
+- **Handoff:** Another agent or human can pick up where Builder left off
+- **Audit trail:** `completedAt` timestamps provide implementation timeline
+
 ## PRD Lifecycle States
 
 PRDs go through 6 states:
@@ -284,19 +316,23 @@ Use `test-flow` as the canonical source for all test behavior.
 >
 > State updates that happen after the commit will be lost if the session ends.
 >
-> **Failure behavior:** If you find yourself about to run `git commit` without first updating `docs/prd.json` (`passes: true`), `docs/builder-state.json`, and `docs/prd-registry.json` — STOP and update those files before committing.
+> **Failure behavior:** If you find yourself about to run `git commit` without first updating `docs/prd.json` (story status + `passes: true`), `docs/builder-state.json`, and `docs/prd-registry.json` — STOP and update those files before committing.
 
 After a story completes and post-story checks pass:
 
 **1. Update all state files FIRST:**
 
-- **`docs/prd.json`** — set `passes: true` for the completed story
+- **`docs/prd.json`** — update the completed story:
+  - Set `status: "completed"`
+  - Set `completedAt: <ISO timestamp>`
+  - Set `passes: true`
+  - Add `notes` with brief completion summary (e.g., "Implemented with 3 components, added unit tests")
 - **`docs/builder-state.json`:**
   - Move story from `storiesPending` to `storiesCompleted`
   - Clear `currentStory` (or set to next story)
   - Update `uiTodos.items` to mark story `completed`
   - Update `activePrd.storiesCompleted` array
-- **`docs/prd-registry.json`** — update `currentStory` field
+- **`docs/prd-registry.json`** — update `currentStory` field and increment completed count
 
 **2. Then commit (including state files):**
 

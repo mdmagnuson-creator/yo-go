@@ -716,6 +716,20 @@ Builder must keep OpenCode right-panel todos and `docs/builder-state.json` in sy
 | Updates (`U`) | One todo per update file | Update applied or skipped by user |
 | Deferred E2E (`E`) | One todo per queued E2E file | Test passed or explicitly skipped by user |
 
+### PRD Story Status Updates (MANDATORY)
+
+> ⛔ **After completing a PRD story, you MUST update its status in the PRD JSON file.**
+>
+> **Failure behavior:** If you find yourself about to commit code for a completed story without first updating `docs/prd.json` with `status: "completed"`, `completedAt`, and `passes: true` — STOP and update the story status before committing.
+
+After each story completes (in PRD mode):
+
+1. Update story in `docs/prd.json`: `status: "completed"`, `completedAt: <timestamp>`, `passes: true`, `notes: <summary>`
+2. Update PRD-level status in `docs/prd-registry.json` if appropriate
+3. Include status updates in the story commit
+
+See `prd-workflow` skill → "Post-Story Status Update" for full details.
+
 ---
 
 ## Deferred E2E Test Flow
