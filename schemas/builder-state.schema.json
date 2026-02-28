@@ -75,10 +75,43 @@
           "items": { "type": "string" },
           "description": "Stories remaining to be done"
         },
-        "testingRigor": {
-          "type": "string",
-          "enum": ["rapid", "standard", "strict", "compliance"],
-          "description": "Resolved testing rigor profile selected for this PRD session"
+        "resolvedActivities": {
+          "type": "object",
+          "description": "Last resolved test activities from automatic activity resolution",
+          "properties": {
+            "activities": {
+              "type": "object",
+              "description": "Map of activity types to their resolution status",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Whether this activity is enabled"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why this activity was enabled/disabled"
+                  },
+                  "timing": {
+                    "type": "string",
+                    "enum": ["immediate", "deferred", "skip"],
+                    "description": "When this activity runs"
+                  }
+                }
+              }
+            },
+            "changedFiles": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Files that were analyzed for activity resolution"
+            },
+            "resolvedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When activities were resolved"
+            }
+          }
         },
         "storyAssessments": {
           "type": "object",

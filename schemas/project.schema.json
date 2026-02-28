@@ -405,7 +405,18 @@
           "type": "string",
           "enum": ["rapid", "standard", "strict", "compliance"],
           "default": "standard",
-          "description": "Default PRD testing rigor: rapid (speed-first), standard (balanced), strict (high confidence), compliance (strict + no bypass)"
+          "deprecated": true,
+          "description": "DEPRECATED: Ignored. Test activities are now determined automatically based on file changes. See alwaysInclude/neverSkip for escape hatches."
+        },
+        "alwaysInclude": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Activities to always run regardless of automatic resolution (e.g., [\"security-critic\", \"exploit-critic\"])"
+        },
+        "neverSkip": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Activities that cannot be bypassed when they fail (e.g., [\"typecheck\", \"e2e-playwright\"])"
         },
         "storyAssessment": {
           "type": "object",

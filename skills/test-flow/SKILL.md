@@ -9,31 +9,266 @@ description: "Automatic test generation and execution flows for Builder. Use whe
 
 ## Overview
 
-Builder automatically generates and runs tests based on the mode and context. This skill defines the exact behavior for all test flows.
+Builder automatically generates and runs tests based on **signal-based activity resolution**. The system analyzes changed files, detects code patterns, and determines exactly which testing activities to run — no user prompts, no rigor selection, fully automatic.
+
+---
+
+## Automatic Activity Resolution (CORE)
+
+> ⚠️ **Test activities are determined automatically. No prompts, no user selection.**
+>
+> The system analyzes what changed and runs the appropriate activities.
+> Users see an informational display of what's running, but are never asked to confirm.
+
+### How It Works
+
+```
+Task complete
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 1: Collect Changed Files                                       │
+│                                                                     │
+│ • git diff --name-only HEAD~1 (or vs base branch)                  │
+│ • Include staged + unstaged changes                                 │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 2: Resolve Activities                                          │
+│                                                                     │
+│ Read: ~/.config/opencode/data/test-activity-rules.json             │
+│ Read: <project>/docs/test-debt.json (hotspots)                     │
+│                                                                     │
+│ For each changed file:                                              │
+│   • Match against filePatterns → collect activities                 │
+│   • Check e2eScope for dependent testing                           │
+│                                                                     │
+│ For diff content:                                                   │
+│   • Match against codePatterns → collect additional activities      │
+│                                                                     │
+│ Check cross-cutting rules:                                          │
+│   • Multiple directories touched? → add oddball-critic              │
+│   • Shared module touched? → add dx-critic                          │
+│                                                                     │
+│ Check hotspots:                                                     │
+│   • File in test-debt.json? → add its critics, force E2E           │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 3: Display Activities (Informational Only)                     │
+│                                                                     │
+│ Show what's running — NO confirmation prompt                        │
+│ Execution proceeds immediately after display                        │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 4: Execute Activities                                          │
+│                                                                     │
+│ 1. Baseline: typecheck, lint (always)                               │
+│ 2. Unit tests: resolved testers for file types                      │
+│ 3. Critics: resolved critics in parallel                            │
+│ 4. E2E: immediate or deferred based on resolution                   │
+│ 5. Quality: aesthetic-critic, tailwind-critic if resolved           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Activity Resolution Algorithm
+
+```
+function resolveActivities(changedFiles, diffContent, project):
+  # Check if project has UI
+  hasUI = project.capabilities.ui !== false
+  
+  # Load rules
+  rules = read("~/.config/opencode/data/test-activity-rules.json")
+  hotspots = read("<project>/docs/test-debt.json") or { hotspots: {} }
+  
+  activities = {
+    baseline: ["typecheck", "lint"],
+    unit: Set(),
+    critics: Set(),
+    e2e: hasUI ? rules.defaults.e2e : "skip-no-ui",
+    e2eAreas: [],
+    dependentSmoke: [],
+    quality: Set(),
+    reasoning: []
+  }
+  
+  for file in changedFiles:
+    for pattern, rule in rules.filePatterns:
+      if globMatch(file, pattern):
+        # Collect critics
+        activities.critics.addAll(rule.critics or [])
+        activities.reasoning.push(file + " → " + (rule.reason or pattern))
+        
+        # Determine unit tester
+        if rule.unit === true:
+          activities.unit.add(inferUnitTester(file))
+        else if rule.unit is string:
+          activities.unit.add(rule.unit)
+        
+        # Handle E2E
+        if rule.e2e === "skip":
+          continue  # This file doesn't need E2E
+        
+        if rule.e2e === "immediate" and hasUI:
+          activities.e2e = "immediate"
+          activities.e2eAreas.add(file)
+        
+        if rule.e2e === "deferred" and hasUI:
+          activities.e2eAreas.add(file)
+        
+        # Dependent smoke testing
+        if rule.e2eScope === "dependents":
+          activities.dependentSmoke.add(file)
+        
+        # Quality critics
+        if rule.quality === true:
+          activities.quality.addAll(["aesthetic-critic"])
+        else if rule.quality is array:
+          activities.quality.addAll(rule.quality)
+  
+  # Match code patterns in diff
+  for pattern, rule in rules.codePatterns:
+    if regexMatch(diffContent, pattern):
+      activities.critics.addAll(rule.critics or [])
+      if rule.e2e === "immediate" and hasUI:
+        activities.e2e = "immediate"
+      activities.reasoning.push("Code pattern: " + pattern)
+  
+  # Cross-cutting rules
+  directories = countDistinctDirectories(changedFiles)
+  if directories >= rules.crossCuttingRules.multipleDirectories.threshold:
+    activities.critics.addAll(rules.crossCuttingRules.multipleDirectories.add.critics)
+  
+  sharedPaths = rules.crossCuttingRules.sharedModuleTouch.paths
+  if anyMatch(changedFiles, sharedPaths):
+    activities.critics.addAll(rules.crossCuttingRules.sharedModuleTouch.add.critics)
+  
+  # Hotspot escalation
+  for file in changedFiles:
+    if file in hotspots.hotspots:
+      h = hotspots.hotspots[file]
+      activities.critics.addAll(h.addedCritics or [])
+      if h.forceE2E and hasUI:
+        activities.e2e = "immediate"
+      activities.reasoning.push(file + " → hotspot: " + h.reason)
+  
+  return activities
+
+function inferUnitTester(file):
+  if file.endsWith(".tsx") or file.endsWith(".jsx"):
+    return "react-tester"
+  if file.endsWith(".go"):
+    return "go-tester"
+  return "jest-tester"
+```
+
+### Informational Activity Display
+
+After resolution, display what's running — **no confirmation, execution proceeds immediately:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+                      TEST ACTIVITIES FOR THIS CHANGE
+═══════════════════════════════════════════════════════════════════════
+
+Changed files:
+  • src/components/PaymentForm.tsx
+  • src/api/payments/charge.ts
+
+Running:
+  ✓ Baseline: typecheck, lint
+  ✓ Unit tests: @react-tester, @jest-tester
+  ✓ Critics: @frontend-critic, @backend-critic-ts, @security-critic
+  ✓ E2E: IMMEDIATE (payment code detected)
+  ✓ Quality: @aesthetic-critic
+
+═══════════════════════════════════════════════════════════════════════
+```
+
+**Note:** This display is informational. User is NOT asked to confirm or modify.
+
+### E2E Timing Rules
+
+| Timing | Meaning | When |
+|--------|---------|------|
+| `immediate` | Run E2E now, before task marked complete | Auth, payment, API, middleware, database |
+| `deferred` | Queue for PRD/batch completion | Components, hooks, pages, styling |
+| `skip` | No E2E for this file type | Type definitions, tests, docs, config |
+| `skip-no-ui` | Project has no UI | CLI tools, libraries, backend-only |
+
+### Skip Playwright Entirely
+
+These file types never trigger Playwright (even in UI projects):
+
+- `*.d.ts` — Type definitions
+- `*.test.ts`, `*.spec.ts`, `__tests__/**` — Test files
+- `*.md`, `README*`, `docs/**` — Documentation
+- `.eslintrc*`, `.prettierrc*`, `tsconfig*.json` — Dev config
+- `.gitignore`, `.github/**` — Git/CI config
+- `*.lock`, `package-lock.json` — Lockfiles
+
+### Project UI Detection
+
+Before running Playwright, check if project has a UI:
+
+```json
+// project.json
+{
+  "capabilities": {
+    "ui": true   // Has web UI → Playwright runs
+    "ui": false  // No UI → Skip Playwright entirely
+  }
+}
+```
+
+If `capabilities.ui` is not declared, detect from:
+- Has `apps/web/`, `src/app/`, `src/pages/` → UI project
+- Has React/Vue/Svelte/Next.js in dependencies → UI project
+- Has `playwright.config.*` → UI project
+- Otherwise → assume no UI
 
 ---
 
 ## Per-Task Quality Checks (MANDATORY)
 
-> ⛔ **After EVERY task/story completes, run these four checks automatically. No prompts, no skipping.**
+> ⛔ **After EVERY task/story completes, run resolved activities automatically. No prompts, no skipping.**
 >
-> This applies to BOTH ad-hoc mode AND PRD mode. Quality checks are not optional.
+> This applies to BOTH ad-hoc mode AND PRD mode.
 
-### The Four Checks
+### Activity Execution Order
 
-After @developer completes a task, run these in order:
+After @developer completes a task, run resolved activities in this order:
 
-| Step | Check | Command | Fix Loop |
-|------|-------|---------|----------|
-| 1 | **Typecheck** | `npm run typecheck` (or project equivalent) | Yes, max 3 attempts |
-| 2 | **Lint** | `npm run lint` (or project equivalent) | Yes, max 3 attempts |
-| 3 | **Unit Tests** | Auto-generate with @tester, then `CI=true npm test` (see [Test Execution Mode](#test-execution-mode-critical)) | Yes, max 3 attempts |
-| 4 | **Critic** | Run @critic for code review | Report findings, @developer fixes |
+| Step | Activity | Source | Fix Loop |
+|------|----------|--------|----------|
+| 1 | **Typecheck** | Always (baseline) | Yes, max 3 attempts |
+| 2 | **Lint** | Always (baseline) | Yes, max 3 attempts |
+| 3 | **Unit Tests** | Resolved testers (`react-tester`, `jest-tester`, `go-tester`) | Yes, max 3 attempts |
+| 4 | **Critics** | Resolved from file/code patterns | Report findings, @developer fixes |
+| 5 | **E2E Tests** | If `immediate` (or at PRD completion if `deferred`) | Yes, max 3 attempts |
+| 6 | **Quality** | Resolved quality critics (`aesthetic-critic`, etc.) | Report findings |
 
 ### Flow Diagram
 
 ```
 Task/Story complete
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ RESOLVE ACTIVITIES (automatic, no prompt)                           │
+│ Read test-activity-rules.json, match patterns, check hotspots       │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ DISPLAY ACTIVITIES (informational only, no confirmation)            │
+│ Show what's running and why                                         │
+└─────────────────────────────────────────────────────────────────────┘
     │
     ▼
 ┌─────────────────────┐
@@ -55,8 +290,8 @@ Task/Story complete
     │
     ▼
 ┌─────────────────────┐
-│ 3. Generate & run   │
-│    unit tests       │
+│ 3. Unit tests       │
+│ (resolved testers)  │
 └─────────────────────┘
     │
     ├─── PASS ──► Continue
@@ -65,12 +300,30 @@ Task/Story complete
     │
     ▼
 ┌─────────────────────┐
-│ 4. Critic review    │
+│ 4. Critics          │
+│ (resolved critics)  │
 └─────────────────────┘
     │
     ├─── No issues ──► Continue
     │
     └─── Issues found ──► @developer fixes ──► Re-run critic
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ 5. E2E Tests (if immediate)                                         │
+│    - @e2e-reviewer identifies areas + finds dependents              │
+│    - @e2e-playwright writes and runs tests                          │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ├─── PASS (or deferred/skip) ──► Continue
+    │
+    └─── FAIL ──► Fix loop (max 3) ──► Still failing? STOP
+    │
+    ▼
+┌─────────────────────┐
+│ 6. Quality critics  │
+│ (if resolved)       │
+└─────────────────────┘
     │
     ▼
 ┌─────────────────────┐
@@ -133,66 +386,46 @@ Options:
 
 ---
 
-## Test Flow Configuration
+## Escape Hatches (Optional — Power Users Only)
 
-Rigor profiles control **additional** behavior beyond the mandatory per-task checks. The four checks above always run; rigor profiles add E2E generation, quality checks, etc.
+These overrides exist but are **never required**. The system works fully automatically without them.
 
-> ⚠️ **Rigor profiles do NOT disable the mandatory per-task checks.**
-> Even `rapid` profile runs typecheck, lint, unit tests, and critic after each task.
-> Rigor profiles control: auto E2E generation, quality checks, and failure bypass options.
+### Per-Task Force
 
-### PRD Mode Rigor Configuration
+If user explicitly requests more coverage:
+```
+User: "force full"
+Builder: "Adding all critics + unit tests..."
+```
 
-Resolve testing rigor in this order (highest priority first):
+### Per-Task Skip
 
-1. `builder-state.json` -> `activePrd.testingRigor` (selected at PRD start)
-2. `docs/project.json` -> `testing.rigorProfile`
-3. Fallback: `standard`
+If user explicitly requests less coverage:
+```
+User: "skip security-critic"
+Builder: "Removing @security-critic from this run..."
+```
 
-Rigor profile controls baseline behavior for the active PRD:
+### Project-Level Configuration
 
-| Profile | baselineAutoGenerate | criticMode | qualityChecks | Policy |
-|---|---|---|---|---|
-| `rapid` | `false` | `fast` | `false` | Speed-first |
-| `standard` | `true` | `balanced` | `false` | Balanced default |
-| `strict` | `true` | `strict` | `true` | High confidence |
-| `compliance` | `true` | `strict` | `true` | No bypass on failing checks |
-
-Project-level defaults still live in `docs/project.json`:
+Set once in `project.json`, never prompted:
 
 ```json
 {
   "testing": {
-    "rigorProfile": "standard",
-    "autoGenerate": true,    // default: true - auto-generate tests for changed files
-    "qualityChecks": false   // default: false - run visual/a11y/performance checks
+    "alwaysInclude": ["security-critic"],  // Always run these
+    "neverSkip": ["exploit-critic"]         // Cannot be skipped
   }
 }
 ```
 
-Per-story assessment policy comes from `project.json` -> `testing.storyAssessment`:
+### Legacy Rigor Profiles (DEPRECATED)
 
-```json
-{
-  "testing": {
-    "storyAssessment": {
-      "source": "hybrid",
-      "allowDowngrade": false
-    }
-  }
-}
-```
-
-Story intensity levels:
-
-| Intensity | Per-story behavior |
-|---|---|
-| `low` | Skip auto-generation unless rigor is `strict` or `compliance` |
-| `medium` | Generate and run unit tests per story; defer E2E generation |
-| `high` | Generate and run unit tests per story; generate and queue E2E |
-| `critical` | Same as high plus force quality checks and strict failure handling |
-
-In `hybrid` mode, Builder uses planner-assigned `testIntensity` as baseline and may escalate from runtime signals.
+> ⚠️ **`rigorProfile` is deprecated and ignored.**
+>
+> If you have `testing.rigorProfile` in `project.json`, it will be ignored.
+> Test activities are now determined automatically based on what changed.
+> Remove this field from your `project.json` when convenient.
 
 ---
 
@@ -247,19 +480,22 @@ If tests "hang" without returning to the prompt:
 This is the same flow used in ad-hoc mode:
 1. Typecheck
 2. Lint
-3. Auto-generate and run unit tests
-4. Critic review
+3. Auto-generate and run unit tests (resolved testers)
+4. Critic review (resolved critics)
+5. E2E tests (if immediate)
+6. Quality checks (if resolved)
 
 ### Additional PRD-Specific Behavior
 
-After the mandatory checks pass, PRD mode adds E2E handling based on story intensity:
+After the mandatory checks pass, PRD mode handles E2E based on **automatic activity resolution**:
 
-| Story Intensity | E2E Behavior |
-|-----------------|--------------|
-| `low` | No automatic E2E generation |
-| `medium` | No automatic E2E generation (user can request) |
-| `high` | Auto-generate E2E tests, queue for PRD completion |
-| `critical` | Auto-generate E2E tests, queue for PRD completion |
+| E2E Resolution | Behavior |
+|----------------|----------|
+| `immediate` | Run E2E tests now, before marking story complete |
+| `deferred` | Queue E2E tests for PRD completion |
+| `skip` | No E2E (docs, config, type definitions) |
+
+**Note:** E2E timing is determined automatically by the activity rules based on what files changed. No user selection required.
 
 ### PRD Story Completion Flow
 
@@ -267,18 +503,23 @@ After the mandatory checks pass, PRD mode adds E2E handling based on story inten
 Story complete
     │
     ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ RESOLVE ACTIVITIES (automatic)                                      │
+│ Based on files changed in this story                                │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
 ┌─────────────────────────────────┐
-│ MANDATORY: Per-Task Quality     │
-│ Checks (typecheck, lint, unit   │
-│ tests, critic)                  │
+│ MANDATORY: Run resolved         │
+│ activities (baseline, unit,     │
+│ critics, E2E if immediate)      │
 └─────────────────────────────────┘
     │
     ├─── Any check fails ──► Fix loop ──► Still failing? STOP
     │
     ▼
 ┌─────────────────────────────────┐
-│ If high/critical intensity:     │
-│ Auto-generate E2E tests         │
+│ If E2E = deferred:              │
 │ Queue for PRD completion        │
 └─────────────────────────────────┘
     │
@@ -293,19 +534,9 @@ Story complete
 Next story (or PRD completion)
 ```
 
-### Story Intensity Resolution
-
-Resolve effective per-story behavior from:
-1. Active story intensity (`builder-state.json` -> `activePrd.storyAssessments[storyId].effective`)
-2. Active PRD rigor profile
-
-Per-story assessment policy comes from `project.json` -> `testing.storyAssessment`:
-- `source`: `planner` | `builder` | `hybrid` (default: `hybrid`)
-- `allowDowngrade`: whether Builder can downgrade planner's intensity (default: `false`)
-
 **After ALL stories complete:**
 
-1. **Run queued E2E tests** — All tests in `pendingTests.e2e.generated[]` (if any)
+1. **Run all deferred E2E tests** — Everything queued during story execution
 2. **If E2E tests fail:**
    - Run @developer to fix
    - Re-run (up to 3 attempts)
@@ -488,9 +719,7 @@ STOP and report to user
 
 ## Failure Reporting
 
-After 3 failed attempts (or same failure twice):
-
-If effective rigor profile is `compliance`, remove any bypass option (`ship anyway`, `skip tests`) and require fix-or-abort.
+After 3 failed attempts (or same failure twice), show failure details and options:
 
 ```
 ═══════════════════════════════════════════════════════════════════════
@@ -505,16 +734,31 @@ Checks failed after 3 fix attempts:
 
 Options:
   1. Review and fix manually, then type "verify" again
-  2. Type "ship anyway" to force ship without passing checks
+  2. Type "skip [activity]" to bypass this check (if allowed)
   3. Type "abort" to discard all changes
 
 > _
 ═══════════════════════════════════════════════════════════════════════
 ```
 
-**For story blocking (PRD mode):**
+### Bypass Restrictions
 
-In `compliance` mode, replace option 2 with "Continue fixing" and do not allow skipping story tests.
+Some activities cannot be bypassed — they always block until fixed:
+
+| Activity | Can Skip? | Rationale |
+|----------|-----------|-----------|
+| `typecheck` | ❌ Never | Broken types = broken code |
+| `lint` | ✅ Yes | Style issues don't break runtime |
+| `unit-test` | ✅ Yes | User accepts risk |
+| `critic` | ✅ Yes | Suggestions, not blockers |
+| `e2e-playwright` | ⚠️ Depends | See below |
+
+**E2E bypass rules:**
+- Activities triggered by `immediate` signals (auth, payment, API, middleware) → Cannot skip
+- Activities triggered by `deferred` signals (component styling, hooks) → Can skip with warning
+- Activities in `project.json` → `testing.neverSkip[]` → Cannot skip
+
+**For story blocking (PRD mode):**
 
 ```
 ❌ STORY BLOCKED: Unit tests failing after 3 fix attempts
@@ -527,11 +771,13 @@ Failing tests:
 
 Options:
   1. Review and fix manually, then type "retry"
-  2. Skip tests and continue (not recommended)
+  2. Type "skip unit-test" to bypass (adds to test-debt.json)
   3. Abort PRD
 
 > _
 ```
+
+When a user skips a test, record it in `test-debt.json` so future changes to that file get escalated testing (hotspot behavior).
 
 ---
 

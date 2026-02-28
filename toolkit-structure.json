@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-02-27T23:30:00Z",
+  "generatedAt": "2026-02-27T23:45:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -594,7 +594,7 @@
     }
   },
   "schemas": {
-    "total": 12,
+    "total": 14,
     "items": [
       {
         "name": "applied-updates.schema",
@@ -655,6 +655,16 @@
         "name": "workflow-defaults.schema",
         "file": "schemas/workflow-defaults.schema.json",
         "description": "Default workflow configurations for PRD and ad-hoc modes. These are used as fallback when projects don't define their own workflows."
+      },
+      {
+        "name": "test-activity-rules.schema",
+        "file": "schemas/test-activity-rules.schema.json",
+        "description": "Schema for signal-based test activity rules. Maps file patterns and code patterns to testing activities."
+      },
+      {
+        "name": "test-debt.schema",
+        "file": "schemas/test-debt.schema.json",
+        "description": "Schema for tracking test hotspots - files with past test failures that warrant escalated testing."
       }
     ]
   },
@@ -815,6 +825,11 @@
         "name": "workflow-defaults",
         "file": "data/workflow-defaults.json",
         "description": "Toolkit data file"
+      },
+      {
+        "name": "test-activity-rules",
+        "file": "data/test-activity-rules.json",
+        "description": "Signal-based rules mapping file patterns and code patterns to testing activities for automatic test selection"
       }
     ]
   },
@@ -841,6 +856,30 @@
       {
         "date": "2026-02-27",
         "changes": [
+          {
+            "type": "feat",
+            "scope": "testing",
+            "description": "implement automatic test activity selection - signal-based test routing replaces manual rigor selection",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "schema",
+            "description": "add test-activity-rules and test-debt schemas for automatic test selection",
+            "hash": "pending"
+          },
+          {
+            "type": "refactor",
+            "scope": "skills",
+            "description": "remove rigor profile selection from prd-workflow and test-flow skills",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "agents",
+            "description": "add dependency smoke testing to e2e-reviewer agent",
+            "hash": "pending"
+          },
           {
             "type": "feat",
             "scope": "updates",

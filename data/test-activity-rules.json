@@ -1,0 +1,481 @@
+{
+  "$schema": "https://opencode.ai/schemas/test-activity-rules.json",
+  "version": 1,
+  "defaults": {
+    "e2e": "deferred",
+    "unit": true
+  },
+  "filePatterns": {
+    "**/auth/**": {
+      "critics": ["security-critic", "exploit-critic"],
+      "e2e": "immediate",
+      "unit": true,
+      "reason": "Auth code is security-critical — immediate E2E"
+    },
+    "**/payment/**": {
+      "critics": ["security-critic", "exploit-critic", "backend-critic-ts"],
+      "e2e": "immediate",
+      "quality": true,
+      "unit": true,
+      "reason": "Payment code is security-critical — immediate E2E"
+    },
+    "**/billing/**": {
+      "critics": ["security-critic", "exploit-critic", "backend-critic-ts"],
+      "e2e": "immediate",
+      "quality": true,
+      "unit": true,
+      "reason": "Billing code is security-critical — immediate E2E"
+    },
+    "**/checkout/**": {
+      "critics": ["security-critic", "backend-critic-ts"],
+      "e2e": "immediate",
+      "quality": true,
+      "unit": true,
+      "reason": "Checkout flow is critical path — immediate E2E"
+    },
+    "**/*.tsx": {
+      "critics": ["frontend-critic"],
+      "unit": "react-tester",
+      "e2e": "deferred",
+      "quality": ["aesthetic-critic"],
+      "reason": "React components — unit test + deferred E2E"
+    },
+    "**/*.jsx": {
+      "critics": ["frontend-critic"],
+      "unit": "react-tester",
+      "e2e": "deferred",
+      "quality": ["aesthetic-critic"],
+      "reason": "React components — unit test + deferred E2E"
+    },
+    "**/pages/**": {
+      "e2e": "deferred",
+      "quality": ["aesthetic-critic"],
+      "reason": "Page components — deferred E2E"
+    },
+    "**/app/**/*.tsx": {
+      "e2e": "deferred",
+      "quality": ["aesthetic-critic"],
+      "reason": "App router pages — deferred E2E"
+    },
+    "**/components/**": {
+      "e2e": "deferred",
+      "e2eScope": "dependents",
+      "quality": ["aesthetic-critic"],
+      "reason": "Components — test pages that use them"
+    },
+    "**/api/**": {
+      "critics": ["api-critic", "backend-critic-ts"],
+      "e2e": "immediate",
+      "unit": true,
+      "reason": "API routes affect user flows — immediate E2E"
+    },
+    "**/routes/**": {
+      "critics": ["api-critic", "backend-critic-ts"],
+      "e2e": "immediate",
+      "unit": true,
+      "reason": "API routes affect user flows — immediate E2E"
+    },
+    "**/middleware/**": {
+      "critics": ["security-critic", "network-critic"],
+      "e2e": "immediate",
+      "unit": true,
+      "reason": "Middleware affects all requests — immediate E2E"
+    },
+    "**/middleware.ts": {
+      "critics": ["security-critic", "network-critic"],
+      "e2e": "immediate",
+      "unit": true,
+      "reason": "Next.js middleware affects all requests — immediate E2E"
+    },
+    "**/*.md": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Documentation — no runtime impact"
+    },
+    "**/README*": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Documentation — no runtime impact"
+    },
+    "**/*.d.ts": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Type definitions — compile-time only"
+    },
+    "**/types.ts": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Type definitions — compile-time only (verify no runtime exports)"
+    },
+    "**/types/*.ts": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Type definitions — compile-time only"
+    },
+    "**/*.test.ts": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Test files — tests test themselves"
+    },
+    "**/*.test.tsx": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Test files — tests test themselves"
+    },
+    "**/*.spec.ts": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Test files — tests test themselves"
+    },
+    "**/*.spec.tsx": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Test files — tests test themselves"
+    },
+    "**/__tests__/**": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Test files — tests test themselves"
+    },
+    "**/e2e/**": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "E2E test files — tests test themselves"
+    },
+    "**/.eslintrc*": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Dev tooling config — no runtime impact"
+    },
+    "**/eslint.config.*": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Dev tooling config — no runtime impact"
+    },
+    "**/.prettierrc*": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Dev tooling config — no runtime impact"
+    },
+    "**/prettier.config.*": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Dev tooling config — no runtime impact"
+    },
+    "**/tsconfig*.json": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "TypeScript config — no runtime impact"
+    },
+    "**/jsconfig*.json": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "JavaScript config — no runtime impact"
+    },
+    "**/.gitignore": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Git config — no runtime impact"
+    },
+    "**/.github/**": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "CI/CD config — no runtime impact"
+    },
+    "**/jest.config.*": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Test config — no runtime impact"
+    },
+    "**/vitest.config.*": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Test config — no runtime impact"
+    },
+    "**/playwright.config.*": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "E2E config — no runtime impact"
+    },
+    "**/utils/**": {
+      "critics": [],
+      "unit": true,
+      "e2e": "deferred",
+      "e2eScope": "dependents",
+      "reason": "Utils affect runtime — smoke test dependents"
+    },
+    "**/lib/**": {
+      "critics": [],
+      "unit": true,
+      "e2e": "deferred",
+      "e2eScope": "dependents",
+      "reason": "Lib code affects runtime — smoke test dependents"
+    },
+    "**/helpers/**": {
+      "critics": [],
+      "unit": true,
+      "e2e": "deferred",
+      "e2eScope": "dependents",
+      "reason": "Helper code affects runtime — smoke test dependents"
+    },
+    "**/hooks/**": {
+      "critics": ["frontend-critic"],
+      "unit": "react-tester",
+      "e2e": "deferred",
+      "e2eScope": "dependents",
+      "reason": "Hooks affect components — smoke test dependents"
+    },
+    "**/services/**": {
+      "critics": ["backend-critic-ts", "network-critic"],
+      "unit": true,
+      "e2e": "immediate",
+      "reason": "Services are core business logic — immediate E2E"
+    },
+    "**/db/**": {
+      "critics": ["backend-critic-ts"],
+      "unit": true,
+      "e2e": "immediate",
+      "reason": "Database code affects data — immediate E2E"
+    },
+    "**/database/**": {
+      "critics": ["backend-critic-ts"],
+      "unit": true,
+      "e2e": "immediate",
+      "reason": "Database code affects data — immediate E2E"
+    },
+    "**/prisma/**": {
+      "critics": ["backend-critic-ts"],
+      "e2e": "immediate",
+      "reason": "Prisma changes affect data layer — immediate E2E"
+    },
+    "**/schema.prisma": {
+      "e2e": "immediate",
+      "reason": "Schema changes affect all data access — immediate E2E"
+    },
+    "**/drizzle/**": {
+      "critics": ["backend-critic-ts"],
+      "e2e": "immediate",
+      "reason": "Drizzle changes affect data layer — immediate E2E"
+    },
+    "**/migrations/**": {
+      "critics": ["backend-critic-ts"],
+      "e2e": "immediate",
+      "reason": "Migrations affect data — immediate E2E"
+    },
+    "**/*.css": {
+      "e2e": "deferred",
+      "quality": ["aesthetic-critic", "tailwind-critic"],
+      "reason": "Styling changes — visual check at E2E"
+    },
+    "**/*.scss": {
+      "e2e": "deferred",
+      "quality": ["aesthetic-critic"],
+      "reason": "Styling changes — visual check at E2E"
+    },
+    "**/tailwind.config.*": {
+      "e2e": "deferred",
+      "quality": ["aesthetic-critic", "tailwind-critic"],
+      "reason": "Tailwind config affects styling — deferred E2E"
+    },
+    "**/styles/**": {
+      "e2e": "deferred",
+      "quality": ["aesthetic-critic"],
+      "reason": "Styling changes — visual check at E2E"
+    },
+    "**/*.go": {
+      "critics": ["backend-critic-go"],
+      "unit": "go-tester",
+      "e2e": "deferred",
+      "reason": "Go files — unit test with go-tester"
+    },
+    "**/cmd/**": {
+      "critics": ["backend-critic-go"],
+      "unit": "go-tester",
+      "e2e": "skip",
+      "reason": "Go CLI commands — unit tests only"
+    },
+    "**/internal/**": {
+      "critics": ["backend-critic-go"],
+      "unit": "go-tester",
+      "e2e": "deferred",
+      "reason": "Go internal packages — unit tests"
+    },
+    "**/pkg/**": {
+      "critics": ["backend-critic-go"],
+      "unit": "go-tester",
+      "e2e": "deferred",
+      "e2eScope": "dependents",
+      "reason": "Go shared packages — test dependents"
+    },
+    "**/server/**": {
+      "critics": ["backend-critic-ts", "network-critic"],
+      "unit": true,
+      "e2e": "immediate",
+      "reason": "Server code is critical path — immediate E2E"
+    },
+    "**/actions/**": {
+      "critics": ["backend-critic-ts", "security-critic"],
+      "unit": true,
+      "e2e": "immediate",
+      "reason": "Server actions are critical — immediate E2E"
+    },
+    "**/*.config.ts": {
+      "e2e": "deferred",
+      "reason": "Config files may affect runtime — deferred E2E"
+    },
+    "**/*.config.js": {
+      "e2e": "deferred",
+      "reason": "Config files may affect runtime — deferred E2E"
+    },
+    "**/next.config.*": {
+      "e2e": "deferred",
+      "reason": "Next.js config — deferred E2E to catch build issues"
+    },
+    "**/package.json": {
+      "e2e": "deferred",
+      "reason": "Dependency changes — deferred E2E"
+    },
+    "**/package-lock.json": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Lockfile — no direct runtime impact"
+    },
+    "**/yarn.lock": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Lockfile — no direct runtime impact"
+    },
+    "**/pnpm-lock.yaml": {
+      "critics": [],
+      "unit": false,
+      "e2e": "skip",
+      "reason": "Lockfile — no direct runtime impact"
+    }
+  },
+  "codePatterns": {
+    "prisma\\.(create|update|delete|upsert|deleteMany|updateMany)": {
+      "critics": ["backend-critic-ts"],
+      "unit": true,
+      "reason": "Database mutations detected"
+    },
+    "db\\.(insert|update|delete|execute)": {
+      "critics": ["backend-critic-ts"],
+      "unit": true,
+      "reason": "Database mutations detected (Drizzle/raw SQL)"
+    },
+    "(fetch|axios|got|ky).*(/auth|/login|/logout|/session|/token)": {
+      "critics": ["security-critic", "network-critic"],
+      "e2e": "immediate",
+      "reason": "Auth-related network calls detected"
+    },
+    "crypto\\.": {
+      "critics": ["security-critic", "exploit-critic"],
+      "reason": "Cryptography usage detected"
+    },
+    "bcrypt|argon2|scrypt": {
+      "critics": ["security-critic"],
+      "reason": "Password hashing detected"
+    },
+    "jwt\\.|jsonwebtoken": {
+      "critics": ["security-critic", "exploit-critic"],
+      "e2e": "immediate",
+      "reason": "JWT handling detected"
+    },
+    "eval\\(|new Function\\(": {
+      "critics": ["security-critic", "exploit-critic"],
+      "reason": "Dynamic code execution detected"
+    },
+    "child_process|exec\\(|spawn\\(|execSync|spawnSync": {
+      "critics": ["security-critic", "exploit-critic"],
+      "reason": "Shell command execution detected"
+    },
+    "fs\\.(write|unlink|rm|rmdir|chmod|chown)": {
+      "critics": ["security-critic"],
+      "reason": "File system mutations detected"
+    },
+    "process\\.env": {
+      "critics": ["security-critic"],
+      "reason": "Environment variable access detected"
+    },
+    "innerHTML|dangerouslySetInnerHTML": {
+      "critics": ["security-critic", "exploit-critic"],
+      "reason": "Raw HTML injection detected"
+    },
+    "document\\.cookie": {
+      "critics": ["security-critic"],
+      "reason": "Cookie manipulation detected"
+    },
+    "localStorage|sessionStorage": {
+      "critics": ["security-critic"],
+      "reason": "Browser storage access detected"
+    },
+    "useState|useReducer|useContext": {
+      "critics": ["frontend-critic"],
+      "unit": "react-tester",
+      "reason": "React state management detected"
+    },
+    "zustand|redux|recoil|jotai|valtio": {
+      "critics": ["frontend-critic"],
+      "unit": "react-tester",
+      "reason": "State management library detected"
+    },
+    "useQuery|useMutation|useSWR": {
+      "critics": ["frontend-critic", "network-critic"],
+      "unit": "react-tester",
+      "reason": "Data fetching hook detected"
+    },
+    "stripe|paypal|braintree": {
+      "critics": ["security-critic", "exploit-critic"],
+      "e2e": "immediate",
+      "reason": "Payment provider detected"
+    },
+    "sendgrid|resend|nodemailer|postmark": {
+      "critics": ["backend-critic-ts"],
+      "reason": "Email service detected"
+    },
+    "s3|cloudfront|lambda|dynamodb|sqs|sns": {
+      "critics": ["backend-aws-critic"],
+      "reason": "AWS service usage detected"
+    }
+  },
+  "crossCuttingRules": {
+    "multipleDirectories": {
+      "threshold": 3,
+      "add": {
+        "critics": ["oddball-critic"],
+        "reason": "Changes span 3+ directories — check consistency"
+      }
+    },
+    "sharedModuleTouch": {
+      "paths": ["**/shared/**", "**/common/**", "**/lib/**", "**/utils/**"],
+      "add": {
+        "critics": ["dx-critic"],
+        "reason": "Shared module changed — check API surface"
+      }
+    }
+  }
+}

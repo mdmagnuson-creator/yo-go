@@ -117,18 +117,7 @@ When user selects a PRD to build:
 - If HIGH conflict risk with an active session, warn and get confirmation
 - If MEDIUM conflict risk, note it but proceed if user confirms
 
-### Step 2: Select Testing Rigor for This PRD
-
-At PRD start, prompt for testing rigor profile (default from `docs/project.json` -> `testing.rigorProfile`, fallback `standard`):
-
-- `rapid` - prioritize speed (`autoGenerate=false`, `criticMode=fast`, `qualityChecks=false`)
-- `standard` - balanced default (`autoGenerate=true`, `criticMode=balanced`, `qualityChecks=false`)
-- `strict` - higher confidence (`autoGenerate=true`, `criticMode=strict`, `qualityChecks=true`)
-- `compliance` - strict plus hard gates (`autoGenerate=true`, `criticMode=strict`, `qualityChecks=true`, no "ship anyway" bypass)
-
-Persist selection to `builder-state.json` under `activePrd.testingRigor` so resumed sessions keep the same behavior.
-
-### Step 3: Credential Readiness Check
+### Step 2: Credential Readiness Check
 
 Before copying the PRD to the working location, inspect credential metadata in `docs/prds/prd-[name].json`:
 
@@ -140,18 +129,18 @@ Before copying the PRD to the working location, inspect credential metadata in `
 
 If no credential requirements are listed, continue normally.
 
-### Step 4: Copy PRD to Working Location
+### Step 3: Copy PRD to Working Location
 
 Copy `docs/prds/prd-[name].json` to `docs/prd.json`. This is where @developer reads the current work.
 
-### Step 5: Update PRD Registry Status
+### Step 4: Update PRD Registry Status
 
 Update `docs/prd-registry.json`:
 - Set `status: "in_progress"`
 - Set `startedAt: <now>`
 - Store `currentStory` as work progresses
 
-### Step 6: Create Session Lock
+### Step 5: Create Session Lock
 
 Create/update entry in `docs/session-locks.json`:
 
@@ -170,7 +159,7 @@ Create/update entry in `docs/session-locks.json`:
 }
 ```
 
-### Step 7: Set Execution Branch
+### Step 6: Set Execution Branch
 
 If `trunk + branchless`:
 
@@ -353,14 +342,10 @@ When to run @critic depends on the configured `criticMode`:
 
 **Configuration cascade** (highest priority first):
 1. CLI flag: `--critic-mode=strict`
-2. Active PRD rigor profile (`builder-state.json` -> `activePrd.testingRigor`)
-3. Project: `project.json` → `agents.criticMode`
-4. Fallback: `balanced`
+2. Project: `project.json` → `agents.criticMode`
+3. Fallback: `balanced`
 
-Rigor-derived critic overrides:
-- `rapid` -> `fast`
-- `standard` -> `balanced`
-- `strict` and `compliance` -> `strict`
+> ℹ️ **Note:** Rigor profiles are deprecated. Critic mode is now configured directly in `project.json` or via CLI flag. The system automatically determines which critics to run based on file changes (see test-flow skill for activity resolution).
 
 **Balanced mode details:**
 - If PRD has ≤2 stories, behave like `fast` (one critic run at end)

@@ -193,6 +193,57 @@ Update `docs/e2e-areas.json` to mark areas as verified and note any issues found
 - Don't just check the obvious - check related pages too
 - If settings changed, check where those settings are used
 
+### Dependency Smoke Testing
+
+When a shared component, hook, or utility is changed, identify and verify ALL consumers:
+
+1. **Identify dependents:**
+   ```bash
+   # For a changed component like Button.tsx
+   grep -r "from.*Button" src/ --include="*.tsx" --include="*.ts"
+   
+   # For a hook like useAuth
+   grep -r "useAuth" src/ --include="*.tsx" --include="*.ts"
+   ```
+
+2. **Create a dependency map:**
+   - Changed file → List of files that import it
+   - Those files → UI areas they render
+   - Each UI area → Needs smoke test verification
+
+3. **Prioritize by impact:**
+   - **High impact** (many dependents): Run full smoke tests on all affected areas
+   - **Medium impact** (few dependents): Spot check key areas
+   - **Low impact** (no dependents): Normal verification only
+
+4. **Document the chain in `e2e-areas.json`:**
+   ```json
+   {
+     "id": "dashboard-header",
+     "name": "Dashboard Header",
+     "path": "/dashboard",
+     "triggeredBy": {
+       "file": "src/components/Button.tsx",
+       "reason": "dependency",
+       "dependencyChain": ["Button.tsx", "Header.tsx", "DashboardLayout.tsx"]
+     },
+     "smokeTest": true
+   }
+   ```
+
+5. **Smoke test checklist:**
+   - [ ] Page loads without error
+   - [ ] Changed component renders correctly
+   - [ ] No console errors
+   - [ ] Basic interactions still work
+   - [ ] No visual regressions in dependent areas
+
+**Example:** If `useAuth` hook changes:
+- Find all components using `useAuth`
+- Find all pages rendering those components
+- Smoke test each page to verify auth still works
+- Document all tested areas in manifest
+
 ### Document Everything
 - Screenshot each area
 - Note exact selectors for key elements
