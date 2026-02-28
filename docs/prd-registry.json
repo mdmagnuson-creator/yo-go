@@ -80,6 +80,16 @@
       "stories": 7,
       "dependencies": ["prd-verifiable-completion"],
       "notes": "Enables task handoff between agents - checkpoints capture work artifacts for resume"
+    },
+    {
+      "id": "prd-dynamic-reassignment",
+      "title": "Dynamic Reassignment",
+      "status": "ready",
+      "filePath": "docs/prds/prd-dynamic-reassignment.md",
+      "createdAt": "2026-02-28",
+      "stories": 7,
+      "dependencies": ["prd-verifiable-completion", "prd-checkpoint-serialization"],
+      "notes": "Automatic agent fallback and retry - uses checkpoints and verification contracts"
     }
   ]
 }
