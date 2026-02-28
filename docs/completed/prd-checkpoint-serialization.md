@@ -1,6 +1,6 @@
 # PRD: Checkpoint & State Serialization
 
-**Status:** Ready  
+**Status:** Complete  
 **Priority:** High  
 **Source:** Intelligent AI Delegation paper (arXiv:2602.11865)  
 **Dependencies:** prd-verifiable-completion (provides result contracts for verification.criteria)
