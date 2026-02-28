@@ -692,6 +692,31 @@ Keep the README counts in sync:
 
 Website sync is controlled by a local, gitignored override so public users are not forced into website workflows.
 
+#### Step 3a: Assess Website Impact
+
+Before checking mode, determine if this change affects website-documented content:
+
+**Changes that REQUIRE website sync:**
+- Modified `agents/builder.md`, `agents/planner.md`, `agents/toolkit.md`, or `agents/developer.md` (primary agents with dedicated pages)
+- Added/removed/renamed any agent (affects agent list page)
+- Added/removed/renamed any skill (affects skills page)
+- Modified agent descriptions or capabilities that are documented on the website
+- Changed schema structure that's documented
+- Updated workflow documentation that's reflected on the website
+
+**Changes that DON'T require website sync:**
+- Internal implementation details not exposed on website
+- Bug fixes that don't change documented behavior
+- PRD-only changes (docs/drafts/, docs/prds/)
+- Validator/script changes (unless documented)
+
+**Assess and set `websiteSyncNeeded`:**
+```
+websiteSyncNeeded = true if ANY of the above "REQUIRE" conditions are met
+```
+
+#### Step 3b: Resolve Sync Mode
+
 Resolve mode in this order:
 
 1. Read `.local/toolkit-overrides.json` (if present)
@@ -713,6 +738,29 @@ For your personal/local setup, use `.local/toolkit-overrides.json` (gitignored),
     "projectId": "opencode-toolkit-website"
   }
 }
+```
+
+#### Step 3c: Execute Based on Mode + Impact
+
+| Mode | websiteSyncNeeded | Action |
+|------|-------------------|--------|
+| `disabled` | `true` | Log: "⚠️ Website sync needed but mode is disabled. Manual sync required for: [list affected pages]" |
+| `disabled` | `false` | Skip silently |
+| `owner-managed` | `true` | Include manual checklist in completion output (see below) |
+| `owner-managed` | `false` | Skip with note: "Website sync not needed for this change" |
+| `queue-file` | `true` | Create pending update file (see below) |
+| `queue-file` | `false` | Skip with note: "Website sync not needed for this change" |
+
+**Owner-managed checklist (when `websiteSyncNeeded: true`):**
+```
+📋 WEBSITE SYNC NEEDED
+
+The following website pages may need updates:
+- [ ] Agent page: [agent-name] — [what changed]
+- [ ] Skills page — [if skills changed]
+- [ ] [other affected pages]
+
+Manual action required in your website project.
 ```
 
 If resolved mode is `queue-file`, create a pending update for the configured website project so @builder can sync the documentation:
@@ -774,10 +822,16 @@ Then include this exact completion report in your response:
 Post-change workflow:
 - [x] toolkit-structure.json updated (or not required with reason)
 - [x] README counts verified/updated
-- [x] Website sync update queued (or skipped with reason)
+- [x] Website sync: [action taken] (needed: yes/no, mode: [mode], affected: [pages])
 - [x] Governance validators run (4/4)
 - [x] Commit/push status stated (done or not requested)
 ```
+
+**Website sync line examples:**
+- `Website sync: queued update (needed: yes, mode: queue-file, affected: Builder agent page)`
+- `Website sync: manual checklist shown (needed: yes, mode: owner-managed, affected: skills page)`
+- `Website sync: not needed (internal implementation change)`
+- `Website sync: ⚠️ needed but disabled (affected: Builder agent page) — manual sync required`
 
 If any item is not complete, do not claim completion. State the blocker and the pending checkbox.
 
