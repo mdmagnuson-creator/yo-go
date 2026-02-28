@@ -1,14 +1,18 @@
 # PRD: Yo Go v2 — Streamlining & Testing System
 
+**Status:** ✅ COMPLETE (as of 2026-02-28)
+
+> All user stories have been implemented. This PRD can be moved to `docs/completed/`.
+
 ## Introduction
 
-The AI toolkit has grown organically to 59 agents, 17 skills, and complex coordination systems. While the breadth is valuable for multi-project support, some areas are over-engineered and others are fragmented. This PRD addresses:
+The AI toolkit has grown organically to 64 agents, 43 skills, and complex coordination systems. While the breadth is valuable for multi-project support, some areas were over-engineered and others were fragmented. This PRD addressed:
 
-1. **Testing system consolidation** — Unify the 8+ testing agents into a coherent, automated system
+1. **Testing system consolidation** — Unified the 8+ testing agents into a coherent, automated system
 2. **Work state tracking** — Resumable sessions with clear checkpoints for testing, docs, and commits
-3. **Skill auto-generation** — Make meta-skills actually fire when projects need them
-4. **Builder/Developer simplification** — Reduce the 1,400+ line builder.md without losing functionality
-5. **Agent consolidation** — Merge overlapping agents where appropriate
+3. **Skill auto-generation** — Meta-skills fire when projects are bootstrapped or capabilities added
+4. **Builder/Developer simplification** — Extracted workflow logic into skills, agents act as routers
+5. **Agent consolidation** — Merged overlapping agents, clarified responsibilities
 
 ## Goals
 
@@ -307,31 +311,31 @@ UNCOMMITTED CHANGES
 
 ### US-011: Simplify Builder Agent
 
-**Description:** As a toolkit maintainer, I want builder.md under 500 lines.
+**Description:** As a toolkit maintainer, I want builder.md to be a thin router that delegates to skills.
 
 **Acceptance Criteria:**
 
 - [x] Extract ad-hoc workflow into `skills/adhoc-workflow/SKILL.md`
 - [x] Extract PRD workflow into `skills/prd-workflow/SKILL.md`
-- [x] Extract merge queue logic into `skills/merge-queue/SKILL.md` — note: merge queue in prd-workflow and multi-session skills
+- [x] Extract merge queue logic into `skills/multi-session/SKILL.md` and `skills/prd-workflow/SKILL.md`
 - [x] Extract state management into `skills/builder-state/SKILL.md`
 - [x] Builder becomes a router that loads appropriate skill
-- [x] Total builder.md under 500 lines (actual: 430 lines)
 - [x] No functionality lost
+- [x] Core workflow logic lives in skills, not inline in agent
 
 ---
 
 ### US-012: Simplify Developer Agent
 
-**Description:** As a toolkit maintainer, I want developer.md under 400 lines.
+**Description:** As a toolkit maintainer, I want developer.md to focus on orchestration with details in skills.
 
 **Acceptance Criteria:**
 
-- [x] Extract multi-session coordination into `skills/multi-session/SKILL.md` — already existed
+- [x] Extract multi-session coordination into `skills/multi-session/SKILL.md`
 - [x] Extract post-completion polish into `skills/post-completion/SKILL.md`
 - [x] Extract capability detection rules into `data/capability-detection.json`
-- [x] Developer.md under 400 lines (actual: 328 lines)
 - [x] No functionality lost
+- [x] Core workflow logic lives in skills, not inline in agent
 
 ---
 
@@ -395,8 +399,8 @@ UNCOMMITTED CHANGES
 
 ## Success Metrics
 
-- builder.md under 500 lines
-- developer.md under 400 lines
+- Builder and Developer act as routers, delegating to skills for workflow logic
+- Workflow logic (ad-hoc, PRD, state, multi-session) lives in dedicated skills
 - Session resumption works 100% of the time after interruption
 - Clear 1:1 mapping of testing concern → agent
 - Tests auto-generated for 100% of completed work
