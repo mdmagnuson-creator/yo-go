@@ -56,6 +56,21 @@ Write state atomically (read → modify → write) at these key moments:
 | **Commit work** | Update `uncommittedWork` to reflect remaining uncommitted changes |
 | **Any action** | Always update `lastHeartbeat` |
 
+### Checkpoint Triggers
+
+Update the `checkpoint` field at these moments (see "Checkpoint Operations" section for details):
+
+| Event | Checkpoint Action |
+|-------|-------------------|
+| **Step completion** | Add step to `completedSteps`, update `pendingSteps`, clear `currentStep` |
+| **Start new step** | Set `currentStep` with description and `startedAt` |
+| **Decision made** | Add to `decisions` array with rationale |
+| **Rate limit detected** | Full checkpoint with `reason: "rate_limit"`, capture `currentStep.partialWork` |
+| **Task failure** | Full checkpoint with `reason: "failure"`, add error to `blockers` |
+| **Context 75%** | Full checkpoint with `reason: "context_limit"` (warning) |
+| **Context 90%** | Full checkpoint with `reason: "context_limit"` (stop work) |
+| **Reassignment** | Full checkpoint with `reason: "reassignment"`, add agent to `previousAgents` |
+
 ## Writing State
 
 ```bash
@@ -329,3 +344,292 @@ If using a file-read tool that throws on missing paths, first list `docs/` and o
   }
 }
 ```
+
+## Checkpoint Operations
+
+Checkpoints capture work artifacts (not just status) so another agent can resume mid-task. Target: <2KB per checkpoint.
+
+### Creating a Checkpoint
+
+Initialize checkpoint when starting a task:
+
+```json
+{
+  "checkpoint": {
+    "phase": "implementation",
+    "completedSteps": [],
+    "pendingSteps": ["Create component", "Add styling", "Wire to context", "Write tests"],
+    "currentStep": null,
+    "decisions": [],
+    "blockers": [],
+    "verification": {
+      "contractRef": "US-003.verificationContract",
+      "results": []
+    },
+    "metadata": {
+      "createdBy": "react-dev",
+      "lastUpdatedAt": "2026-02-28T10:00:00Z",
+      "reason": "periodic",
+      "previousAgents": []
+    }
+  }
+}
+```
+
+### Updating Checkpoint on Step Completion
+
+After completing a logical step:
+
+1. Add completed step to `completedSteps` (keep last 10 only)
+2. Remove step from `pendingSteps`
+3. Clear `currentStep`
+4. Update `metadata.lastUpdatedAt`
+
+```json
+{
+  "completedSteps": [
+    {
+      "step": "Created DarkModeToggle component",
+      "filesCreated": ["src/components/DarkModeToggle.tsx"],
+      "filesModified": [],
+      "timestamp": "2026-02-28T10:05:00Z"
+    }
+  ],
+  "pendingSteps": ["Add styling", "Wire to context", "Write tests"],
+  "currentStep": null,
+  "metadata": {
+    "lastUpdatedAt": "2026-02-28T10:05:00Z",
+    "reason": "periodic"
+  }
+}
+```
+
+### Recording Decisions
+
+When making a design choice:
+
+```json
+{
+  "decisions": [
+    {
+      "decision": "Use CSS custom properties for theming",
+      "rationale": "Avoids runtime style calculation, better performance",
+      "timestamp": "2026-02-28T10:02:00Z"
+    }
+  ]
+}
+```
+
+**Size limits:**
+- `decision`: Keep concise
+- `rationale`: Truncate to 100 chars
+- `partialWork`: Truncate to 200 chars
+
+### Checkpoint on Failure/Rate Limit
+
+Before reporting failure or stopping for rate limit:
+
+```json
+{
+  "checkpoint": {
+    "phase": "implementation",
+    "completedSteps": [...],
+    "pendingSteps": ["Wire to context", "Write tests"],
+    "currentStep": {
+      "description": "Add styling to toggle",
+      "startedAt": "2026-02-28T10:10:00Z",
+      "partialWork": "Added base styles, working on hover state"
+    },
+    "blockers": ["Rate limit reached after styling hover state"],
+    "metadata": {
+      "createdBy": "react-dev",
+      "lastUpdatedAt": "2026-02-28T10:12:00Z",
+      "reason": "rate_limit",
+      "previousAgents": []
+    }
+  }
+}
+```
+
+### Checkpoint on Reassignment
+
+When task is being reassigned to another agent:
+
+1. Create full checkpoint with `reason: "reassignment"`
+2. Add current agent to `metadata.previousAgents`
+3. Pass checkpoint to new agent via resume prompt
+
+```json
+{
+  "metadata": {
+    "createdBy": "react-dev",
+    "lastUpdatedAt": "2026-02-28T10:15:00Z",
+    "reason": "reassignment",
+    "previousAgents": ["react-dev"]
+  }
+}
+```
+
+## Resume Protocol
+
+When an agent receives a task with an existing checkpoint:
+
+### 1. Detect Stale Checkpoint
+
+Compare `checkpoint.metadata.lastUpdatedAt` with file modification times:
+
+```bash
+# Get checkpoint timestamp
+CHECKPOINT_TIME=$(jq -r '.checkpoint.metadata.lastUpdatedAt' docs/builder-state.json)
+
+# Check files from completedSteps
+for file in $(jq -r '.checkpoint.completedSteps[].filesCreated[]?, .checkpoint.completedSteps[].filesModified[]?' docs/builder-state.json); do
+  FILE_MTIME=$(stat -f "%Sm" -t "%Y-%m-%dT%H:%M:%SZ" "$file" 2>/dev/null)
+  # Compare timestamps...
+done
+```
+
+**If any file has mtime newer than checkpoint:**
+- Warn: "Checkpoint may be stale — files modified since checkpoint"
+- Read affected files to understand current state
+- Reconcile before proceeding
+
+### 2. Output Resume Header
+
+When resuming from checkpoint, output:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                    RESUMING FROM CHECKPOINT
+═══════════════════════════════════════════════════════════════════════
+
+Created by: react-dev
+Last updated: 2026-02-28T10:10:00Z
+Reason: rate_limit
+
+Phase: implementation
+
+Completed Steps:
+  ✓ Created DarkModeToggle component (src/components/DarkModeToggle.tsx)
+  ✓ Added ThemeContext for state management
+
+Decisions Already Made:
+  • Use CSS custom properties for theming
+  • Store theme preference in localStorage
+
+Current Step (in progress):
+  → Wire toggle to ThemeContext
+  Partial work: Added useTheme import, started onClick handler
+
+Pending Steps:
+  • Add CSS custom properties for dark theme
+  • Write unit tests for toggle
+  • Write E2E test for theme switch
+
+═══════════════════════════════════════════════════════════════════════
+```
+
+### 3. Resume Prompt Template
+
+When delegating to a specialist with checkpoint context:
+
+```markdown
+# Resuming Task: [taskId]
+
+You are continuing work that was partially completed by [previousAgents].
+
+## Task Description
+[original task description]
+
+## Current Phase
+[checkpoint.phase]
+
+## Completed Steps
+[formatted list from checkpoint.completedSteps]
+
+## Decisions Already Made
+[formatted list from checkpoint.decisions — RESPECT THESE]
+
+## Current Step (In Progress)
+[checkpoint.currentStep.description]
+Partial work: [checkpoint.currentStep.partialWork]
+
+## Pending Steps
+[formatted list from checkpoint.pendingSteps]
+
+## Files to Review
+[list of files from completedSteps — read these to verify state]
+
+## Verification Criteria
+[from checkpoint.verification.contractRef]
+
+## Instructions
+1. Read the files listed above to verify the checkpoint is accurate
+2. Continue from the current step (or first pending step if currentStep is null)
+3. Respect decisions already made — do not revisit unless blocked
+4. Complete the remaining steps
+5. Run verification criteria when done
+6. Update checkpoint after each step
+```
+
+### 4. Resume Behavior
+
+When resuming:
+
+1. **Read affected files** — Verify checkpoint accuracy
+2. **Check for staleness** — Warn if files modified after checkpoint
+3. **Respect decisions** — Don't revisit choices already made
+4. **Continue from currentStep** — Or first pendingStep if currentStep is null
+5. **Update checkpoint** — After each step completion
+6. **Complete verification** — Run criteria from verification contract
+
+## Context Overflow Handling
+
+### At 75% Context Usage
+
+```
+⚠️ Context limit approaching (75%)
+
+Creating safety checkpoint...
+[checkpoint created with reason: "context_limit"]
+
+Work can continue, but checkpoint exists if session must end.
+```
+
+### At 90% Context Usage
+
+```
+⛔ Context limit reached (90%)
+
+Creating final checkpoint...
+[checkpoint created with reason: "context_limit"]
+
+Stopping current work. To resume:
+1. Start a new session
+2. Builder will detect checkpoint and offer resume
+
+Current progress:
+- Completed: [N] steps
+- Pending: [M] steps
+- Current step: [description]
+```
+
+## Checkpoint Size Management
+
+Keep checkpoints under 2KB:
+
+1. **completedSteps**: Keep last 10 only
+2. **partialWork**: Truncate to 200 chars
+3. **rationale**: Truncate to 100 chars
+4. **File paths**: Source files only (no node_modules, build artifacts)
+5. **No file content**: Just paths — agent reads files directly
+
+### Pruning Old Steps
+
+When `completedSteps.length > 10`:
+
+```javascript
+checkpoint.completedSteps = checkpoint.completedSteps.slice(-10);
+```
+
+Older steps are less relevant for resume — recent work matters most.

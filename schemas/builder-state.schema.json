@@ -457,6 +457,161 @@
         },
         "required": ["taskId", "description"]
       }
+    },
+
+    "checkpoint": {
+      "type": ["object", "null"],
+      "description": "Structured checkpoint for task resumption. Captures work artifacts so another agent can resume mid-task.",
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": ["planning", "implementation", "verification", "documentation"],
+          "description": "Current task phase"
+        },
+        "completedSteps": {
+          "type": "array",
+          "description": "Steps that have been completed (limited to last 10)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "string",
+                "description": "What was done (action + object, concise)"
+              },
+              "filesCreated": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Paths to files created in this step"
+              },
+              "filesModified": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Paths to files modified in this step"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When this step completed"
+              }
+            },
+            "required": ["step", "timestamp"]
+          }
+        },
+        "pendingSteps": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Steps remaining to complete the task"
+        },
+        "currentStep": {
+          "type": ["object", "null"],
+          "description": "Step currently in progress (null if between steps)",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "What is being worked on"
+            },
+            "startedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When this step started"
+            },
+            "partialWork": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Brief note on partial progress (truncated to 200 chars)"
+            }
+          },
+          "required": ["description", "startedAt"]
+        },
+        "decisions": {
+          "type": "array",
+          "description": "Key design decisions made during the task",
+          "items": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string",
+                "description": "What was decided"
+              },
+              "rationale": {
+                "type": "string",
+                "maxLength": 100,
+                "description": "Why (truncated to 100 chars)"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": ["decision", "timestamp"]
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Known blockers preventing progress"
+        },
+        "verification": {
+          "type": ["object", "null"],
+          "description": "Link to verification contract and results from prd-verifiable-completion",
+          "properties": {
+            "contractRef": {
+              "type": "string",
+              "description": "Reference to verificationContract (e.g., 'US-003.verificationContract')"
+            },
+            "results": {
+              "type": "array",
+              "description": "Verification results recorded so far",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "activity": {
+                    "type": "string",
+                    "description": "Verification activity"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["pending", "passed", "failed", "skipped"],
+                    "description": "Result of this verification"
+                  },
+                  "runAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": ["activity", "status"]
+              }
+            }
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Checkpoint metadata for resume and audit",
+          "properties": {
+            "createdBy": {
+              "type": "string",
+              "description": "Agent that created the checkpoint"
+            },
+            "lastUpdatedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When checkpoint was last updated (for stale detection)"
+            },
+            "reason": {
+              "type": "string",
+              "enum": ["periodic", "context_limit", "failure", "reassignment", "rate_limit", "manual"],
+              "description": "Why checkpoint was created/updated"
+            },
+            "previousAgents": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Chain of agents that have worked on this task"
+            }
+          },
+          "required": ["createdBy", "lastUpdatedAt", "reason"]
+        }
+      },
+      "required": ["phase", "completedSteps", "pendingSteps", "metadata"]
     }
   },
 
