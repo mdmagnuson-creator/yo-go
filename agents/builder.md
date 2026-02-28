@@ -458,14 +458,17 @@ After the user selects a project number, show a **fast inline dashboard** — no
     - ls <project>/docs/pending-updates/*.md 2>/dev/null
     - cat <project>/docs/applied-updates.json 2>/dev/null
     - ls ~/.config/opencode/project-updates/[project-id]/*.md 2>/dev/null
+    - cat ~/.config/opencode/data/update-registry.json
+    - cat ~/.config/opencode/data/update-affinity-rules.json
     ```
 
    **Important:** Treat missing `docs/builder-state.json` and `docs/applied-updates.json` as normal. Do not call a file-read tool against those paths unless you confirmed they exist, and do not surface "File not found" errors for these optional files.
    
-   **Pending updates discovery:** Check both locations and filter out already-applied updates:
-   - Primary: `<project>/docs/pending-updates/*.md` (committed to project repo)
+   **Pending updates discovery:** Check all three sources and filter out already-applied updates:
+   - Project-local: `<project>/docs/pending-updates/*.md` (committed to project repo)
+   - Central registry: Match updates from `update-registry.json` against this project using `update-affinity-rules.json`
    - Legacy fallback: `~/.config/opencode/project-updates/[project-id]/*.md`
-   - Filter: Skip any update whose ID (filename without `.md`) appears in `docs/applied-updates.json`
+   - Filter: Skip any update whose ID appears in `docs/applied-updates.json`
 
 3. **Team Sync - Pull Latest (if enabled):**
 
@@ -580,10 +583,11 @@ After the user selects a project number, show a **fast inline dashboard** — no
 
 ## Pending Project Updates (`U`)
 
-Builder discovers pending updates from two locations (primary + legacy fallback):
+Builder discovers pending updates from three sources (in priority order):
 
-1. **Primary:** `<project>/docs/pending-updates/*.md` (committed, syncs via git)
-2. **Legacy:** `~/.config/opencode/project-updates/[project-id]/*.md` (gitignored, local only)
+1. **Project-local:** `<project>/docs/pending-updates/*.md` (committed to project, syncs via git)
+2. **Central registry:** `~/.config/opencode/data/update-registry.json` (committed to toolkit, syncs via git)
+3. **Legacy:** `~/.config/opencode/project-updates/[project-id]/*.md` (gitignored, local only)
 
 Updates are filtered against `<project>/docs/applied-updates.json` to skip already-applied updates.
 
@@ -595,10 +599,26 @@ Builder can apply ANY project update regardless of scope. Both Builder and Plann
 ### Processing Updates
 
 1. **Discover pending updates:**
-   - List files from both locations
+   - List files from project-local and legacy locations
+   - Read `~/.config/opencode/data/update-registry.json` for central registry updates
+   - Match registry updates to this project using affinity rules (see "Registry Matching" below)
    - Read `docs/applied-updates.json` to get applied IDs
-   - Filter out updates whose ID (filename without `.md`) is already in applied list
+   - Filter out updates whose ID is already in applied list
    - Merge remaining updates for processing
+
+### Registry Matching
+
+To check if a registry update applies to the current project:
+
+1. Read the update's `affinityRule` (e.g., `desktop-apps`)
+2. Look up the rule in `~/.config/opencode/data/update-affinity-rules.json`
+3. Evaluate the rule against `<project>/docs/project.json`:
+   - `condition: "always"` → matches all projects
+   - `condition: "equals"` → check `path` equals `value`
+   - `condition: "contains"` → check if array at `path` contains `value`
+   - `condition: "hasValueWhere"` → check if any object in `path` matches all `where` conditions
+4. If matched AND not already applied → include in pending updates
+5. Use `templatePath` from registry to read the update content
 
 2. **Process each update:**
    - Read the update file and apply changes
@@ -628,9 +648,10 @@ Builder can apply ANY project update regardless of scope. Both Builder and Plann
    - If `docs/applied-updates.json` doesn't exist, create it with `schemaVersion: 1`
    - Append to the `applied` array (preserve existing entries)
 
-5. **Delete the update file:**
+5. **Delete the update file (if applicable):**
    - If update came from `docs/pending-updates/`: delete the file
    - If update came from legacy location: delete from `~/.config/opencode/project-updates/[project-id]/`
+   - If update came from central registry: do NOT delete (registry is shared; tracking is via `applied-updates.json`)
    - If user defers or skips: keep the file (don't record in applied-updates.json)
 
 6. **Post-apply verification:**
