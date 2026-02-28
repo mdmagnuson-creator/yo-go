@@ -688,122 +688,89 @@ Keep the README counts in sync:
    - `| [\`skills/\`](#skills) | XX reusable skills...`
 3. **If you added a new agent category or significant feature**, add it to the appropriate section
 
-### Step 3: Handle Website Sync Mode
+### Step 3: Queue Website Sync Update
 
-Website sync is controlled by a local, gitignored override so public users are not forced into website workflows.
+> **MANDATORY:** Every toolkit behavior change requires a website sync pending update.
+> This ensures the website documentation stays in sync with the toolkit.
 
-#### Step 3a: Assess Website Impact
+#### Step 3a: Get Website Project Path
 
-Before checking mode, determine if this change affects website-documented content:
+1. Read `~/.config/opencode/projects.json`
+2. Find the project with `id` containing "website" (e.g., `opencode-toolkit-website`)
+3. Get its `path` — this is where the pending update file will be created
 
-**Changes that REQUIRE website sync:**
-- Modified `agents/builder.md`, `agents/planner.md`, `agents/toolkit.md`, or `agents/developer.md` (primary agents with dedicated pages)
-- Added/removed/renamed any agent (affects agent list page)
-- Added/removed/renamed any skill (affects skills page)
-- Modified agent descriptions or capabilities that are documented on the website
-- Changed schema structure that's documented
-- Updated workflow documentation that's reflected on the website
+#### Step 3b: Summarize What Changed
 
-**Changes that DON'T require website sync:**
-- Internal implementation details not exposed on website
-- Bug fixes that don't change documented behavior
-- PRD-only changes (docs/drafts/, docs/prds/)
-- Validator/script changes (unless documented)
+List all changes that affect documentation:
 
-**Assess and set `websiteSyncNeeded`:**
-```
-websiteSyncNeeded = true if ANY of the above "REQUIRE" conditions are met
-```
+- **Agents:** Added, removed, or modified agents (name + what changed)
+- **Skills:** Added, removed, or modified skills
+- **Schemas:** Changed schema structure
+- **Workflows:** Updated documented workflows
+- **Other:** Any user-facing behavior changes
 
-#### Step 3b: Resolve Sync Mode
+#### Step 3c: Create Pending Update File
 
-Resolve mode in this order:
+**Always create the update file** in the **website project's repo** — this ensures the update syncs via git and Builder will see it on any machine.
 
-1. Read `.local/toolkit-overrides.json` (if present)
-2. Read `websiteSync.mode` from that file
-3. If missing, default to `disabled`
-
-Supported modes:
-
-- `disabled` (public default): skip website sync entirely; no checklist, no queue file required
-- `owner-managed`: include a short manual website sync checklist in completion output
-- `queue-file`: create a queued update file for toolkit website sync
-
-For your personal/local setup, use `.local/toolkit-overrides.json` (gitignored), for example:
-
-```json
-{
-  "websiteSync": {
-    "mode": "queue-file",
-    "projectId": "opencode-toolkit-website"
-  }
-}
-```
-
-#### Step 3c: Execute Based on Mode + Impact
-
-| Mode | websiteSyncNeeded | Action |
-|------|-------------------|--------|
-| `disabled` | `true` | Log: "⚠️ Website sync needed but mode is disabled. Manual sync required for: [list affected pages]" |
-| `disabled` | `false` | Skip silently |
-| `owner-managed` | `true` | Include manual checklist in completion output (see below) |
-| `owner-managed` | `false` | Skip with note: "Website sync not needed for this change" |
-| `queue-file` | `true` | Create pending update file (see below) |
-| `queue-file` | `false` | Skip with note: "Website sync not needed for this change" |
-
-**Owner-managed checklist (when `websiteSyncNeeded: true`):**
-```
-📋 WEBSITE SYNC NEEDED
-
-The following website pages may need updates:
-- [ ] Agent page: [agent-name] — [what changed]
-- [ ] Skills page — [if skills changed]
-- [ ] [other affected pages]
-
-Manual action required in your website project.
-```
-
-If resolved mode is `queue-file`, create a pending update for the configured website project so @builder can sync the documentation:
-
-1. **Create the update file:**
-   ```
-   project-updates/<projectId>/YYYY-MM-DD-toolkit-sync.md
+1. **Look up the website project path:**
+   ```bash
+   # Read from projects.json — find project with "website" in id
+   WEBSITE_PATH=$(jq -r '.projects[] | select(.id | contains("website")) | .path' ~/.config/opencode/projects.json | head -1)
+   echo "Website project path: $WEBSITE_PATH"
    ```
 
-2. **Use this format:**
+2. **Create the directory if needed:**
+   ```bash
+   mkdir -p "$WEBSITE_PATH/docs/pending-updates/"
+   ```
+
+3. **Create the update file:**
+   ```
+   <website-project-path>/docs/pending-updates/YYYY-MM-DD-toolkit-sync.md
+   ```
+
+4. **Use this format:**
    ```markdown
    ---
-    createdBy: toolkit
-    date: YYYY-MM-DD
-    priority: normal
-    type: sync
-    scope: implementation
-    ---
+   createdBy: toolkit
+   date: YYYY-MM-DD
+   priority: normal
+   updateType: sync
+   ---
    
    # Sync Toolkit Documentation
    
+   ## Summary
+   
+   [One sentence describing the toolkit change]
+   
    ## Changes
    
-   [Describe what changed in the toolkit]
+   [List each change with enough detail for Builder to update docs]
    
-   - Added agent: `agent-name` — description
-   - Modified skill: `skill-name` — what changed
-   - Updated schema: `schema-name` — what changed
+   - Modified: `agents/tester.md` — Added test failure output policy
+   - Modified: `agents/jest-tester.md` — Added test failure output policy
+   - [etc.]
    
-   ## Files to Update
+   ## Affected Website Pages
    
-   - Fetch latest `toolkit-structure.json` from GitHub
-   - Update agent list page if agents changed
-   - Update skills page if skills changed
-   - Regenerate any auto-generated documentation
+   - [ ] Agent documentation page
+   - [ ] [Other affected pages]
    
    ## Source
    
-   - Commit: [commit hash]
+   - Commit: [commit hash or "pending"]
    - toolkit-structure.json: https://raw.githubusercontent.com/mdmagnuson-creator/yo-go/main/toolkit-structure.json
    ```
 
-3. **If `projectId` is missing or target folder does not exist**, fail Step 3 and report the blocker
+5. **Commit the update file to the website project:**
+   ```bash
+   cd "$WEBSITE_PATH" && git add docs/pending-updates/ && git commit -m "chore: Queue toolkit sync update from toolkit"
+   ```
+   
+   > **Note:** The update is committed to the website project's repo, not the toolkit repo.
+   > This ensures it syncs across machines via git (per the enhanced pending-updates system).
 
 ### Step 4: Run Governance Validators + Completion Report
 
@@ -820,18 +787,12 @@ Then include this exact completion report in your response:
 
 ```text
 Post-change workflow:
-- [x] toolkit-structure.json updated (or not required with reason)
+- [x] toolkit-structure.json updated
 - [x] README counts verified/updated
-- [x] Website sync: [action taken] (needed: yes/no, mode: [mode], affected: [pages])
+- [x] Website sync update committed to <website-project>/docs/pending-updates/YYYY-MM-DD-toolkit-sync.md
 - [x] Governance validators run (4/4)
-- [x] Commit/push status stated (done or not requested)
+- [x] Commit/push status stated
 ```
-
-**Website sync line examples:**
-- `Website sync: queued update (needed: yes, mode: queue-file, affected: Builder agent page)`
-- `Website sync: manual checklist shown (needed: yes, mode: owner-managed, affected: skills page)`
-- `Website sync: not needed (internal implementation change)`
-- `Website sync: ⚠️ needed but disabled (affected: Builder agent page) — manual sync required`
 
 If any item is not complete, do not claim completion. State the blocker and the pending checkbox.
 
@@ -882,9 +843,9 @@ If the answer is "yes, but no" — STOP and run the workflow.
 ```
 □ 1. toolkit-structure.json updated (counts, entries, timestamp, changelog)
 □ 2. README.md counts match actual (63 agents, 31 skills, etc.)
-□ 3. Website sync handled per resolved mode (`disabled`, `owner-managed`, or `queue-file`)
+□ 3. Website sync update committed to website project's docs/pending-updates/
 □ 4. Governance validators run (toolkit-postchange, handoff-contracts, project-updates, policy-testability)
-□ 5. All files staged: git add toolkit-structure.json README.md project-updates/
+□ 5. All files staged: git add toolkit-structure.json README.md
 ```
 
 **After confirming all steps, commit with:**
