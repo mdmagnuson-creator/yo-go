@@ -10,6 +10,15 @@
       "createdAt": "2026-02-27",
       "completedAt": "2026-02-27",
       "stories": 9
+    },
+    {
+      "id": "prd-automatic-test-intensity",
+      "title": "Automatic Test Activity Selection",
+      "status": "ready",
+      "filePath": "docs/prds/prd-automatic-test-intensity.md",
+      "jsonPath": "docs/prds/prd-automatic-test-intensity.json",
+      "createdAt": "2026-02-27",
+      "stories": 10
     }
   ]
 }
