@@ -404,6 +404,53 @@ The system uses RAG (Retrieval-Augmented Generation) with optional Contextual Re
 
 ---
 
+### US-016: Integrate vectorization into project bootstrap
+
+**Description:** As a developer creating a new project, I want vectorization to be set up automatically during bootstrap so that agents have semantic search from day one.
+
+**Documentation:** Yes (update: project-bootstrap skill)
+
+**Tools:** No
+
+**Considerations:** Requires API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY) to be available in environment. If keys are missing, skip vectorization with a message about manual setup later.
+
+**Credentials:** required (OPENAI_API_KEY, ANTHROPIC_API_KEY, timing: during-bootstrap)
+
+**Acceptance Criteria:**
+
+- [ ] `project-bootstrap` skill checks for vectorization API keys in environment
+- [ ] If keys available, runs `vectorize init` as part of bootstrap flow
+- [ ] If keys missing, skips with clear message: "Vectorization skipped — set OPENAI_API_KEY and ANTHROPIC_API_KEY to enable"
+- [ ] Bootstrap output shows vectorization status (enabled/skipped)
+- [ ] Total bootstrap time remains reasonable (<5 min including vectorization)
+- [ ] Vectorization section added to generated `project.json`
+
+---
+
+### US-017: Builder prompts for vectorization on existing projects
+
+**Description:** As a developer working on an existing project without vectorization, I want @builder to offer to set it up so that I don't miss the benefits of semantic search.
+
+**Documentation:** No
+
+**Tools:** No
+
+**Considerations:** Prompt should be non-intrusive and respect user preference to skip.
+
+**Credentials:** required (OPENAI_API_KEY, ANTHROPIC_API_KEY, timing: on-demand)
+
+**Acceptance Criteria:**
+
+- [ ] @builder checks `project.json` for `vectorization.enabled` on session start
+- [ ] If missing or false, prompts user once: "Enable semantic search? (~2 min setup)"
+- [ ] User can choose: Yes / No / Don't ask again this session
+- [ ] "Don't ask again" preference stored in session state (not persisted)
+- [ ] If user chooses Yes, runs `vectorize init` before continuing with task
+- [ ] If user chooses No, continues without vectorization
+- [ ] Prompt only shown once per session (not on every task)
+
+---
+
 ## Functional Requirements
 
 - FR-1: The system must chunk source code using AST parsing for semantic boundaries
@@ -420,6 +467,8 @@ The system uses RAG (Retrieval-Augmented Generation) with optional Contextual Re
 - FR-12: The system must never store database credentials in configuration files
 - FR-13: The system must work offline when using local embedding models
 - FR-14: The system must gracefully degrade when vectorization is unavailable
+- FR-15: The system must integrate vectorization setup into project bootstrap when API keys are available
+- FR-16: The system must prompt users to enable vectorization on existing projects (once per session)
 
 ## Non-Goals (Out of Scope)
 
@@ -537,9 +586,9 @@ The system uses RAG (Retrieval-Augmented Generation) with optional Contextual Re
 
 | Service | Credential Type | Needed For | Request Timing | Fallback if Not Available |
 |---------|-----------------|------------|----------------|---------------------------|
-| OpenAI | API key (OPENAI_API_KEY) | US-003 embeddings | after-initial-build | Use local Ollama or Voyage |
+| OpenAI | API key (OPENAI_API_KEY) | US-003, US-016, US-017 embeddings | during-bootstrap or on-demand | Use local Ollama or Voyage |
 | Voyage AI | API key (VOYAGE_API_KEY) | US-003 embeddings | after-initial-build | Use local Ollama or OpenAI |
-| Anthropic | API key (ANTHROPIC_API_KEY) | US-004 contextual | after-initial-build | Disable contextual retrieval |
+| Anthropic | API key (ANTHROPIC_API_KEY) | US-004, US-016, US-017 contextual | during-bootstrap or on-demand | Disable contextual retrieval |
 | Cohere | API key (COHERE_API_KEY) | US-009 reranking | after-initial-build | Use local cross-encoder or skip reranking |
 | Pinecone | API key (PINECONE_API_KEY) | US-015 cloud storage | after-initial-build | Use local storage |
 | Database | Connection URL (DATABASE_URL) | US-006, US-007 | after-initial-build | Skip database indexing |
@@ -569,11 +618,14 @@ Recommended story sequencing:
 11. **US-007** (config tables) — Config table support
 12. **US-009** (reranking) — Precision improvement
 13. **US-014** (agent prompts) — Full integration
-14. **US-015** (cloud) — Scale option
-15. **US-013** (README) — Documentation
+14. **US-016** (bootstrap integration) — New project setup
+15. **US-017** (builder prompt) — Existing project adoption
+16. **US-015** (cloud) — Scale option
+17. **US-013** (README) — Documentation
 
 ---
 
-*PRD Version: 1.0*
+*PRD Version: 1.1*
 *Created: 2026-02-27*
+*Updated: 2026-02-28*
 *Status: Draft*
