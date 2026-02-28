@@ -70,6 +70,16 @@
       "createdAt": "2026-02-28",
       "stories": 7,
       "notes": "Foundation PRD for intelligent delegation - defines what 'success' means for task handoffs"
+    },
+    {
+      "id": "prd-checkpoint-serialization",
+      "title": "Checkpoint & State Serialization",
+      "status": "ready",
+      "filePath": "docs/prds/prd-checkpoint-serialization.md",
+      "createdAt": "2026-02-28",
+      "stories": 7,
+      "dependencies": ["prd-verifiable-completion"],
+      "notes": "Enables task handoff between agents - checkpoints capture work artifacts for resume"
     }
   ]
 }
