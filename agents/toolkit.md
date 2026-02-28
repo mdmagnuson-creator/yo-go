@@ -448,10 +448,14 @@ For `~/.config/opencode/opencode.json`:
 
 When a toolkit change requires updates to existing projects (e.g., schema migration):
 
-1. **Read `projects.json`** to get the list of projects
-2. **Create update files** in `project-updates/[project-name]/`:
+#### Option A: Direct to Project (Preferred)
+
+Create update files directly in each affected project's repo. This ensures updates sync across machines via git.
+
+1. **Read `projects.json`** to get the list of projects with `hasAgentSystem: true`
+2. **Create update files** in each project's `docs/pending-updates/`:
    ```
-   project-updates/example-scheduler/2026-02-20-migrate-capabilities.md
+   <project>/docs/pending-updates/2026-02-20-migrate-capabilities.md
    ```
 3. **Use this format:**
    ```markdown
@@ -459,8 +463,7 @@ When a toolkit change requires updates to existing projects (e.g., schema migrat
    createdBy: toolkit
    date: YYYY-MM-DD
    priority: normal
-   type: migration
-   scope: implementation
+   updateType: schema
    ---
    
    # Migrate features to capabilities
@@ -475,20 +478,57 @@ When a toolkit change requires updates to existing projects (e.g., schema migrat
    
    - `docs/project.json`
    
-    ## Why
-    
-    Schema update: `features` renamed to `capabilities` for clarity.
-    
-    ## Verification
-    
-    Run: `jq '.capabilities' docs/project.json` — should return array
-    ```
+   ## Why
+   
+   Schema update: `features` renamed to `capabilities` for clarity.
+   
+   ## Verification
+   
+   Run: `jq '.capabilities' docs/project.json` — should return array
+   ```
+4. **Commit the update file** in each project repo
+5. **Tell the user:** "I've queued updates for X projects. Run @builder or @planner to apply them."
 
-   **Note:** The `scope` field is optional. Both @builder and @planner can apply any project update regardless of scope. You may include scope for documentation purposes, but it's not used for routing anymore.
+#### Option B: Legacy Toolkit Location
 
- 4. **Tell the user:** "I've queued updates for X projects. Run @builder or @planner to apply them."
+For backward compatibility, you can also create updates in the toolkit repo (but these won't sync across machines):
 
-**You can create these update files** — they're in the toolkit repo. @builder or @planner will apply them to the actual projects (both can handle any scope).
+```
+~/.config/opencode/project-updates/[project-id]/2026-02-20-migrate-capabilities.md
+```
+
+**Note:** Legacy updates are gitignored and only work on the machine where they were created. Prefer Option A for cross-machine sync.
+
+#### Update File Format
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `createdBy` | Yes | Who created the update (`toolkit`, `manual`) |
+| `date` | Yes | Creation date (YYYY-MM-DD) |
+| `priority` | Yes | `normal`, `high`, or `critical` |
+| `updateType` | Yes | `schema`, `migration`, `config`, `dependency`, `cve` |
+| `scope` | No | For documentation only — not used for routing |
+
+**You can create these update files** — @builder or @planner will apply them (both can handle any scope).
+
+#### Applied Updates Tracking
+
+When an update is applied, it's recorded in `<project>/docs/applied-updates.json`:
+```json
+{
+  "schemaVersion": 1,
+  "applied": [
+    {
+      "id": "2026-02-20-migrate-capabilities",
+      "appliedAt": "2026-02-20T15:30:00Z",
+      "appliedBy": "builder",
+      "updateType": "schema"
+    }
+  ]
+}
+```
+
+This enables cross-machine sync — any machine can see which updates have been applied.
 
 ### 9. Author Toolkit PRDs (Planner Ruleset)
 

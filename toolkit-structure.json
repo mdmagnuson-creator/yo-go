@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-02-28T04:30:00Z",
+  "generatedAt": "2026-02-27T22:00:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -594,8 +594,13 @@
     }
   },
   "schemas": {
-    "total": 9,
+    "total": 12,
     "items": [
+      {
+        "name": "applied-updates.schema",
+        "file": "schemas/applied-updates.schema.json",
+        "description": "Tracks updates that have been applied to a project, enabling cross-machine sync and audit trail"
+      },
       {
         "name": "builder-state.schema",
         "file": "schemas/builder-state.schema.json",
@@ -635,6 +640,16 @@
         "name": "toolkit-structure.schema",
         "file": "schemas/toolkit-structure.schema.json",
         "description": "Machine-readable manifest of the AI toolkit structure including agents, skills, schemas, scaffolds, and templates"
+      },
+      {
+        "name": "update-affinity-rules.schema",
+        "file": "schemas/update-affinity-rules.schema.json",
+        "description": "JSONPath-based rules for determining which projects are affected by toolkit changes"
+      },
+      {
+        "name": "update-registry.schema",
+        "file": "schemas/update-registry.schema.json",
+        "description": "Central registry of available updates for cross-machine sync and discovery"
       },
       {
         "name": "workflow-defaults.schema",
@@ -824,8 +839,38 @@
     "generatedFrom": "git log --since=30 days",
     "entries": [
       {
-        "date": "2026-02-28",
+        "date": "2026-02-27",
         "changes": [
+          {
+            "type": "feat",
+            "scope": "updates",
+            "description": "implement enhanced pending-updates system with cross-machine sync",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "schema",
+            "description": "add applied-updates, update-affinity-rules, update-registry schemas",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "scripts",
+            "description": "add generate-project-updates and migrate-project-updates scripts",
+            "hash": "pending"
+          },
+          {
+            "type": "docs",
+            "scope": "prd",
+            "description": "add enhanced pending-updates system PRD",
+            "hash": "edae5a2"
+          },
+          {
+            "type": "feat",
+            "scope": "schema",
+            "description": "add executablePath and devLaunchArgs to apps.testing",
+            "hash": "06a3bc9"
+          },
           {
             "type": "fix",
             "scope": "agents",
@@ -834,38 +879,9 @@
           },
           {
             "type": "feat",
-            "scope": "schema",
-            "description": "add executablePath and devLaunchArgs to apps.testing for desktop/mobile E2E",
-            "hash": "pending"
-          }
-        ]
-      },
-      {
-        "date": "2026-02-27",
-        "changes": [
-          {
-            "type": "feat",
-            "scope": "schema",
-            "description": "add multi-platform app support (desktop, mobile) to project.json apps",
-            "hash": "pending"
-          },
-          {
-            "type": "feat",
-            "scope": "skills",
-            "description": "add e2e-electron skill for Playwright Electron testing",
-            "hash": "pending"
-          },
-          {
-            "type": "feat",
-            "scope": "data",
-            "description": "add skill-mapping.json for framework-to-skill lookups",
-            "hash": "pending"
-          },
-          {
-            "type": "feat",
-            "scope": "agents",
-            "description": "update e2e-playwright, tester, builder, planner for multi-platform support",
-            "hash": "pending"
+            "scope": null,
+            "description": "implement multi-platform app support and Electron E2E testing (PRD-001)",
+            "hash": "8fe71b4"
           },
           {
             "type": "docs",

@@ -205,10 +205,17 @@ Each session is independent — there is no persistent "active project" across s
     - cat <project>/docs/prd-registry.json
     - cat <project>/docs/project.json  
     - list <project>/docs/ first, then read <project>/docs/planner-state.json only if it exists
+    - ls <project>/docs/pending-updates/*.md 2>/dev/null
+    - cat <project>/docs/applied-updates.json 2>/dev/null
     - ls ~/.config/opencode/project-updates/[project-id]/*.md 2>/dev/null
     ```
 
-    **Important:** Treat missing `docs/planner-state.json` as normal first-run behavior. Do not surface a file-missing error for this optional file.
+    **Important:** Treat missing `docs/planner-state.json` and `docs/applied-updates.json` as normal first-run behavior. Do not surface file-missing errors for these optional files.
+    
+    **Pending updates discovery:** Check both locations and filter out already-applied updates:
+    - Primary: `<project>/docs/pending-updates/*.md` (committed to project repo)
+    - Legacy fallback: `~/.config/opencode/project-updates/[project-id]/*.md`
+    - Filter: Skip any update whose ID (filename without `.md`) appears in `docs/applied-updates.json`
 
     **Restore right-panel todos (if present):**
     - If `planner-state.json` includes `uiTodos.items`, mirror them via `todowrite`
@@ -263,27 +270,60 @@ If you need to start or check a dev server during planning flows, keep terminal 
 
 ## Pending Project Updates (`U`)
 
-When processing files in `~/.config/opencode/project-updates/[project-id]/`:
+Planner discovers pending updates from two locations (primary + legacy fallback):
+
+1. **Primary:** `<project>/docs/pending-updates/*.md` (committed, syncs via git)
+2. **Legacy:** `~/.config/opencode/project-updates/[project-id]/*.md` (gitignored, local only)
+
+Updates are filtered against `<project>/docs/applied-updates.json` to skip already-applied updates.
 
 Planner can apply ANY project update regardless of scope. Both Builder and Planner are equally capable of handling:
 - Planning-scope updates (docs, PRD artifacts, metadata)
 - Implementation-scope updates (src, tests, config)
 - Mixed-scope updates (both)
 
-1. **Process all updates:**
-   - Read each update file and apply changes
+### Processing Updates
+
+1. **Discover pending updates:**
+   - List files from both locations
+   - Read `docs/applied-updates.json` to get applied IDs
+   - Filter out updates whose ID (filename without `.md`) is already in applied list
+   - Merge remaining updates for processing
+
+2. **Process each update:**
+   - Read the update file and apply changes
    - No need to route to @builder — you can handle it directly
 
-2. **Todo tracking:**
+3. **Todo tracking:**
    - Create one right-panel todo per update file
    - Mirror to `docs/planner-state.json` `uiTodos.items[]` with `flow: "updates"` and `refId: <update filename>`
 
-3. **Update file lifecycle:**
-   - If update is successfully applied: delete the processed file from `~/.config/opencode/project-updates/[project-id]/`
-   - If user defers or skips: keep the file
+4. **Record applied update (MANDATORY):**
+   After successfully applying an update, record it in `docs/applied-updates.json`:
+   ```json
+   {
+     "schemaVersion": 1,
+     "applied": [
+       {
+         "id": "2026-02-28-add-desktop-app-config",
+         "appliedAt": "2026-02-28T10:30:00Z",
+         "appliedBy": "planner",
+         "updateType": "schema"
+       }
+     ]
+   }
+   ```
+   - Extract `updateType` from the update file's frontmatter (default: `schema`)
+   - If `docs/applied-updates.json` doesn't exist, create it with `schemaVersion: 1`
+   - Append to the `applied` array (preserve existing entries)
 
-4. **Post-apply verification:**
-   - After deleting a completed update file, run a quick listing check for `~/.config/opencode/project-updates/[project-id]/*.md`
+5. **Delete the update file:**
+   - If update came from `docs/pending-updates/`: delete the file
+   - If update came from legacy location: delete from `~/.config/opencode/project-updates/[project-id]/`
+   - If user defers or skips: keep the file (don't record in applied-updates.json)
+
+6. **Post-apply verification:**
+   - After deleting a completed update file, run a quick listing check for remaining updates
 
 ## Right-Panel Todo Contract
 

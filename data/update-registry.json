@@ -1,0 +1,16 @@
+{
+  "$schema": "../schemas/update-registry.schema.json",
+  "schemaVersion": 1,
+  "description": "Central registry of available updates. Projects can sync from this registry to discover updates they haven't received yet.",
+  "updates": [
+    {
+      "id": "2026-02-28-add-desktop-app-config",
+      "description": "Add executablePath configuration for Electron/Tauri E2E testing",
+      "affinityRule": "desktop-apps",
+      "priority": "normal",
+      "updateType": "schema",
+      "createdAt": "2026-02-28",
+      "templatePath": "templates/updates/add-desktop-app-config.md"
+    }
+  ]
+}
