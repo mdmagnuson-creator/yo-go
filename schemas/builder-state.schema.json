@@ -334,6 +334,129 @@
           "description": "Whether documentation updates are complete. Null if not applicable."
         }
       }
+    },
+
+    "verificationContract": {
+      "type": ["object", "null"],
+      "description": "Pre-delegation contract defining how task completion will be verified. Generated before delegating to specialists.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["verifiable", "advisory", "skip"],
+          "description": "Contract type: verifiable (full test-flow), advisory (user review), skip (lint/typecheck only)"
+        },
+        "criteria": {
+          "type": "array",
+          "description": "List of verification criteria that must pass for task success",
+          "items": {
+            "type": "object",
+            "properties": {
+              "activity": {
+                "type": "string",
+                "description": "Verification activity type (unit-test, e2e, typecheck, lint, critic)"
+              },
+              "description": {
+                "type": "string",
+                "description": "Human-readable description of what will be verified"
+              },
+              "pattern": {
+                "type": "string",
+                "description": "File or test pattern to match (e.g., component name for unit tests)"
+              },
+              "timing": {
+                "type": "string",
+                "enum": ["immediate", "deferred"],
+                "description": "When this criterion is checked (for E2E tests)"
+              }
+            },
+            "required": ["activity", "description"]
+          }
+        },
+        "generatedFrom": {
+          "type": "string",
+          "enum": ["auto", "user", "prd"],
+          "description": "How the contract was generated"
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the contract was generated"
+        }
+      },
+      "required": ["type", "criteria"]
+    },
+
+    "verificationResults": {
+      "type": ["object", "null"],
+      "description": "Results of verifying the current task against its contract. Used by Dynamic Reassignment to decide retry vs escalate.",
+      "properties": {
+        "overall": {
+          "type": "string",
+          "enum": ["pass", "fail", "pending"],
+          "description": "Overall verification status"
+        },
+        "criteria": {
+          "type": "array",
+          "description": "Per-criterion verification results",
+          "items": {
+            "type": "object",
+            "properties": {
+              "activity": {
+                "type": "string",
+                "description": "Activity that was verified"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["pass", "fail", "skipped"],
+                "description": "Result of this criterion"
+              },
+              "error": {
+                "type": "string",
+                "description": "Error message if failed"
+              },
+              "attempts": {
+                "type": "integer",
+                "description": "Number of attempts made for this criterion"
+              }
+            },
+            "required": ["activity", "status"]
+          }
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When verification completed"
+        }
+      },
+      "required": ["overall", "criteria"]
+    },
+
+    "advisoryTasks": {
+      "type": "array",
+      "description": "Log of advisory tasks (unverifiable) for user review after completion",
+      "items": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "description": "Task identifier (story ID or adhoc ID)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description"
+          },
+          "output": {
+            "type": "string",
+            "description": "Summary of what the specialist produced"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the advisory task completed"
+          }
+        },
+        "required": ["taskId", "description"]
+      }
     }
   },
 

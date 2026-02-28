@@ -169,6 +169,36 @@ Parse the user's request to understand:
      - `flow`: `adhoc`
      - `refId`: `adhoc-###`
 
+1.5. **Generate verification contract BEFORE delegation:**
+
+   Before delegating to @developer, generate a verification contract (see `builder.md` → "Verification Contracts"):
+   
+   ```
+   Contract generation for ad-hoc task:
+   1. Parse task description for advisory/skip patterns
+   2. Identify expected file changes from task context
+   3. Generate criteria based on file patterns
+   4. Store contract in builder-state.json → verificationContract
+   ```
+   
+   **Include contract in specialist prompt:**
+   
+   After the context block, include the verification contract in human-readable format:
+   
+   ```markdown
+   ## Verification Contract
+   
+   Your work will be verified by:
+   1. **Typecheck** — No type errors
+   2. **Lint** — No lint errors
+   3. **Unit tests** — Tests for [component/module name] must pass
+   4. **E2E test** — [If applicable] Page behavior test (runs immediately/deferred)
+   
+   Write your implementation knowing these criteria will be checked.
+   ```
+   
+   This gives the specialist clear targets and helps them write testable code.
+
 2. **Run @developer with context block** (REQUIRED)
 
    > ⚠️ **CRITICAL: Always pass a context block when delegating to @developer**

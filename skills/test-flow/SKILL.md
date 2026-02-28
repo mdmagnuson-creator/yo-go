@@ -234,6 +234,93 @@ If `capabilities.ui` is not declared, detect from:
 
 ---
 
+## Verification Contract Integration
+
+> 🎯 **Contract-first verification:** When a verification contract exists, map contract criteria to test activities.
+
+### Using Contracts for Verification
+
+When `builder-state.json` contains a `verificationContract`, use it to guide verification:
+
+```
+Verification Flow (with contract):
+
+1. Read builder-state.json → verificationContract
+2. For each criterion in contract.criteria:
+   - Map criterion.activity to test activity
+   - Execute the activity
+   - Record result in verificationResults
+3. All criteria must pass for task success
+```
+
+### Contract Criteria to Activity Mapping
+
+| Contract Criterion | Test Activity | Execution |
+|--------------------|---------------|-----------|
+| `activity: "typecheck"` | Baseline typecheck | `npm run typecheck` |
+| `activity: "lint"` | Baseline lint | `npm run lint` |
+| `activity: "unit-test"` | Unit test generation + run | @tester → `npm test` |
+| `activity: "e2e"` | E2E test generation + run | @e2e-playwright → `npx playwright test` |
+| `activity: "critic"` | Code review | @critic or specific critic |
+
+### Recording Verification Results
+
+After running each criterion, update `builder-state.json` → `verificationResults`:
+
+```json
+{
+  "verificationResults": {
+    "overall": "pass",
+    "criteria": [
+      { "activity": "typecheck", "status": "pass" },
+      { "activity": "lint", "status": "pass" },
+      { "activity": "unit-test", "status": "pass", "attempts": 1 },
+      { "activity": "e2e", "status": "pass", "attempts": 1 }
+    ],
+    "completedAt": "2026-02-28T10:15:00Z"
+  }
+}
+```
+
+### Contract Types and Verification Behavior
+
+| Contract Type | Verification Behavior |
+|---------------|----------------------|
+| `verifiable` | Run all criteria in contract, all must pass |
+| `advisory` | Skip automated verification, log output for user review |
+| `skip` | Run only typecheck + lint (minimal verification) |
+
+### Failure Handling with Contracts
+
+When a criterion fails:
+
+1. **Record failure in verificationResults:**
+   ```json
+   {
+     "activity": "unit-test",
+     "status": "fail",
+     "error": "Expected component to render, but got null",
+     "attempts": 2
+   }
+   ```
+
+2. **Run fix loop** (existing behavior, max 3 attempts)
+
+3. **If still failing after max attempts:**
+   - Update `verificationResults.overall: "fail"`
+   - Record `completedAt` timestamp
+   - Report to user with detailed failure info
+   - This data enables Dynamic Reassignment (future) to decide retry vs escalate
+
+### Backward Compatibility
+
+If no `verificationContract` exists in `builder-state.json`:
+- Fall back to automatic activity resolution (existing behavior)
+- Use file patterns and code patterns to determine activities
+- No contract means no `verificationResults` to record
+
+---
+
 ## Per-Task Quality Checks (MANDATORY)
 
 > ⛔ **After EVERY task/story completes, run resolved activities automatically. No prompts, no skipping.**
