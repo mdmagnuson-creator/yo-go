@@ -525,6 +525,41 @@ After the user selects a project number, show a **fast inline dashboard** — no
    - **Only show suggestions once per session** — don't repeat on every PRD
    - Suggestions are informational; don't block workflow
 
+4.6 **Check for vectorization setup (one-time per session) (US-017):**
+   - Check `project.json` → `vectorization.enabled`
+   - If `vectorization` section is missing OR `enabled: false`:
+     - Check if `OPENAI_API_KEY` is in environment
+     - If key is present, show **one-time prompt**:
+       ```
+       💡 SEMANTIC SEARCH AVAILABLE
+       
+       This project doesn't have vectorization enabled yet.
+       Vectorization lets agents search your code semantically:
+       • "How does authentication work?" instead of grep
+       • 49% fewer retrieval failures with Contextual Retrieval
+       • Understands code meaning, not just keywords
+       
+       Enable vectorization? (v/skip)
+       ```
+     - If user responds "v" or "vectorize" or "yes":
+       1. Run: `npx @opencode/vectorize init` in project directory
+       2. Show progress and completion
+       3. Continue to dashboard
+     - If user responds "skip" or anything else → continue without prompt
+     - **Only prompt once per session** — store in session memory, don't re-prompt
+   - If `vectorization.enabled: true`:
+     - Check if `.vectorindex/metadata.json` exists
+     - If exists, read `lastUpdated` timestamp
+     - If stale (older than `refresh.maxAge`, default 24h) AND `refresh.onSessionStart: true`:
+       ```
+       💡 Vector index is stale (last updated: {date}). Refreshing...
+       ```
+       Run: `npx @opencode/vectorize refresh --quiet`
+     - If index missing but config exists → offer to rebuild:
+       ```
+       ⚠️ Vector index configured but missing. Rebuild? (v/skip)
+       ```
+
 5. **Check for resumable session** — see `builder-state` skill for state structure.
    - If an in-progress PRD exists, **do not auto-resume it**.
    - Always show a resume chooser that lets the user explicitly pick one of:

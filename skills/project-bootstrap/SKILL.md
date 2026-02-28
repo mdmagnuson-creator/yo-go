@@ -1808,6 +1808,188 @@ related tasks. You can customize them in docs/skills/.
 
 ---
 
+## Step 10i: Configure Vectorization (US-016)
+
+If the environment has `OPENAI_API_KEY` available, offer to set up semantic search vectorization:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                    SEMANTIC SEARCH (VECTORIZATION)
+═══════════════════════════════════════════════════════════════════════
+
+Vectorization enables AI agents to search your codebase semantically — 
+finding relevant code by meaning, not just keywords.
+
+Benefits:
+  • Ask "How does authentication work?" instead of grepping for "auth"
+  • 49% fewer retrieval failures with Contextual Retrieval
+  • Database schema awareness for agents
+  • Hybrid search combining semantic + keyword matching
+
+Requirements:
+  ✅ OPENAI_API_KEY found in environment
+  ✅ ANTHROPIC_API_KEY found (enables Contextual Retrieval)
+
+Estimated cost for this project:
+  Files: ~<detected file count>
+  Initial indexing: ~$<estimated cost>
+  Incremental updates: ~$0.01/commit
+
+Enable vectorization?
+
+  A. Yes, initialize now (recommended)
+  B. Yes, but defer indexing (configure only)
+  C. No, skip vectorization
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+### If Option A (Initialize Now)
+
+1. Add vectorization config to `docs/project.json`:
+   ```json
+   {
+     "vectorization": {
+       "enabled": true,
+       "storage": "local",
+       "embeddingModel": "openai",
+       "contextualRetrieval": "auto",
+       "codebase": {
+         "include": ["src/**", "lib/**", "app/**", "docs/**"],
+         "exclude": ["node_modules/**", "dist/**", "build/**", ".git/**", "*.test.ts"],
+         "chunkStrategy": "ast"
+       },
+       "search": {
+         "hybridWeight": 0.7,
+         "topK": 20
+       },
+       "refresh": {
+         "onGitChange": true,
+         "onSessionStart": true,
+         "maxAge": "24h"
+       },
+       "credentials": {
+         "openai": "env:OPENAI_API_KEY",
+         "anthropic": "env:ANTHROPIC_API_KEY"
+       }
+     }
+   }
+   ```
+
+2. Run initial indexing:
+   ```bash
+   cd <project-root>
+   npx @opencode/vectorize init
+   ```
+
+3. Show progress:
+   ```
+   Building vector index...
+     Scanning: 1,247 files
+     Chunking: → 8,453 chunks
+     Contextual: Adding descriptions (Claude Haiku)
+     Embedding: 8,453 chunks → vectors
+     [████████████████████] 100%
+
+   ✅ Vectorization ready!
+      Index: 8,453 chunks (42MB)
+      Cost: $2.34 (one-time)
+   ```
+
+### If Option B (Defer Indexing)
+
+1. Add vectorization config with `enabled: false`:
+   ```json
+   {
+     "vectorization": {
+       "enabled": false,
+       ...same config as above...
+     }
+   }
+   ```
+
+2. Show message:
+   ```
+   Vectorization configured but deferred.
+   
+   To initialize later:
+     cd <project-root>
+     npx @opencode/vectorize init
+   
+   Or @builder will prompt you on next session.
+   ```
+
+### If Option C (Skip)
+
+Do not add vectorization section to project.json.
+
+### Database Integration
+
+If database was detected and configured:
+
+```
+Database detected (PostgreSQL via Supabase).
+
+Include database schema in vector index?
+  • Tables and columns will be searchable
+  • Agents can find relevant tables for features
+  
+  A. Yes, index schema
+  B. No, code only
+
+> _
+```
+
+If yes, add to vectorization config:
+```json
+{
+  "vectorization": {
+    ...
+    "database": {
+      "enabled": true,
+      "connection": "env:DATABASE_URL",
+      "type": "postgres",
+      "schema": {
+        "enabled": true,
+        "include": ["public.*"],
+        "exclude": ["public._prisma_migrations"]
+      }
+    }
+  }
+}
+```
+
+### Config Table Detection
+
+If database indexing is enabled, optionally ask about config tables:
+
+```
+Some tables contain reference/config data that helps agents understand
+business logic (pricing tiers, feature flags, etc.).
+
+Do you have config tables to index?
+  A. Yes (I'll list them)
+  B. No / not sure (skip)
+
+> _
+```
+
+If yes:
+```
+Enter config table names (comma-separated):
+> pricing_tiers, feature_flags
+
+How many sample rows per table?
+  A. 10 rows
+  B. 50 rows
+  C. All rows (small tables only)
+
+> _
+```
+
+---
+
 ## Step 11: Update Global Registry
 
 Add the project to `~/.config/opencode/projects.json`:
@@ -1854,6 +2036,7 @@ Display completion summary based on flow used:
 ✅ Created: docs/agents/ (project-specific agents)
 ✅ Created: AGENTS.md
 ✅ Updated: ~/.config/opencode/projects.json
+✅ Vectorization: Enabled (8,453 chunks indexed)
 
 Project "<Name>" is now ready!
 

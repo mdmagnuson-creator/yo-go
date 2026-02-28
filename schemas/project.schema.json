@@ -1008,6 +1008,232 @@
       }
     },
 
+    "vectorization": {
+      "type": "object",
+      "description": "Codebase and database vectorization for semantic search. Enables agents to query project knowledge semantically instead of relying solely on grep/glob.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether vectorization is enabled for this project"
+        },
+        "storage": {
+          "type": "string",
+          "enum": ["local", "cloud"],
+          "default": "local",
+          "description": "Where to store embeddings: local (LanceDB) or cloud (Pinecone/Weaviate)"
+        },
+        "embeddingModel": {
+          "type": "string",
+          "enum": ["auto", "openai", "voyage", "ollama"],
+          "default": "auto",
+          "description": "Embedding model: auto (OpenAI if available, else Ollama), openai (text-embedding-3-small), voyage (voyage-code-2), ollama (nomic-embed-text)"
+        },
+        "contextualRetrieval": {
+          "type": "string",
+          "enum": ["auto", "always", "never"],
+          "default": "auto",
+          "description": "Add contextual descriptions to chunks before embedding. auto = enable for codebases >50k tokens, always/never = force on/off. Uses Claude Haiku."
+        },
+        "codebase": {
+          "type": "object",
+          "description": "Codebase indexing configuration",
+          "properties": {
+            "include": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": ["src/**", "lib/**", "app/**", "docs/**"],
+              "description": "Glob patterns for files to include in index"
+            },
+            "exclude": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": ["node_modules/**", "dist/**", "build/**", ".git/**", "*.test.ts", "*.spec.ts"],
+              "description": "Glob patterns for files to exclude from index"
+            },
+            "chunkStrategy": {
+              "type": "string",
+              "enum": ["ast", "sliding-window"],
+              "default": "ast",
+              "description": "How to split files: ast (semantic boundaries via Tree-sitter) or sliding-window (fixed token windows)"
+            }
+          }
+        },
+        "database": {
+          "type": "object",
+          "description": "Database schema and config table indexing",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether to index database schema and config tables"
+            },
+            "connection": {
+              "type": "string",
+              "description": "Database connection reference (use 'env:DATABASE_URL' for env var). Never store actual credentials."
+            },
+            "type": {
+              "type": "string",
+              "enum": ["postgres", "mysql", "sqlite"],
+              "description": "Database type"
+            },
+            "schema": {
+              "type": "object",
+              "description": "Schema extraction configuration",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Whether to extract and index schema (tables, columns, types, constraints)"
+                },
+                "include": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "default": ["public.*"],
+                  "description": "Schema patterns to include (e.g., 'public.*', 'app.users')"
+                },
+                "exclude": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "default": [],
+                  "description": "Schema patterns to exclude (e.g., 'public.migrations', 'audit.*')"
+                }
+              }
+            },
+            "configTables": {
+              "type": "array",
+              "description": "Configuration tables to extract sample rows from (e.g., pricing_tiers, feature_flags)",
+              "items": {
+                "type": "object",
+                "required": ["table"],
+                "properties": {
+                  "table": {
+                    "type": "string",
+                    "description": "Table name (e.g., 'public.pricing_tiers')"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Human description of what this table contains"
+                  },
+                  "sampleRows": {
+                    "oneOf": [
+                      { "type": "integer", "minimum": 1, "maximum": 100 },
+                      { "type": "string", "enum": ["all"] }
+                    ],
+                    "default": 10,
+                    "description": "Number of sample rows to extract, or 'all' for small tables"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "search": {
+          "type": "object",
+          "description": "Search behavior configuration",
+          "properties": {
+            "hybridWeight": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.7,
+              "description": "Weight for semantic vs keyword search (0 = pure keyword, 1 = pure semantic, 0.7 = balanced)"
+            },
+            "topK": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "description": "Number of results to return from search"
+            },
+            "reranking": {
+              "type": "object",
+              "description": "Result reranking configuration",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Whether to rerank results for improved precision"
+                },
+                "model": {
+                  "type": "string",
+                  "enum": ["cohere", "cross-encoder"],
+                  "default": "cross-encoder",
+                  "description": "Reranking model: cohere (cloud, best quality) or cross-encoder (local, offline)"
+                }
+              }
+            }
+          }
+        },
+        "refresh": {
+          "type": "object",
+          "description": "Index refresh configuration",
+          "properties": {
+            "onGitChange": {
+              "type": "boolean",
+              "default": true,
+              "description": "Automatically refresh index on git commit (via post-commit hook)"
+            },
+            "onSessionStart": {
+              "type": "boolean",
+              "default": true,
+              "description": "Check and refresh stale index when agent session starts"
+            },
+            "maxAge": {
+              "type": "string",
+              "default": "24h",
+              "description": "Force refresh if index is older than this (e.g., '24h', '7d')"
+            }
+          }
+        },
+        "cloud": {
+          "type": "object",
+          "description": "Cloud vector storage configuration (only used when storage='cloud')",
+          "properties": {
+            "provider": {
+              "type": "string",
+              "enum": ["pinecone", "weaviate"],
+              "description": "Cloud vector database provider"
+            },
+            "credentials": {
+              "type": "string",
+              "description": "Credentials reference (use 'env:PINECONE_API_KEY' for env var)"
+            },
+            "namespace": {
+              "type": "string",
+              "description": "Namespace/index name for this project (defaults to project name)"
+            }
+          }
+        },
+        "credentials": {
+          "type": "object",
+          "description": "API credentials references for vectorization services (never store actual keys)",
+          "properties": {
+            "openai": {
+              "type": "string",
+              "default": "env:OPENAI_API_KEY",
+              "description": "OpenAI API key reference for embeddings"
+            },
+            "anthropic": {
+              "type": "string",
+              "default": "env:ANTHROPIC_API_KEY",
+              "description": "Anthropic API key reference for contextual retrieval"
+            },
+            "voyage": {
+              "type": "string",
+              "default": "env:VOYAGE_API_KEY",
+              "description": "Voyage AI API key reference for embeddings"
+            },
+            "cohere": {
+              "type": "string",
+              "default": "env:COHERE_API_KEY",
+              "description": "Cohere API key reference for reranking"
+            }
+          }
+        }
+      }
+    },
+
     "agents": {
       "type": "object",
       "description": "AI agent behavior configuration",
