@@ -5,8 +5,8 @@
       "id": "prd-multi-platform-apps",
       "title": "Multi-Platform App Support & Electron Testing",
       "status": "complete",
-      "filePath": "docs/prds/prd-multi-platform-apps.md",
-      "jsonPath": "docs/prds/prd-multi-platform-apps.json",
+      "filePath": "docs/completed/prd-multi-platform-apps.md",
+      "jsonPath": "docs/completed/prd-multi-platform-apps.json",
       "createdAt": "2026-02-27",
       "completedAt": "2026-02-27",
       "stories": 9
@@ -14,11 +14,53 @@
     {
       "id": "prd-automatic-test-intensity",
       "title": "Automatic Test Activity Selection",
-      "status": "ready",
-      "filePath": "docs/prds/prd-automatic-test-intensity.md",
-      "jsonPath": "docs/prds/prd-automatic-test-intensity.json",
+      "status": "complete",
+      "filePath": "docs/completed/prd-automatic-test-intensity.md",
+      "jsonPath": "docs/completed/prd-automatic-test-intensity.json",
       "createdAt": "2026-02-27",
+      "completedAt": "2026-02-28",
       "stories": 10
+    },
+    {
+      "id": "prd-integration-gaps",
+      "title": "Integration Skill Gaps",
+      "status": "complete",
+      "filePath": "docs/completed/prd-integration-gaps.md",
+      "createdAt": "2026-02-28",
+      "completedAt": "2026-02-28",
+      "stories": 2
+    },
+    {
+      "id": "prd-pending-updates-v2",
+      "title": "Enhanced Pending Updates System",
+      "status": "complete",
+      "filePath": "docs/completed/prd-pending-updates-v2.md",
+      "createdAt": "2026-02-27",
+      "completedAt": "2026-02-27"
+    },
+    {
+      "id": "prd-project-auth-config",
+      "title": "Project Authentication Configuration",
+      "status": "complete",
+      "filePath": "docs/completed/prd-project-auth-config.md",
+      "createdAt": "2026-02-25",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "prd-rate-limit-resilience",
+      "title": "Rate Limit Resilience",
+      "status": "complete",
+      "filePath": "docs/completed/prd-rate-limit-resilience.md",
+      "createdAt": "2026-02-26",
+      "completedAt": "2026-02-26"
+    },
+    {
+      "id": "prd-vectorization",
+      "title": "Codebase and Database Vectorization",
+      "status": "complete",
+      "filePath": "docs/completed/prd-vectorization.md",
+      "createdAt": "2026-02-27",
+      "completedAt": "2026-02-28"
     }
   ]
 }
