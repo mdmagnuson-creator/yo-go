@@ -254,6 +254,64 @@ After committing, check if you added new capabilities.
 - Skill already exists in `skills.generated[]`
 - Project doesn't use the agent system (`docs/project.json` doesn't exist)
 
+### Phase 3B.2: Queue Toolkit Skill Promotion
+
+After generating a project skill, queue a promotion request so toolkit maintainer can consider generalizing it.
+
+1. **Check if promotion already queued:**
+   ```bash
+   ls ~/.config/opencode/pending-updates/*promote*[skill-name]*.md 2>/dev/null
+   ```
+   If file exists, skip this phase.
+
+2. **Create promotion request:**
+   ```bash
+   SKILL_NAME="[skill-name]"
+   META_SKILL="[meta-skill-generator]"
+   PROJECT_ID="[from project.json]"
+   PROJECT_PATH="$(pwd)"
+   DATE=$(date +%Y-%m-%d)
+   
+   cat > ~/.config/opencode/pending-updates/${DATE}-promote-${SKILL_NAME}.md << EOF
+   ---
+   createdBy: developer
+   date: ${DATE}
+   priority: low
+   updateType: skill-promotion
+   ---
+   
+   # Promote Skill: ${SKILL_NAME}
+   
+   ## Context
+   
+   A project-specific skill was generated that may be useful as a toolkit default.
+   
+   - **Skill name:** ${SKILL_NAME}
+   - **Generated from:** ${META_SKILL}
+   - **Project:** ${PROJECT_ID}
+   - **Skill path:** ${PROJECT_PATH}/docs/skills/${SKILL_NAME}/SKILL.md
+   
+   ## Action Required
+   
+   Review the generated skill and consider:
+   1. Is this pattern reusable across projects?
+   2. Should it become a toolkit default skill?
+   3. Should the meta-skill generator be updated to produce better output?
+   
+   ## Options
+   
+   - **Promote:** Copy patterns to toolkit skills/ directory
+   - **Update generator:** Improve the meta-skill generator based on this output
+   - **Dismiss:** This is project-specific, no toolkit changes needed
+   EOF
+   ```
+
+3. **This step is silent** — no user notification, just queue the request
+
+**Skip if:**
+- Skill generation was skipped (no new skill created)
+- Promotion request already exists for this skill
+
 ### Phase 3C: Check Toolkit Alignment
 
 If you added new capabilities, check if toolkit has adequate support.

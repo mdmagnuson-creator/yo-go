@@ -33,6 +33,11 @@
       "metaSkill": "stripe-skill-generator",
       "generates": "payments",
       "description": "Stripe payment integration patterns"
+    },
+    "supabase": {
+      "metaSkill": "supabase-skill-generator",
+      "generates": "supabase-patterns",
+      "description": "Supabase database, RLS, and client patterns"
     }
   },
   "alwaysGenerate": [

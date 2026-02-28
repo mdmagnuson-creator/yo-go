@@ -1,10 +1,10 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-02-28T23:45:00Z",
+  "generatedAt": "2026-03-01T00:30:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
-    "total": 64,
+    "total": 63,
     "categories": {
       "primary": {
         "description": "User-invokable primary agents",
@@ -354,7 +354,7 @@
     }
   },
   "skills": {
-    "total": 43,
+    "total": 44,
     "categories": {
       "workflow": {
         "description": "Workflow and lifecycle skills",
@@ -518,6 +518,11 @@
             "name": "stripe-skill-generator",
             "path": "skills/meta/stripe-skill-generator/SKILL.md",
             "description": "Generate a project-specific payments skill for Stripe integration. Use when a project has stripe in integrations. Triggers on: generate stripe skill, create payment patterns, stripe-skill-generator."
+          },
+          {
+            "name": "supabase-skill-generator",
+            "path": "skills/meta/supabase-skill-generator/SKILL.md",
+            "description": "Generate a project-specific Supabase database skill covering RLS, client patterns, and query types. Use when a project has supabase in integrations. Triggers on: generate supabase skill, supabase patterns, supabase-skill-generator."
           },
           {
             "name": "table-skill-generator",
@@ -858,6 +863,29 @@
   "changelog": {
     "generatedFrom": "git log --since=30 days",
     "entries": [
+      {
+        "date": "2026-03-01",
+        "changes": [
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "add supabase-skill-generator for database/RLS/client patterns",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "agents",
+            "description": "add Phase 3B.2 to developer for auto-promoting generated skills to toolkit",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "data",
+            "description": "add supabase trigger to meta-skill-triggers.json",
+            "hash": "pending"
+          }
+        ]
+      },
       {
         "date": "2026-02-28",
         "changes": [

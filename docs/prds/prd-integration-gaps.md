@@ -1,6 +1,6 @@
 # PRD: Integration Skill Gaps
 
-**Status:** Ready  
+**Status:** In Progress  
 **Priority:** Medium  
 **Source:** Gaps from `integration-provisioning-automation.md` (mostly complete)
 
@@ -29,11 +29,11 @@ The integration skill provisioning workflow is 90% implemented. This PRD covers 
 
 **Acceptance Criteria:**
 
-- [ ] After Developer generates a skill via meta-skill generator (Phase 3B.1), queue promotion update
-- [ ] Create `~/.config/opencode/pending-updates/YYYY-MM-DD-promote-[skill-name].md`
-- [ ] Update includes: skill name, meta-skill used, project path, generated skill path
-- [ ] This is automatic — no user prompt required
-- [ ] Skip if promotion update for same skill already exists (avoid duplicates)
+- [x] After Developer generates a skill via meta-skill generator (Phase 3B.1), queue promotion update
+- [x] Create `~/.config/opencode/pending-updates/YYYY-MM-DD-promote-[skill-name].md`
+- [x] Update includes: skill name, meta-skill used, project path, generated skill path
+- [x] This is automatic — no user prompt required
+- [x] Skip if promotion update for same skill already exists (avoid duplicates)
 
 **Files to modify:**
 - `agents/developer.md` — Add Step 6.5 after skill generation in Phase 3B.1
@@ -105,17 +105,17 @@ After generating a project skill, queue a promotion request so toolkit can consi
 
 **Acceptance Criteria:**
 
-- [ ] Create `skills/meta/supabase-skill-generator/SKILL.md`
-- [ ] Add trigger to `data/meta-skill-triggers.json` under `integrationTriggers.supabase`
-- [ ] Generator analyzes: Supabase client setup, RLS policies, table structure
-- [ ] Generates `docs/skills/supabase/SKILL.md` with project-specific patterns
-- [ ] Covers:
-  - [ ] Server client creation (`createClient` from `@supabase/ssr`)
-  - [ ] Browser client creation (if applicable)
-  - [ ] RLS policy patterns (authenticated, owner, org-scoped)
-  - [ ] Common query patterns with TypeScript types
-  - [ ] Realtime subscription patterns (if `capabilities.realtime: true`)
-- [ ] References auth skills — does NOT duplicate auth patterns
+- [x] Create `skills/meta/supabase-skill-generator/SKILL.md`
+- [x] Add trigger to `data/meta-skill-triggers.json` under `integrationTriggers.supabase`
+- [x] Generator analyzes: Supabase client setup, RLS policies, table structure
+- [x] Generates `docs/skills/supabase/SKILL.md` with project-specific patterns
+- [x] Covers:
+  - [x] Server client creation (`createClient` from `@supabase/ssr`)
+  - [x] Browser client creation (if applicable)
+  - [x] RLS policy patterns (authenticated, owner, org-scoped)
+  - [x] Common query patterns with TypeScript types
+  - [x] Realtime subscription patterns (if `capabilities.realtime: true`)
+- [x] References auth skills — does NOT duplicate auth patterns
 
 **Files to create:**
 - `skills/meta/supabase-skill-generator/SKILL.md`
@@ -215,10 +215,10 @@ After generating a project skill, queue a promotion request so toolkit can consi
 
 ## Definition of Done
 
-- [ ] US-001: Developer Phase 3B.2 added for auto-promotion
+- [x] US-001: Developer Phase 3B.2 added for auto-promotion
 - [ ] US-001: Test shows promotion request created after skill generation
-- [ ] US-002: `supabase-skill-generator` exists in `skills/meta/`
-- [ ] US-002: Trigger added to `data/meta-skill-triggers.json`
+- [x] US-002: `supabase-skill-generator` exists in `skills/meta/`
+- [x] US-002: Trigger added to `data/meta-skill-triggers.json`
 - [ ] US-002: Generator produces useful skill for a real Supabase project
 
 ## Credential & Service Access Plan
