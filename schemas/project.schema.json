@@ -1336,6 +1336,40 @@
               "description": "Delete branch after successful merge"
             }
           }
+        },
+        "fallbackChains": {
+          "type": "object",
+          "description": "Per-project fallback chain overrides for agent reassignment. Merges with toolkit defaults unless override is true.",
+          "properties": {
+            "override": {
+              "type": "boolean",
+              "default": false,
+              "description": "If true, replace toolkit defaults entirely. If false, merge with defaults (project chains take precedence for matching keys)."
+            },
+            "chains": {
+              "type": "object",
+              "description": "Map of task type to fallback chain",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "primary": {
+                    "type": "string",
+                    "description": "Primary agent for this task type"
+                  },
+                  "alternatives": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Alternative agents to try if primary fails (in order)"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Human-readable description of this chain"
+                  }
+                },
+                "required": ["primary", "alternatives"]
+              }
+            }
+          }
         }
       }
     },

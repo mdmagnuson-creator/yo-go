@@ -612,6 +612,77 @@
         }
       },
       "required": ["phase", "completedSteps", "pendingSteps", "metadata"]
+    },
+
+    "reassignment": {
+      "type": ["object", "null"],
+      "description": "Tracks reassignment attempts for current task. Cleared on task success.",
+      "properties": {
+        "taskId": {
+          "type": "string",
+          "description": "Task being reassigned (story ID or adhoc ID)"
+        },
+        "taskType": {
+          "type": "string",
+          "description": "Task type used to look up fallback chain (e.g., react-component, jest-tests)"
+        },
+        "attempts": {
+          "type": "array",
+          "description": "History of agent attempts for this task (limited to ~10 entries)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "agent": {
+                "type": "string",
+                "description": "Agent that attempted the task"
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When this attempt started"
+              },
+              "endedAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When this attempt ended"
+              },
+              "outcome": {
+                "type": "string",
+                "enum": ["success", "rate_limit", "verification_failed", "context_overflow", "crash", "timeout"],
+                "description": "How this attempt ended"
+              },
+              "error": {
+                "type": "string",
+                "description": "Error message if failed"
+              },
+              "retryCount": {
+                "type": "integer",
+                "description": "Number of retries made with this agent (for rate limits)"
+              }
+            },
+            "required": ["agent", "startedAt", "outcome"]
+          }
+        },
+        "currentAgent": {
+          "type": "string",
+          "description": "Agent currently working on task"
+        },
+        "checkpointRef": {
+          "type": "string",
+          "description": "Reference to checkpoint location (e.g., 'activePrd.checkpoint' or 'adhocQueue[0].checkpoint')"
+        },
+        "escalated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether task has been escalated to user"
+        },
+        "escalatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When task was escalated"
+        }
+      },
+      "required": ["taskId", "attempts", "currentAgent"]
     }
   },
 
