@@ -1,291 +1,278 @@
-# PRD 004: Dynamic Output Verbosity Modes
+# PRD: Automatic Output Verbosity
 
 **Status:** draft  
 **Priority:** high  
 **Effort:** medium  
 **Impact:** high
 
-## Overview
+## Introduction
 
-Introduce dynamic output verbosity controls so agents minimize token usage on happy paths while preserving debugging quality when tasks fail.
+Implement **fully automatic output verbosity selection** — the system determines output detail level per-operation based on operation type and failure signals. **No prompts, no mode selection, no user interaction required.**
 
-This PRD defines:
+This follows the same pattern as automatic test activity selection: analyze the operation → resolve verbosity → apply limits. The user never chooses "lean" or "debug" — the system decides based on what's happening.
 
-1. A shared verbosity policy (`lean`, `balanced`, `debug`)
-2. Agent/task-aware default behavior (without heavy per-turn reasoning)
-3. Automatic escalation to richer output only when failure signals appear
-4. Clear acceptance criteria to verify cost reduction without reduced completion quality
+## Key Principle: Zero User Interaction
 
----
+**This system is fully automatic.** The user does not:
+- Select a verbosity mode at session start
+- Confirm output detail levels
+- Choose between cost and diagnostics
+- Approve truncation decisions
 
-## Problem
+The system analyzes operation type, detects failure signals, and applies appropriate output limits — automatically. The user sees clean, appropriately-sized output without ever being asked about verbosity.
 
-Current tool usage is effective but inconsistent in output volume. Most token/cost waste comes from large command output and broad file reads that are unnecessary for successful runs.
+**Exception:** User can always say "show me more" or "debug this" to escalate — but this is recovery, not configuration.
 
-Observed characteristics:
+## Problem Statement
 
-- High volume tools: `read` and `bash`
-- High-risk output patterns: dev server logs, full test output, verbose build output, broad docs dumps
-- No global policy linking output verbosity to task state (success vs failure)
+1. **Output volume is inconsistent** — Same operations produce wildly different output sizes
+2. **Happy paths waste tokens** — Successful builds/tests dump full logs nobody reads
+3. **Failures need more detail** — But truncation is applied uniformly regardless of success/failure
+4. **No automatic adaptation** — Agents don't adjust output based on what happened
+5. **Manual mode selection is friction** — Any "choose verbosity" prompt interrupts flow
 
-Result:
-
-- Cost predictability is low
-- Context windows can fill with low-signal output
-- Agents spend tokens processing logs that do not affect decisions
-
----
+The goal is: **Show exactly the right amount of output for each operation — minimal on success, detailed on failure — without asking.**
 
 ## Goals
 
-- Reduce token consumption for routine success-path work
-- Preserve or improve task success rate and failure diagnosis quality
-- Make output behavior deterministic by task type and failure signals
-- Keep policy simple enough to apply without extra reasoning overhead
+- **Zero prompts:** No verbosity selection, no confirmation, no "how much detail?" questions
+- **Fully automatic:** Analyze operation → resolve verbosity → apply limits
+- **Success = minimal:** Successful operations get one-line status
+- **Failure = detailed:** Failed operations automatically get full diagnostic output
+- **Test failures never truncated:** Test output is sacred — always show full failure details
+- **Transparent:** User can see what limits were applied (if they ask), but never asked to choose
 
 ## Non-Goals
 
-- Replacing tool infrastructure
-- Disabling all logs globally
-- Eliminating debug output when explicitly requested
+- Replacing tool infrastructure or output capture mechanisms
+- Adding configuration options for verbosity (the whole point is no configuration)
+- Changing how tools work internally
+- Removing escape hatches (explicit "show full output" always works)
+
+---
+
+## Verbosity Resolution Rules
+
+### Per-Operation Defaults
+
+Every operation has a **default verbosity** based on type:
+
+| Operation Type | Default | Output Limit |
+|----------------|---------|--------------|
+| `git status`, `git diff --stat`, `ls` | lean | Full output (small by nature) |
+| `git log` | lean | 20 lines max |
+| Dev server startup | lean | One status line: `running`, `startup failed`, or `timed out` |
+| `npm run build` / `go build` | balanced | Exit code + last 10 lines on success |
+| `npm run test` / `go test` | balanced | Summary line on success, full on failure |
+| `npm run lint` / `npm run typecheck` | balanced | Clean = silent, errors = full output |
+| File read (< 200 lines) | full | Entire file |
+| File read (200-500 lines) | balanced | First 100 + last 50 + "... X lines omitted" |
+| File read (> 500 lines) | lean | First 50 + summary + "use offset to read more" |
+| Command output (< 30 lines) | full | Entire output |
+| Command output (30-100 lines) | balanced | First 20 + last 10 |
+| Command output (> 100 lines) | lean | Last 20 + "X lines truncated" |
+
+### Automatic Escalation Triggers
+
+When failure signals are detected, verbosity **automatically escalates to debug**:
+
+| Signal | Detection | Escalation Behavior |
+|--------|-----------|---------------------|
+| Non-zero exit code | `$? != 0` | Show full stderr + last 50 lines stdout |
+| Timeout | Command exceeds limit | Show everything captured before timeout |
+| Test failure | Exit code or "FAIL" in output | **Full output — never truncate** |
+| Build failure | Exit code or "error" patterns | Full error output + 20 lines context |
+| Repeated failure | Same command fails twice in session | Full debug output on second attempt |
+| Explicit request | User says "show more", "debug", "full output" | Switch to debug for that operation |
+
+### Critical Rule: Test Failures Are Never Truncated
+
+> **MANDATORY:** When any test command fails (unit, integration, E2E), show the **complete failure output**.
+>
+> This preserves the testing rigor from automatic test activity selection.
+> Truncating test failures defeats the purpose of running tests.
+
+Detection patterns for test commands:
+- `npm run test`, `npm test`, `npx jest`, `npx vitest`
+- `go test`
+- `pytest`, `python -m pytest`
+- `npx playwright test`
+- Any command containing `test` in a testing context
 
 ---
 
 ## User Stories
 
-### Story 1: Define shared verbosity modes
+### US-001: Implement per-operation verbosity resolution
 
-As a user, I want explicit logging modes so I can balance cost and diagnostics.
+**Description:** As a user, I want output automatically sized per-operation so I don't see walls of text on success or missing details on failure.
 
-#### Modes
+**Acceptance Criteria:**
 
-- **lean**
-  - One-line status for routine operations
-  - No log streaming
-  - Minimal file read windows
-- **balanced** (default)
-  - Concise success output
-  - Short failure reason and key evidence
-  - Expand only when needed
-- **debug**
-  - Full or near-full logs/read windows
-  - Deep diagnostics
+- [ ] Create verbosity resolution function that takes: operation type, exit code, output size
+- [ ] Apply default limits from the per-operation table above
+- [ ] Return: truncated output + truncation metadata (lines omitted, full output location)
+- [ ] Resolution happens automatically — no agent reasoning required
 
-#### Acceptance Criteria
+### US-002: Implement automatic failure escalation
 
-- [ ] Mode definitions documented in toolkit guidance
-- [ ] Each mode has explicit output limits and escalation behavior
-- [ ] Default mode is `balanced`
+**Description:** As a user, I want failures to automatically show more detail so I can diagnose issues without asking.
 
----
+**Acceptance Criteria:**
 
-### Story 2: Add dynamic routing without overthinking
+- [ ] Detect failure signals: non-zero exit, timeout, error patterns
+- [ ] On failure detection, bypass normal truncation limits
+- [ ] Show full stderr always on failure
+- [ ] Show contextual stdout (last 50 lines minimum)
+- [ ] Include "full output saved to .tmp/last-command-output.txt" for very long failures
 
-As a user, I want agents to choose output detail automatically by task/failure state, not by expensive meta-reasoning.
+### US-003: Protect test failure output from truncation
 
-#### Routing Rules
+**Description:** As a user, I want test failures to always show complete output so I can see exactly what failed.
 
-1. Apply static defaults by operation type:
-   - Dev-server startup: `lean`
-   - Standard build/test on first run: `balanced`
-   - Investigations and explicit "debug" requests: `debug`
-2. Escalate when failure signals occur:
-   - non-zero exit
-   - timeout
-   - repeated failure (same command fails twice)
-3. On escalation, include only bounded evidence unless in `debug` mode.
+**Acceptance Criteria:**
 
-#### Acceptance Criteria
+- [ ] Detect test commands by pattern matching (npm test, go test, pytest, playwright)
+- [ ] When test command exits non-zero, show **complete output** regardless of length
+- [ ] Never apply line limits to failed test output
+- [ ] This rule takes precedence over all other truncation rules
 
-- [ ] Agent prompts encode deterministic routing rules
-- [ ] No step requires a separate "analyze logging strategy" loop
-- [ ] Escalation triggers are explicit and testable
+### US-004: Add escape hatch for explicit debug requests
 
----
+**Description:** As a user, I want to say "show me more" and get full output when automatic truncation was too aggressive.
 
-### Story 3: Standardize primary-agent behavior
+**Acceptance Criteria:**
 
-As a user, I want consistent output policy across primary agents so behavior is predictable.
+- [ ] Recognize phrases: "show more", "show full output", "debug this", "what was the full output"
+- [ ] Re-run last command with debug verbosity (no truncation)
+- [ ] Or retrieve from .tmp/last-command-output.txt if saved
+- [ ] This is recovery, not configuration — user shouldn't need it often
 
-#### Scope
+### US-005: Update primary agents with verbosity rules
 
-- `builder`
-- `planner`
-- `toolkit`
+**Description:** As a user, I want consistent output behavior across Builder, Planner, and Toolkit.
 
-#### Requirements
+**Acceptance Criteria:**
 
-- Shared policy section in each primary agent prompt
-- Consistent status vocabulary for runtime operations:
-  - `running`
-  - `startup failed`
-  - `timed out`
-- Failure output includes concise reason and where to find full logs if collected
+- [ ] Add "Output Verbosity Policy" section to `builder.md`, `planner.md`, `toolkit.md`
+- [ ] Policy references the resolution rules (not duplicates them)
+- [ ] Agents apply rules automatically without per-turn reasoning
+- [ ] Consistent status vocabulary: `running`, `success`, `failed`, `timed out`
 
-#### Acceptance Criteria
+### US-006: Update testing agents to never truncate failures
 
-- [ ] All primary agents contain aligned verbosity policy language
-- [ ] No conflicting status wording across primary prompts
+**Description:** As a user, I want testing agents to always show full failure output.
 
----
+**Acceptance Criteria:**
 
-### Story 4: Extend policy to high-impact subagents
+- [ ] Update `tester.md`, `jest-tester.md`, `react-tester.md`, `go-tester.md`, `e2e-playwright.md`
+- [ ] Add explicit rule: "Test failure output is never truncated"
+- [ ] Successful test runs can be summarized (e.g., "42 tests passed")
+- [ ] Failed test runs show complete output
 
-As a user, I want cost-heavy subagents to follow the same output principles.
+### US-007: Add verbosity rules schema (optional)
 
-#### Initial subagent set
+**Description:** As a toolkit maintainer, I want verbosity rules defined in a schema so they're auditable and consistent.
 
-- `developer`
-- `tester`
-- `playwright-dev`
-- `go-tester`
-- `jest-tester`
-- `react-tester`
+**Acceptance Criteria:**
 
-#### Requirements
-
-- Use concise result summaries by default
-- For failures, emit short diagnostic excerpts and next-action hint
-- Avoid dumping full command output unless mode is `debug`
-
-#### Acceptance Criteria
-
-- [ ] Target subagents updated with policy references
-- [ ] Validators pass after prompt changes
+- [ ] Create `schemas/verbosity-rules.schema.json` (optional — can be hardcoded initially)
+- [ ] Schema defines: operation patterns, default limits, escalation triggers
+- [ ] Agents reference the schema or embed equivalent rules
+- [ ] This is optional for v1 — can hardcode rules and extract later
 
 ---
 
-### Story 5: Add operator controls and observability
+## Implementation Approach
 
-As a user, I want to control mode and verify whether it is saving tokens.
+### Option A: Embed in Agent Prompts (Recommended for v1)
 
-#### Controls
+Add a "Verbosity Policy" section to each agent with deterministic rules:
 
-- Session-level mode override via user instruction:
-  - "use lean mode"
-  - "switch to debug mode"
-- Optional agent-level default in configuration (future extension)
+```markdown
+## Output Verbosity Policy
 
-#### Observability
+Apply these rules automatically — no user interaction required.
 
-- Track before/after with `opencode stats`
-- Compare:
-  - avg tokens/session
-  - median tokens/session
-  - total input tokens over comparable periods
+**Success path (exit 0):**
+- Build/test commands: one-line summary ("Build succeeded", "42 tests passed")
+- File reads > 200 lines: first 100 + last 50 + omission notice
+- Command output > 30 lines: last 20 lines + truncation notice
 
-#### Acceptance Criteria
+**Failure path (exit non-zero):**
+- Show full stderr always
+- Show last 50 lines stdout minimum
+- Test failures: show complete output, never truncate
+- Save full output to .tmp/last-command-output.txt for retrieval
 
-- [ ] Prompts define override phrases and precedence
-- [ ] README/docs include measurement procedure
+**Escalation triggers:**
+- Non-zero exit → full error output
+- Timeout → show captured output
+- Repeated failure → debug mode
+- User says "show more" → retrieve full output
+```
 
----
+### Option B: Centralized Rules File (Future)
 
-## Proposed Implementation Plan
+Create `data/verbosity-rules.yaml` with structured rules that agents reference. Better for auditing but more complex to implement.
 
-1. Add a reusable verbosity policy block to toolkit docs/skills.
-2. Update primary agent prompts to consume policy.
-3. Update high-impact subagents.
-4. Add examples for common workflows:
-   - dev server startup
-   - test run success
-   - test failure escalation
-5. Validate with governance scripts.
-6. Compare token metrics after a 3-7 day window.
+**Recommendation:** Start with Option A, extract to Option B if rules need frequent tuning.
 
 ---
 
-## Implementation Tickets
+## Comparison with Test Activity Selection
 
-Use this checklist as the execution backlog.
-
-### Phase 1: Policy and Contracts
-
-- [ ] `V-001` Define canonical verbosity policy block in toolkit docs (lean/balanced/debug definitions, escalation triggers, bounded failure evidence)
-- [ ] `V-002` Add policy testability language (trigger, verification, failure behavior) for all hard rules introduced by this PRD
-- [ ] `V-003` Document standard runtime status vocabulary: `running`, `startup failed`, `timed out`
-
-### Phase 2: Primary Agent Rollout
-
-- [ ] `V-010` Update `agents/builder.md` with deterministic mode routing by task type and escalation triggers
-- [ ] `V-011` Update `agents/planner.md` with lean-by-default policy for planning-time commands/reads
-- [ ] `V-012` Update `agents/toolkit.md` with balanced default and debug escalation rules for maintenance workflows
-- [ ] `V-013` Add explicit mode override phrases and precedence rules to all primary agents
-
-### Phase 3: Subagent Rollout (High Impact)
-
-- [ ] `V-020` Update `agents/developer.md` for concise success outputs and bounded failure excerpts
-- [ ] `V-021` Update `agents/tester.md` for bounded test output by default plus failure escalation behavior
-- [ ] `V-022` Update `agents/playwright-dev.md` for lean startup checks and escalation rules
-- [ ] `V-023` Update `agents/go-tester.md`, `agents/jest-tester.md`, and `agents/react-tester.md` with consistent verbosity behavior
-
-### Phase 4: Documentation and Examples
-
-- [ ] `V-030` Add README section describing verbosity modes, defaults, overrides, and escalation behavior
-- [ ] `V-031` Add concrete examples (dev server startup, test success, test failure escalation)
-- [ ] `V-032` Add operator runbook for comparing baseline vs post-change token usage (`opencode stats` procedure)
-
-### Phase 5: Validation and Measurement
-
-- [ ] `V-040` Run governance validators and fix violations (`toolkit-postchange`, `handoff-contracts`, `project-updates`, `policy-testability`)
-- [ ] `V-041` Establish baseline token metrics (7-day window) before rollout
-- [ ] `V-042` Capture post-rollout metrics after 3-7 days and compare against baseline
-- [ ] `V-043` Record decision: keep `balanced` default or tune thresholds based on findings
-
-### Definition of Done
-
-- [ ] All Phase 1-5 tickets completed
-- [ ] No contradictory verbosity rules remain across primary and selected subagents
-- [ ] Success metrics section has measured values, not placeholders
-- [ ] PRD status updated from `draft` to `ready`
-
----
-
-## Tradeoffs
-
-### Benefits
-
-- Lower token spend for routine tasks
-- Cleaner context with higher signal-to-noise
-- Faster agent turns due to less output processing
-
-### Risks
-
-- Under-reporting may hide root cause on first failure
-- Overly strict truncation can require extra retries
-
-### Mitigations
-
-- Automatic escalation on failure/timeouts
-- Explicit `debug` override always available
-- Keep concise but sufficient failure evidence in `balanced`
+| Aspect | Test Activity Selection | Verbosity Selection |
+|--------|------------------------|---------------------|
+| Trigger | Changed files | Operation execution |
+| Resolution timing | Before running tests | During/after command |
+| Input signals | File patterns, hotspots | Exit code, output size, operation type |
+| Output | List of activities to run | Truncated/full output |
+| User interaction | None | None |
+| Escalation | Hotspot → more coverage | Failure → more detail |
+| Sacred rule | Run all relevant tests | Never truncate test failures |
 
 ---
 
 ## Success Metrics
 
-Primary:
+**Primary:**
+- 30%+ reduction in average output tokens per session (measured via OpenCode stats)
+- Zero increase in "I can't see the error" complaints
+- Test failure diagnosis time unchanged or improved
 
-- 20%+ reduction in average input tokens/session over baseline window
-- No increase in user-reported "insufficient diagnostics" incidents
-
-Secondary:
-
-- Reduced median turn latency for tool-heavy tasks
-- Fewer long-output tool responses in successful runs
-
----
-
-## Open Questions
-
-1. Should mode defaults be set globally in `opencode.json`, agent prompts, or both?
-2. Should mode state persist across sessions by default?
-3. Do we want per-tool hard caps (e.g., max lines for `bash` output in `lean`)?
+**Secondary:**
+- Faster perceived response time (less output to render)
+- Reduced context window pressure in long sessions
+- No user requests to "turn off verbosity limits"
 
 ---
 
-## Out of Scope Follow-ups
+## Risks and Mitigations
 
-- Adaptive token budgets per repository/project size
-- Automatic anomaly detection for unusually verbose runs
-- UI indicators showing current verbosity mode in real time
+| Risk | Mitigation |
+|------|------------|
+| Over-truncation hides root cause | Automatic escalation on failure signals |
+| Test failures truncated | Explicit "never truncate test failures" rule |
+| User wants more but doesn't know how | "show more" escape hatch documented |
+| Rules too rigid | Start conservative, tune based on feedback |
+
+---
+
+## Open Questions (Resolved)
+
+1. ~~Should mode defaults be set globally?~~ **No modes — fully automatic**
+2. ~~Should mode persist across sessions?~~ **No modes — per-operation resolution**
+3. ~~Per-tool hard caps?~~ **Yes — defined in per-operation table**
+
+---
+
+## Definition of Done
+
+- [ ] All user stories completed
+- [ ] Primary agents (builder, planner, toolkit) have verbosity policy sections
+- [ ] Testing agents have "never truncate test failures" rule
+- [ ] Escape hatch ("show more") documented and working
+- [ ] Baseline metrics captured before rollout
+- [ ] Post-rollout metrics show improvement without quality loss
+- [ ] PRD status updated to `complete`
