@@ -131,23 +131,17 @@ Some tasks can't be verified automatically. Builder detects these patterns:
 When advisory task is detected:
 
 ```
-═══════════════════════════════════════════════════════════════════════
-                      ADVISORY TASK DETECTED
-═══════════════════════════════════════════════════════════════════════
-
-Task: "Investigate why checkout API is slow"
-
-This task has no clear automated verification criteria.
-I can delegate it, but success will be based on your review of the output.
-
-Options:
-  [P] Proceed as advisory (I'll review the output)
-  [C] Add criteria (define how to verify success)
-  [A] Abort (rethink the task)
-
-> _
-═══════════════════════════════════════════════════════════════════════
+ℹ️ Advisory task detected: "Investigate why checkout API is slow"
+   No automated verification — output will be logged for your review.
+   Proceeding...
 ```
+
+The task proceeds automatically without user intervention. The output is logged and available for review after completion. This avoids interrupting the workflow while still providing visibility.
+
+**When to still prompt the user:**
+- Task description is ambiguous (could be advisory OR verifiable)
+- User has `"promptForAdvisory": true` in project.json
+- Task is part of a PRD (advisory tasks in PRDs may indicate unclear requirements)
 
 ### Delegation Flow Change
 
@@ -228,21 +222,23 @@ The contract doesn't replace test-flow — it front-loads the criteria:
 - Format criteria as numbered list
 - Include timing info for E2E (immediate vs deferred)
 
-### US-003: Flag advisory tasks for user approval
+### US-003: Auto-proceed for advisory tasks with logging
 
-**Description:** As a user, I'm notified when a task has no automated verification criteria, so I can decide whether to proceed.
+**Description:** As a user, I want advisory tasks to proceed automatically with logging, so my workflow isn't interrupted while I still have visibility into unverifiable work.
 
 **Acceptance Criteria:**
-- [ ] When task matches advisory patterns, show advisory task prompt
-- [ ] User can proceed (accept advisory), add criteria, or abort
-- [ ] If user proceeds, task is delegated with `type: advisory`
-- [ ] Advisory tasks skip automated verification, show output for user review
-- [ ] User explicitly approves or rejects advisory task output
+- [ ] When task matches advisory patterns, log one-line notification and proceed
+- [ ] Task is delegated with `type: advisory`
+- [ ] Advisory tasks skip automated verification
+- [ ] Output is logged for user review (in builder-state or session log)
+- [ ] User can review advisory task outputs after completion
+- [ ] Optional: `"promptForAdvisory": true` in project.json restores interactive prompt
 
 **Technical Notes:**
 - Advisory patterns: "investigate", "research", "explore", "discuss", "plan", "design"
 - Skip patterns: "document", "update README", "update docs", "add comments"
-- Store user decision in builder-state.json
+- Log advisory task outcomes to `builder-state.json → advisoryTasks[]` for review
+- PRD stories flagged as advisory should still prompt (unclear requirements)
 
 ### US-004: Verify against contract on completion
 

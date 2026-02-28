@@ -65,20 +65,21 @@ The paper describes "adaptive execution" — the ability to switch delegatees mi
 
 ### Decision 2: Retry Limits
 
-**Choice:** 3 retries for transient failures, 1 alternative agent, then escalate.
+**Choice:** 3 retries for transient failures, try all alternatives in chain, then escalate.
 
-| Failure Type | Max Retries (Same Agent) | Alternatives to Try | Total Attempts |
-|--------------|--------------------------|---------------------|----------------|
-| Rate limit | 3 (with backoff) | 0 | 3 |
-| Bad output | 1 | 1 | 2 |
-| Context overflow | 0 | 1 (fresh context) | 1 |
-| Crash/error | 1 | 1 | 2 |
+| Failure Type | Max Retries (Same Agent) | Alternatives to Try | Example with 3 alternatives |
+|--------------|--------------------------|---------------------|----------------------------|
+| Rate limit | 3 (with backoff) | 0 (same agent) | 3 attempts total |
+| Bad output | 1 | All in chain | 1 + 1 + 1 + 1 = 4 attempts |
+| Context overflow | 0 | 0 (fresh context first) | 1 fresh attempt, then escalate |
+| Crash/error | 1 | All in chain | 1 + 1 + 1 + 1 = 4 attempts |
 
 **Rationale:**
-- Rate limits are transient — worth retrying same agent
-- Bad output suggests capability mismatch — try alternative quickly
-- Context overflow needs fresh context, not same agent again
-- Total attempts capped to avoid wasting user time/money
+- Rate limits are transient — retry same agent, don't switch
+- Bad output suggests capability mismatch — try all alternatives before giving up
+- Context overflow needs fresh context with same agent (checkpoint helps)
+- If we define alternatives, we should use them all before escalating
+- Fallback chains are short (1-3 alternatives), so "try all" is bounded
 
 ### Decision 3: Notification Level
 
@@ -415,9 +416,10 @@ As Builder, I need to delegate to an alternative agent when the primary fails so
 - [ ] Read fallback chain for task type from `fallback-chains.yaml` (or project override)
 - [ ] When primary agent fails with non-transient error:
   - Create checkpoint (per PRD #2)
-  - Look up first alternative not already tried
+  - Look up next alternative not already tried
   - Show: "⟳ Switching to [alternative] ([primary] failed: [reason])"
   - Delegate to alternative with checkpoint in prompt
+- [ ] Try ALL alternatives in the chain before escalating
 - [ ] Skip alternatives that have already failed for this task
 - [ ] If no alternatives remain, proceed to escalation
 - [ ] Record switch decision in `reassignment.attempts[]`
@@ -426,6 +428,7 @@ As Builder, I need to delegate to an alternative agent when the primary fails so
 - Task type determined by file patterns and task description
 - Checkpoint passed using resume prompt template from PRD #2
 - Track failed agents in `reassignment.attempts[]` to avoid retrying
+- Chain example: `[react-tester, jest-tester, tester, developer]` → try all 4 before escalating
 
 ### US-003: Escalation with Context
 
