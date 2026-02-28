@@ -871,7 +871,7 @@
             "type": "fix",
             "scope": "toolkit",
             "description": "fix website sync to write to website project repo for cross-machine sync",
-            "hash": "pending"
+            "hash": "97c5253"
           },
           {
             "type": "fix",
