@@ -1,6 +1,6 @@
-# PRD Draft: Toolkit-Wide Agent Organization Refactor
+# PRD: Toolkit-Wide Agent Organization Refactor
 
-**Status:** Draft  
+**Status:** Ready  
 **Priority:** High  
 **Created:** 2026-03-01  
 **Updated:** 2026-03-01  
@@ -53,6 +53,72 @@ This PRD addresses both:
 
 ---
 
+## Design Decisions
+
+### Decision 1: AGENTS.md Guardrail Enforcement
+
+**Decision:** Mixed enforcement
+
+- **Mandatory (CRITICAL):** Git Auto-Commit Enforcement — safety issue, could spam repos
+- **Advisory:** Test Failure Output Policy, Requesting Toolkit Updates — important but not dangerous
+
+### Decision 2: Agent-Specific Variations
+
+**Decision:** Minimal per-agent anchor (~3 lines)
+
+AGENTS.md gets the full explanation of format, rules, and template. Each agent keeps only a brief anchor to prevent hallucination:
+
+```markdown
+## Requesting Toolkit Updates
+
+See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-builder-`
+```
+
+This achieves ~85% line reduction while anchoring the agent's identity.
+
+### Decision 3: Skill Loading Pattern
+
+**Decision:** On-demand via `skill()` tool
+
+Skills like `verification-contracts`, `dynamic-reassignment`, `self-correction` are needed for specific workflows, not every session. Agents load them when entering the relevant workflow, matching existing patterns like `test-flow` and `builder-state`.
+
+### Decision 4: Right-Panel Todos Skill Scope
+
+**Decision:** All state persistence together in one skill
+
+The skill `session-state` (or `right-panel-todos`) will include:
+- Right-panel todo contract
+- Rate limit handling
+- currentTask compaction recovery
+
+These are tightly coupled — all about session state persistence.
+
+### Decision 5: Builder Target Size
+
+**Decision:** No arbitrary target — measure actual results
+
+Remove "900-1100 lines" language. The goal is better organization, not hitting a number. We'll measure actual line reduction after extraction.
+
+### Decision 6: Implementation Order
+
+**Decision:** As written (AGENTS.md → skills → refs), with 5 grouped commits
+
+Single session implementation with logical commit groupings:
+1. AGENTS.md updates + remove duplicates from all agents
+2. All new skills created
+3. All agent references updated + skill merges
+4. Prevention guidance added to toolkit.md
+5. Validation + fixes
+
+### Decision 7: Testing Approach
+
+**Decision:** Manual checklist + automated validator
+
+- **Checklist:** Key workflows verified manually (Builder startup, Developer skill loading, etc.)
+- **Validator:** Script to verify all skill references and AGENTS.md references are valid
+
+---
+
 ## Part 1: Toolkit-Wide Duplication Analysis
 
 ### Identical Sections Found Across Agents
@@ -63,9 +129,9 @@ This PRD addresses both:
 
 **Current:** Each agent has ~25 identical lines explaining how to write toolkit update requests.
 
-**Solution:** Reference `AGENTS.md` or create a simple include pattern.
+**Solution:** Move full template to AGENTS.md, keep 3-line anchor in each agent.
 
-**Lines saved:** ~375 lines (25 × 15)
+**Lines saved:** ~330 lines (22 × 15)
 
 #### 2. "Test Failure Output Policy" — 6 agents
 
@@ -73,9 +139,9 @@ This PRD addresses both:
 
 **Current:** Each agent has ~12 identical lines about never truncating test output.
 
-**Solution:** Move to `AGENTS.md` as a global guardrail for testing agents.
+**Solution:** Move to AGENTS.md as advisory guardrail for testing agents.
 
-**Lines saved:** ~72 lines (12 × 6)
+**Lines saved:** ~60 lines (10 × 6)
 
 #### 3. "Git Auto-Commit Enforcement" — 3 agents
 
@@ -83,9 +149,9 @@ This PRD addresses both:
 
 **Current:** Each has the critical block about checking `git.autoCommit`.
 
-**Solution:** Move to `AGENTS.md` as a global guardrail.
+**Solution:** Move to AGENTS.md as CRITICAL mandatory guardrail.
 
-**Lines saved:** ~36 lines (12 × 3)
+**Lines saved:** ~24 lines (8 × 3)
 
 #### 4. "Right-Panel Todo Contract" — 3 agents
 
@@ -93,9 +159,9 @@ This PRD addresses both:
 
 **Current:** Each has ~50 lines about syncing todos with state file.
 
-**Solution:** Extract to `right-panel-todos` skill (already has trigger conditions).
+**Solution:** Extract to `session-state` skill.
 
-**Lines saved:** ~100 lines (50 × 2, keep one reference)
+**Lines saved:** ~100 lines (50 × 2)
 
 #### 5. "Rate Limit Handling" — 3 agents
 
@@ -103,7 +169,7 @@ This PRD addresses both:
 
 **Current:** Each has ~30 lines about detecting and handling 429 errors.
 
-**Solution:** Could merge into right-panel-todos skill or keep in AGENTS.md.
+**Solution:** Include in `session-state` skill with todo contract.
 
 **Lines saved:** ~60 lines (30 × 2)
 
@@ -111,12 +177,12 @@ This PRD addresses both:
 
 | Pattern | Agents | Lines Each | Total Savings |
 |---------|--------|------------|---------------|
-| Requesting Toolkit Updates | 15 | ~25 | ~350 lines |
-| Test Failure Output Policy | 6 | ~12 | ~60 lines |
-| Git Auto-Commit Enforcement | 3 | ~12 | ~24 lines |
+| Requesting Toolkit Updates | 15 | ~22 | ~330 lines |
+| Test Failure Output Policy | 6 | ~10 | ~60 lines |
+| Git Auto-Commit Enforcement | 3 | ~8 | ~24 lines |
 | Right-Panel Todo Contract | 3 | ~50 | ~100 lines |
 | Rate Limit Handling | 3 | ~30 | ~60 lines |
-| **Total** | | | **~594 lines** |
+| **Total** | | | **~574 lines** |
 
 ---
 
@@ -151,7 +217,7 @@ Builder contains these self-contained sections that should be skills:
 | Sub-Agent Delegation | ~100 | Builder orchestration |
 | Skills Reference table | ~30 | Index of skills |
 
-**Total to keep:** ~710 lines + shared patterns via reference
+**Total to keep:** ~710 lines + shared patterns via skill reference
 
 ---
 
@@ -209,13 +275,13 @@ If none apply → Inline is acceptable.
 ### Phase 1: Update AGENTS.md with Shared Guardrails
 
 Move these to `AGENTS.md`:
-1. Test Failure Output Policy
-2. Git Auto-Commit Enforcement  
-3. Requesting Toolkit Updates template
+1. Git Auto-Commit Enforcement (CRITICAL — mandatory)
+2. Test Failure Output Policy (advisory)
+3. Requesting Toolkit Updates template (advisory)
 
-Update affected agents to remove duplicated content.
+Update affected agents to replace full sections with 3-line anchors.
 
-**Estimated savings:** ~470 lines across 15+ agents
+**Estimated savings:** ~414 lines across 15+ agents
 
 ### Phase 2: Extract Shared Skills
 
@@ -225,7 +291,7 @@ Create new skills:
 3. `self-correction` — loop detection and bulk fix
 4. `auth-config-check` — authentication configuration checking
 5. `critic-dispatch` — critic batching configuration
-6. `right-panel-todos` — todo contract and rate limit handling
+6. `session-state` — todo contract, rate limit handling, currentTask tracking
 
 Update existing skills:
 - `builder-state` — absorb checkpoint management
@@ -257,11 +323,11 @@ Add "Before Adding Content to Agents" checklist to `toolkit.md`.
 **So that** agents don't duplicate identical content
 
 **Acceptance Criteria:**
-- [ ] Add "Test Failure Output Policy" to AGENTS.md
-- [ ] Add "Git Auto-Commit Enforcement" to AGENTS.md
+- [ ] Add "Git Auto-Commit Enforcement" to AGENTS.md as CRITICAL rule
+- [ ] Add "Test Failure Output Policy" to AGENTS.md as advisory guideline
 - [ ] Add "Requesting Toolkit Updates" template to AGENTS.md
-- [ ] Remove duplicated sections from 15+ agents
-- [ ] Verify agents still reference the guardrails
+- [ ] Replace full sections in 15+ agents with 3-line anchors
+- [ ] Verify anchors include agent-specific filename prefix
 
 ### US-002: Extract verification contracts to skill
 
@@ -274,8 +340,8 @@ Add "Before Adding Content to Agents" checklist to `toolkit.md`.
 - [ ] Move contract generation algorithm from builder.md
 - [ ] Move contract types from builder.md
 - [ ] Move verification on completion from builder.md
-- [ ] Update builder.md to reference skill
-- [ ] Add skill trigger to developer.md and overlord.md
+- [ ] Update builder.md to load skill on-demand
+- [ ] Document trigger patterns for developer.md and overlord.md
 
 ### US-003: Extract dynamic reassignment to skill
 
@@ -288,8 +354,8 @@ Add "Before Adding Content to Agents" checklist to `toolkit.md`.
 - [ ] Move fallback chain lookup from builder.md
 - [ ] Move failure detection patterns from builder.md
 - [ ] Move alternative selection algorithm from builder.md
-- [ ] Update builder.md to reference skill
-- [ ] Add skill trigger to developer.md
+- [ ] Update builder.md to load skill on-demand
+- [ ] Document trigger patterns for developer.md
 
 ### US-004: Extract self-correction to skill
 
@@ -302,8 +368,8 @@ Add "Before Adding Content to Agents" checklist to `toolkit.md`.
 - [ ] Move detection triggers from builder.md
 - [ ] Move self-check protocol from builder.md
 - [ ] Move bulk fix protocol from builder.md
-- [ ] Update builder.md to reference skill
-- [ ] Add skill trigger to developer.md and overlord.md
+- [ ] Update builder.md to load skill on-demand
+- [ ] Document trigger patterns for developer.md and overlord.md
 
 ### US-005: Extract auth config check to skill
 
@@ -316,7 +382,7 @@ Add "Before Adding Content to Agents" checklist to `toolkit.md`.
 - [ ] Move check flow from builder.md
 - [ ] Move detection patterns from builder.md
 - [ ] Consolidate with e2e-playwright auth handling section
-- [ ] Update builder.md, qa-explorer.md, e2e-playwright.md to reference skill
+- [ ] Update builder.md, qa-explorer.md, e2e-playwright.md to load skill on-demand
 
 ### US-006: Extract critic dispatch to skill
 
@@ -328,21 +394,21 @@ Add "Before Adding Content to Agents" checklist to `toolkit.md`.
 - [ ] Create `skills/critic-dispatch/SKILL.md`
 - [ ] Move critic modes from builder.md
 - [ ] Move balanced mode logic from builder.md
-- [ ] Update builder.md to reference skill
-- [ ] Add skill trigger to developer.md
+- [ ] Update builder.md to load skill on-demand
+- [ ] Document trigger patterns for developer.md
 
-### US-007: Extract right-panel todos to skill
+### US-007: Extract session state to skill
 
 **As a** toolkit maintainer  
-**I want** right-panel todo contract in a skill  
+**I want** session state management in a skill  
 **So that** builder, planner, and toolkit share one implementation
 
 **Acceptance Criteria:**
-- [ ] Create `skills/right-panel-todos/SKILL.md`
-- [ ] Include todo contract
+- [ ] Create `skills/session-state/SKILL.md`
+- [ ] Include right-panel todo contract
 - [ ] Include rate limit handling
-- [ ] Include currentTask tracking
-- [ ] Update builder.md, planner.md, toolkit.md to reference skill
+- [ ] Include currentTask compaction recovery tracking
+- [ ] Update builder.md, planner.md, toolkit.md to load skill on startup
 
 ### US-008: Merge deferred E2E into test-flow skill
 
@@ -388,10 +454,36 @@ Add "Before Adding Content to Agents" checklist to `toolkit.md`.
 **So that** we know the effort was worthwhile
 
 **Acceptance Criteria:**
-- [ ] builder.md reduced to 900-1100 lines (from 2,255)
-- [ ] Total lines saved across toolkit: 1000+ lines
-- [ ] No behavior changes (manual testing)
+- [ ] Measure builder.md line reduction (record before/after)
+- [ ] Measure total lines saved across toolkit
+- [ ] Run manual verification checklist (see Testing section)
+- [ ] Run automated reference validator
 - [ ] All new skills documented in toolkit-structure.json
+
+---
+
+## Testing
+
+### Manual Verification Checklist
+
+After refactoring, verify these workflows still function:
+
+- [ ] **Builder startup:** Shows dashboard, loads project context
+- [ ] **Builder skill loading:** Loads `verification-contracts` when completing story
+- [ ] **Builder reassignment:** Loads `dynamic-reassignment` when sub-agent fails
+- [ ] **Developer skill loading:** Loads `self-correction` when detecting loop
+- [ ] **Planner session state:** Loads `session-state` on startup, persists todos
+- [ ] **Toolkit session state:** Loads `session-state` on startup, handles rate limits
+- [ ] **Tester deferred E2E:** Loads `test-flow` skill, finds and runs deferred tests
+- [ ] **Agent AGENTS.md reference:** Agents correctly reference Git Auto-Commit rule
+
+### Automated Reference Validator
+
+Create `scripts/validate-agent-refs.sh` to verify:
+
+- [ ] Every `skill("name")` call references an existing skill in `skills/`
+- [ ] Every "See AGENTS.md" reference points to an existing section
+- [ ] Every agent anchor (e.g., `Your filename prefix: YYYY-MM-DD-builder-`) uses correct agent name
 
 ---
 
@@ -399,11 +491,12 @@ Add "Before Adding Content to Agents" checklist to `toolkit.md`.
 
 | Metric | Before | After |
 |--------|--------|-------|
-| builder.md lines | 2,255 | 900-1100 |
-| Duplicated "Toolkit Updates" sections | 15 | 0 (reference AGENTS.md) |
+| builder.md lines | 2,255 | Measured after |
+| Duplicated "Toolkit Updates" sections | 15 | 0 (3-line anchors) |
 | Duplicated "Test Failure Policy" sections | 6 | 0 (reference AGENTS.md) |
-| New shared skills | 0 | 6-7 |
-| Total lines saved | 0 | 1000-1500 |
+| New shared skills | 0 | 6 |
+| Updated existing skills | 0 | 2 |
+| Total lines saved | 0 | Measured after |
 
 ---
 
@@ -411,38 +504,23 @@ Add "Before Adding Content to Agents" checklist to `toolkit.md`.
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Breaking existing workflows | Medium | High | Comprehensive testing before/after |
+| Breaking existing workflows | Medium | High | Manual checklist + automated validator |
 | AGENTS.md becomes too large | Low | Medium | Keep only truly universal guardrails |
 | Skill loading adds latency | Low | Low | Skills already load conditionally |
+| Agent hallucination (wrong name) | Low | Medium | 3-line anchors with explicit agent name |
 | Over-extraction | Low | Medium | Use the new prevention checklist |
 
 ---
 
-## Open Questions
+## Commit Strategy
 
-1. **Should AGENTS.md guardrails be mandatory or advisory?**
-   - Currently advisory (agents can override)
-   - Could make some CRITICAL rules mandatory
+Single session with 5 logical commits:
 
-2. **How do we handle agent-specific variations of shared patterns?**
-   - e.g., "Requesting Toolkit Updates" has agent name in filename
-   - Solution: Template with placeholder?
-
-3. **Should we version skills?**
-   - Decided: No, strict coupling is acceptable for now
-
----
-
-## Timeline Estimate
-
-| Phase | Effort | Dependencies |
-|-------|--------|--------------|
-| Phase 1: AGENTS.md consolidation | 2-3 hours | None |
-| Phase 2: Extract new skills | 6-8 hours | Phase 1 |
-| Phase 3: Update agent references | 3-4 hours | Phase 2 |
-| Phase 4: Add prevention guidance | 30 min | None |
-| Testing and validation | 2-3 hours | Phase 3 |
-| **Total** | **14-19 hours** | |
+1. **Commit 1:** AGENTS.md updates + remove duplicates from all 15+ agents
+2. **Commit 2:** All 6 new skills created
+3. **Commit 3:** All agent references updated + builder-state/test-flow merges
+4. **Commit 4:** Prevention guidance added to toolkit.md
+5. **Commit 5:** Validation script + results + any fixes
 
 ---
 
