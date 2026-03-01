@@ -1,71 +1,142 @@
-# PRD Draft: Builder Agent Skill-Based Refactor
+# PRD Draft: Toolkit-Wide Agent Organization Refactor
 
 **Status:** Draft  
 **Priority:** High  
 **Created:** 2026-03-01  
+**Updated:** 2026-03-01  
 **Author:** @toolkit
 
 ## Problem Statement
 
-Builder has grown to **2,246 lines / ~136KB** — more than **2x larger** than the next largest agent (tester at 958 lines). This creates several problems:
+Builder has grown to **2,255 lines** — more than **2x larger** than the next largest agent. But the real problem isn't size — it's **poor organization**. Builder contains self-contained, reusable patterns that are inlined instead of extracted to skills.
 
-1. **Context window pressure** — Builder consumes significant tokens just loading its instructions
-2. **Maintenance burden** — Changes risk breaking unrelated functionality
-3. **Cognitive load** — Hard to understand the full agent at a glance
-4. **Duplication risk** — Some sections duplicate logic that could be shared
-5. **Testing difficulty** — Monolithic agents are harder to test in isolation
+Additionally, analysis of all 64 agents reveals **widespread duplication**:
+- 15 agents have identical "Requesting Toolkit Updates" sections
+- 6 agents have identical "Test Failure Output Policy" sections
+- 3 agents have identical "Git Auto-Commit Enforcement" sections
+- 3 agents duplicate "Right-Panel Todo Contract" and "Rate Limit Handling"
 
-### Current Size Comparison
+This PRD addresses both:
+1. **Builder-specific extraction** — Move Builder's reusable patterns to skills
+2. **Toolkit-wide deduplication** — Consolidate repeated patterns across all agents
+3. **Prevention** — Add guidance to Toolkit to prevent future disorganization
 
-| Agent | Lines | Notes |
-|-------|-------|-------|
-| **builder.md** | 2,246 | Target of this refactor |
-| tester.md | 958 | 2.3x smaller |
-| toolkit.md | 957 | 2.3x smaller |
-| planner.md | 926 | 2.4x smaller |
-| e2e-playwright.md | 742 | 3x smaller |
+### Current Size Comparison (Top 10)
+
+| Agent | Lines | Organization Issues |
+|-------|-------|---------------------|
+| **builder.md** | 2,255 | 9 extractable sections identified |
+| tester.md | 958 | Duplicated sections from other agents |
+| toolkit.md | 957 | Some duplication with builder/planner |
+| planner.md | 926 | Duplicated sections with builder |
+| e2e-playwright.md | 742 | Quality patterns could be skill |
+| jest-tester.md | 735 | Domain expertise could be template |
+| developer.md | 623 | Duplicated toolkit request section |
+| go-tester.md | 599 | Domain expertise could be template |
+| go-dev.md | 580 | Domain expertise could be template |
+| playwright-dev.md | 553 | Auth patterns duplicated |
 
 ## Goals
 
-1. **Reduce builder.md to ~800-1000 lines** (55-65% reduction)
-2. **Extract reusable behaviors into skills** that can be shared across agents
-3. **Improve maintainability** by separating concerns
-4. **Preserve all existing functionality** — no behavior changes
-5. **Enable skill composition** — agents load only what they need
+1. **Extract reusable patterns from Builder** into skills other agents can share
+2. **Deduplicate identical sections** across all agents
+3. **Reduce maintenance burden** — change once, apply everywhere
+4. **Add prevention guidance** to Toolkit to avoid future disorganization
+5. **Preserve all existing functionality** — no behavior changes
 
 ## Non-Goals
 
-- Changing Builder's external behavior or API
-- Modifying how users interact with Builder
-- Creating new agents (this is about skill extraction, not agent splitting)
+- Changing any agent's external behavior or API
+- Reducing agent sizes arbitrarily (size isn't the problem, organization is)
+- Creating new agents
 - Changing the delegation model
 
-## Current Structure Analysis
+---
 
-Builder currently contains these major sections that are candidates for extraction:
+## Part 1: Toolkit-Wide Duplication Analysis
 
-### Sections Already Partially Extracted (Enhance)
+### Identical Sections Found Across Agents
 
-| Section | Lines | Current Skill | Proposed Change |
-|---------|-------|---------------|-----------------|
-| Workflow modes | ~200 | `prd-workflow`, `adhoc-workflow` | Already extracted; remove duplication from builder.md |
-| Session state | ~150 | `builder-state` | Absorb checkpoint management into existing skill |
-| Dev server | ~80 | `start-dev-server` | Already extracted; verify no duplication |
-| Visual debugging | ~60 | `browser-debugging` | Already extracted; verify no duplication |
+#### 1. "Requesting Toolkit Updates" — 15 agents
+
+**Agents:** builder, critic, developer, e2e-playwright, felix, go-tester, jest-tester, planner, playwright-dev, qa-browser-tester, qa-explorer, qa, react-tester, session-status, tester
+
+**Current:** Each agent has ~25 identical lines explaining how to write toolkit update requests.
+
+**Solution:** Reference `AGENTS.md` or create a simple include pattern.
+
+**Lines saved:** ~375 lines (25 × 15)
+
+#### 2. "Test Failure Output Policy" — 6 agents
+
+**Agents:** e2e-playwright, go-tester, jest-tester, qa-browser-tester, react-tester, tester
+
+**Current:** Each agent has ~12 identical lines about never truncating test output.
+
+**Solution:** Move to `AGENTS.md` as a global guardrail for testing agents.
+
+**Lines saved:** ~72 lines (12 × 6)
+
+#### 3. "Git Auto-Commit Enforcement" — 3 agents
+
+**Agents:** builder, developer, tester
+
+**Current:** Each has the critical block about checking `git.autoCommit`.
+
+**Solution:** Move to `AGENTS.md` as a global guardrail.
+
+**Lines saved:** ~36 lines (12 × 3)
+
+#### 4. "Right-Panel Todo Contract" — 3 agents
+
+**Agents:** builder, planner, toolkit
+
+**Current:** Each has ~50 lines about syncing todos with state file.
+
+**Solution:** Extract to `right-panel-todos` skill (already has trigger conditions).
+
+**Lines saved:** ~100 lines (50 × 2, keep one reference)
+
+#### 5. "Rate Limit Handling" — 3 agents
+
+**Agents:** builder, planner, toolkit
+
+**Current:** Each has ~30 lines about detecting and handling 429 errors.
+
+**Solution:** Could merge into right-panel-todos skill or keep in AGENTS.md.
+
+**Lines saved:** ~60 lines (30 × 2)
+
+### Summary of Deduplication Opportunity
+
+| Pattern | Agents | Lines Each | Total Savings |
+|---------|--------|------------|---------------|
+| Requesting Toolkit Updates | 15 | ~25 | ~350 lines |
+| Test Failure Output Policy | 6 | ~12 | ~60 lines |
+| Git Auto-Commit Enforcement | 3 | ~12 | ~24 lines |
+| Right-Panel Todo Contract | 3 | ~50 | ~100 lines |
+| Rate Limit Handling | 3 | ~30 | ~60 lines |
+| **Total** | | | **~594 lines** |
+
+---
+
+## Part 2: Builder-Specific Extraction
+
+Builder contains these self-contained sections that should be skills:
 
 ### Sections to Extract (New Skills)
 
-| Section | Lines | Proposed Skill | Shared By |
+| Section | Lines | Proposed Skill | Consumers |
 |---------|-------|----------------|-----------|
 | Verification Contracts | ~120 | `verification-contracts` | builder, developer, overlord |
 | Dynamic Reassignment | ~170 | `dynamic-reassignment` | builder, developer |
-| Deferred E2E Flow | ~180 | `deferred-e2e` | builder (merge into `test-flow`) |
-| Checkpoint Management | ~140 | (merge into `builder-state`) | builder |
-| Loop Detection | ~80 | `self-correction` | builder, developer, overlord |
-| Authentication Config | ~130 | `auth-config-check` | builder, qa-explorer |
-| Team Sync / Push | ~60 | `git-team-sync` | builder (enhance existing `git-sync`) |
+| Loop Detection & Bulk Fix | ~80 | `self-correction` | builder, developer, overlord |
+| Authentication Config Check | ~130 | `auth-config-check` | builder, qa-explorer, e2e-playwright |
 | Critic Batching | ~50 | `critic-dispatch` | builder, developer |
-| Architecture Guardrails | ~40 | `architecture-guardrails` | builder |
+| Deferred E2E Flow | ~180 | (merge into `test-flow`) | builder, tester |
+| Checkpoint Management | ~140 | (merge into `builder-state`) | builder |
+
+**Total extractable from Builder:** ~870 lines
 
 ### Sections to Keep in Builder (Core Identity)
 
@@ -74,217 +145,129 @@ Builder currently contains these major sections that are candidates for extracti
 | Startup / Dashboard | ~200 | Core UX, Builder-specific |
 | Project Selection | ~100 | Builder-specific UX |
 | Pending Updates | ~80 | Builder orchestration |
-| Right-Panel Todo Contract | ~50 | Shared pattern but integrated |
 | Session Lock (multi-session) | ~50 | Builder coordination |
 | Planning Detection (redirect) | ~70 | Core routing |
 | What You Never Do | ~80 | Builder-specific restrictions |
+| Sub-Agent Delegation | ~100 | Builder orchestration |
+| Skills Reference table | ~30 | Index of skills |
+
+**Total to keep:** ~710 lines + shared patterns via reference
+
+---
+
+## Part 3: Other Agents with Extractable Patterns
+
+### e2e-playwright.md (742 lines)
+
+| Section | Lines | Recommendation |
+|---------|-------|----------------|
+| Quality-Beyond-Correctness Testing | ~150 | Already has `e2e-quality` skill — verify no duplication |
+| Authentication Handling | ~120 | Merge with proposed `auth-config-check` skill |
+
+### Tester Agents (jest-tester, go-tester, react-tester)
+
+| Section | Lines | Recommendation |
+|---------|-------|----------------|
+| Domain Expertise | 200-300 each | Keep — this IS the agent's value |
+| Running Tests (CI Mode) | ~30 each | Could be shared, but minimal benefit |
+
+**Verdict:** Tester agents are appropriately organized. Their "domain expertise" sections ARE the point of these agents.
+
+### Developer.md (623 lines)
+
+| Section | Lines | Recommendation |
+|---------|-------|----------------|
+| Root Cause Analysis | ~60 | Could be shared with overlord |
+| Band-Aid Pattern Detection | ~20 | Could be shared |
+| Browser Testing | ~10 | Reference, don't duplicate |
+
+**Verdict:** Developer is reasonably organized. Minor deduplication possible.
+
+---
+
+## Part 4: Prevention — Toolkit Inline Guidance
+
+Add this section to `toolkit.md` to prevent future disorganization:
+
+```markdown
+## Before Adding Content to Agents
+
+When adding a new section to an agent, check:
+
+- [ ] **Could another agent use this?** → Extract to skill
+- [ ] **Is it self-contained with its own trigger?** → Extract to skill
+- [ ] **Does similar logic exist in other agents?** → Extract to shared skill or AGENTS.md
+- [ ] **Is it only needed for specific workflows?** → Extract to skill, load conditionally
+
+If none apply → Inline is acceptable.
+```
+
+---
 
 ## Proposed Solution
 
-### Phase 1: Deduplicate Existing Skills
+### Phase 1: Update AGENTS.md with Shared Guardrails
 
-Remove duplicated content from builder.md that's already in skills:
+Move these to `AGENTS.md`:
+1. Test Failure Output Policy
+2. Git Auto-Commit Enforcement  
+3. Requesting Toolkit Updates template
 
-1. **prd-workflow** — Remove inline PRD story handling; reference skill
-2. **adhoc-workflow** — Remove inline ad-hoc handling; reference skill
-3. **builder-state** — Remove duplicate checkpoint docs; merge into skill
-4. **start-dev-server** — Verify no duplication; remove if exists
-5. **browser-debugging** — Verify no duplication; remove if exists
+Update affected agents to remove duplicated content.
 
-**Estimated reduction:** ~150-200 lines
+**Estimated savings:** ~470 lines across 15+ agents
 
-### Phase 2: Extract New Skills
+### Phase 2: Extract Shared Skills
 
-Create new skills for reusable patterns:
-
-#### 2.1 `verification-contracts` skill
-
-Extract verification contract generation and checking:
-- Contract Generation Algorithm
-- Contract Types
-- Store Contract in State
-- Verification on Completion
-- Advisory Task Handling
-
-**Consumers:** builder, developer, overlord
-
-#### 2.2 `dynamic-reassignment` skill
-
-Extract reassignment logic:
-- Fallback Chain Lookup
-- Failure Detection
-- Rate Limit Handling
-- Alternative Selection
-- Reassignment State
-- Context Overflow Handling
-- Escalation Protocol
-
-**Consumers:** builder, developer
-
-#### 2.3 `self-correction` skill
-
-Extract loop detection and bulk fix:
-- Detection Triggers
-- Self-Check Protocol
-- Bulk Fix Protocol
-- Reporting Template
-
-**Consumers:** builder, developer, overlord
-
-#### 2.4 `auth-config-check` skill
-
-Extract authentication configuration checking:
-- When to Check
-- Check Flow
-- Detection Patterns
-- Sub-Agent Delegation with Auth
-
-**Consumers:** builder, qa-explorer, e2e-playwright
-
-#### 2.5 Enhance `test-flow` skill
-
-Merge deferred E2E flow into existing test-flow skill:
-- Check for Local Runtime
-- Identify the Source
-- Determine Where to Run
-- Confirm and Run
-- Execute Tests
-- Update PRD Status
-
-**Consumers:** builder, tester
-
-#### 2.6 `critic-dispatch` skill
-
-Extract critic batching configuration:
-- Configuration Cascade
-- Critic Modes
-- Balanced Mode Logic
-- Implementation
-
-**Consumers:** builder, developer
-
-**Estimated reduction:** ~700-800 lines
-
-### Phase 3: Streamline Core Builder
-
-After extraction, builder.md should contain:
-- Frontmatter and identity
-- Skills Reference (updated list)
-- Startup flow and dashboards
-- Project selection and session scope
-- Pending updates handling
-- Right-panel todo contract
-- Sub-agent delegation patterns
-- Session lock format
-- What You Never Do
-- Requesting toolkit updates
-
-**Target:** 800-1000 lines
-
-## Skill Loading Pattern
-
-Builder already uses conditional skill loading. The pattern should be:
-
-```markdown
-## Skills Reference
-
-Builder workflows are defined in loadable skills. Load the appropriate skill based on context:
-
-| Trigger | Skill to Load |
-|---------|---------------|
-| PRD mode selected | `prd-workflow` |
-| Ad-hoc mode selected | `adhoc-workflow` |
-| Delegating to specialist | `verification-contracts` |
-| Specialist fails or rate-limited | `dynamic-reassignment` |
-| 3+ similar fixes detected | `self-correction` |
-| Running deferred E2E tests | `test-flow` |
-| Auth-related task detected | `auth-config-check` |
-| Visual issue or screenshot needed | `browser-debugging` |
-| Dev server required | `start-dev-server` |
-| Dispatching critics | `critic-dispatch` |
-```
-
-## Migration Strategy
-
-### Step 1: Create Skills (Non-Breaking)
-
-Create all new skills without modifying builder.md:
-- `skills/verification-contracts/SKILL.md`
-- `skills/dynamic-reassignment/SKILL.md`
-- `skills/self-correction/SKILL.md`
-- `skills/auth-config-check/SKILL.md`
-- `skills/critic-dispatch/SKILL.md`
+Create new skills:
+1. `verification-contracts` — contract generation and verification
+2. `dynamic-reassignment` — fallback chains and failure handling
+3. `self-correction` — loop detection and bulk fix
+4. `auth-config-check` — authentication configuration checking
+5. `critic-dispatch` — critic batching configuration
+6. `right-panel-todos` — todo contract and rate limit handling
 
 Update existing skills:
-- `skills/builder-state/SKILL.md` — add checkpoint content
-- `skills/test-flow/SKILL.md` — add deferred E2E content
+- `builder-state` — absorb checkpoint management
+- `test-flow` — absorb deferred E2E flow
 
-### Step 2: Update Builder to Reference Skills
+### Phase 3: Update Agents to Reference Skills
 
-Replace inline sections with skill references:
-```markdown
-## Verification Contracts
+Replace inline sections with skill references in:
+- builder.md
+- planner.md
+- toolkit.md
+- developer.md
+- overlord.md
+- qa-explorer.md
+- e2e-playwright.md
 
-> Load `skills/verification-contracts/SKILL.md` for contract generation and verification.
+### Phase 4: Add Prevention Guidance
 
-Use verification contracts when delegating complex tasks to specialists.
-```
+Add "Before Adding Content to Agents" checklist to `toolkit.md`.
 
-### Step 3: Validate Behavior
-
-- Run existing E2E tests
-- Manual testing of key workflows
-- Verify skill loading works correctly
-
-### Step 4: Clean Up
-
-- Remove fully-extracted content from builder.md
-- Update toolkit-structure.json
-- Update website documentation
-
-## Success Metrics
-
-| Metric | Current | Target |
-|--------|---------|--------|
-| builder.md line count | 2,246 | 800-1000 |
-| New reusable skills | 0 | 5-6 |
-| Context tokens consumed | ~50K | ~20K |
-| Time to load Builder | Baseline | No regression |
-
-## Risks and Mitigations
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Skill loading adds latency | Low | Medium | Skills are already loaded conditionally |
-| Extracted logic diverges | Medium | High | Clear ownership in skill headers |
-| Breaking existing workflows | Medium | High | Comprehensive testing before/after |
-| Over-extraction (too many skills) | Low | Medium | Keep related logic together |
-
-## Open Questions
-
-1. **Should verification-contracts be required for ALL delegations?**
-   - Currently seems advisory for some task types
-   - Need to clarify when it's mandatory vs optional
-
-2. **Should self-correction apply to sub-agents too?**
-   - Currently described for Builder's own behavior
-   - Could be valuable for specialists like react-dev
-
-3. **How should skill dependencies work?**
-   - If `dynamic-reassignment` needs `verification-contracts`, should it load it?
-   - Or should Builder load both?
-
-4. **Should we version skills?**
-   - As builder evolves, skills may need backward compatibility
-   - Or strict coupling is acceptable
+---
 
 ## User Stories
 
-### US-001: Extract verification contracts to skill
+### US-001: Move shared guardrails to AGENTS.md
+
+**As a** toolkit maintainer  
+**I want** common guardrails in AGENTS.md  
+**So that** agents don't duplicate identical content
+
+**Acceptance Criteria:**
+- [ ] Add "Test Failure Output Policy" to AGENTS.md
+- [ ] Add "Git Auto-Commit Enforcement" to AGENTS.md
+- [ ] Add "Requesting Toolkit Updates" template to AGENTS.md
+- [ ] Remove duplicated sections from 15+ agents
+- [ ] Verify agents still reference the guardrails
+
+### US-002: Extract verification contracts to skill
 
 **As a** toolkit maintainer  
 **I want** verification contract logic in a separate skill  
-**So that** other agents (developer, overlord) can use the same pattern
+**So that** developer and overlord can use the same pattern
 
 **Acceptance Criteria:**
 - [ ] Create `skills/verification-contracts/SKILL.md`
@@ -292,9 +275,9 @@ Use verification contracts when delegating complex tasks to specialists.
 - [ ] Move contract types from builder.md
 - [ ] Move verification on completion from builder.md
 - [ ] Update builder.md to reference skill
-- [ ] Verify builder still generates contracts correctly
+- [ ] Add skill trigger to developer.md and overlord.md
 
-### US-002: Extract dynamic reassignment to skill
+### US-003: Extract dynamic reassignment to skill
 
 **As a** toolkit maintainer  
 **I want** dynamic reassignment logic in a separate skill  
@@ -306,9 +289,9 @@ Use verification contracts when delegating complex tasks to specialists.
 - [ ] Move failure detection patterns from builder.md
 - [ ] Move alternative selection algorithm from builder.md
 - [ ] Update builder.md to reference skill
-- [ ] Verify reassignment still works
+- [ ] Add skill trigger to developer.md
 
-### US-003: Extract self-correction to skill
+### US-004: Extract self-correction to skill
 
 **As a** toolkit maintainer  
 **I want** loop detection and bulk fix logic in a separate skill  
@@ -320,9 +303,48 @@ Use verification contracts when delegating complex tasks to specialists.
 - [ ] Move self-check protocol from builder.md
 - [ ] Move bulk fix protocol from builder.md
 - [ ] Update builder.md to reference skill
-- [ ] Add skill loading trigger to developer.md and overlord.md
+- [ ] Add skill trigger to developer.md and overlord.md
 
-### US-004: Merge deferred E2E into test-flow skill
+### US-005: Extract auth config check to skill
+
+**As a** toolkit maintainer  
+**I want** authentication configuration checking in a skill  
+**So that** qa-explorer and e2e-playwright can use the same logic
+
+**Acceptance Criteria:**
+- [ ] Create `skills/auth-config-check/SKILL.md`
+- [ ] Move check flow from builder.md
+- [ ] Move detection patterns from builder.md
+- [ ] Consolidate with e2e-playwright auth handling section
+- [ ] Update builder.md, qa-explorer.md, e2e-playwright.md to reference skill
+
+### US-006: Extract critic dispatch to skill
+
+**As a** toolkit maintainer  
+**I want** critic batching configuration in a skill  
+**So that** developer can use the same dispatch logic
+
+**Acceptance Criteria:**
+- [ ] Create `skills/critic-dispatch/SKILL.md`
+- [ ] Move critic modes from builder.md
+- [ ] Move balanced mode logic from builder.md
+- [ ] Update builder.md to reference skill
+- [ ] Add skill trigger to developer.md
+
+### US-007: Extract right-panel todos to skill
+
+**As a** toolkit maintainer  
+**I want** right-panel todo contract in a skill  
+**So that** builder, planner, and toolkit share one implementation
+
+**Acceptance Criteria:**
+- [ ] Create `skills/right-panel-todos/SKILL.md`
+- [ ] Include todo contract
+- [ ] Include rate limit handling
+- [ ] Include currentTask tracking
+- [ ] Update builder.md, planner.md, toolkit.md to reference skill
+
+### US-008: Merge deferred E2E into test-flow skill
 
 **As a** toolkit maintainer  
 **I want** deferred E2E test flow merged into test-flow skill  
@@ -335,47 +357,99 @@ Use verification contracts when delegating complex tasks to specialists.
 - [ ] Remove deferred E2E section from builder.md
 - [ ] Reference test-flow skill from builder.md
 
-### US-005: Extract auth config check to skill
+### US-009: Merge checkpoint management into builder-state skill
 
 **As a** toolkit maintainer  
-**I want** authentication configuration checking in a skill  
-**So that** qa-explorer and e2e-playwright can use the same logic
+**I want** checkpoint management in builder-state skill  
+**So that** all state management is in one place
 
 **Acceptance Criteria:**
-- [ ] Create `skills/auth-config-check/SKILL.md`
-- [ ] Move check flow from builder.md
-- [ ] Move detection patterns from builder.md
-- [ ] Update builder.md to reference skill
-- [ ] Add skill reference to qa-explorer.md
+- [ ] Add checkpoint creation/update logic to `skills/builder-state/SKILL.md`
+- [ ] Add checkpoint size management
+- [ ] Add context overflow protection
+- [ ] Remove checkpoint section from builder.md
+- [ ] Reference builder-state skill from builder.md
 
-### US-006: Validate builder.md reduction
+### US-010: Add prevention guidance to Toolkit
 
 **As a** toolkit maintainer  
-**I want** builder.md reduced to 800-1000 lines  
-**So that** context window pressure is reduced
+**I want** a checklist in toolkit.md for when to extract vs inline  
+**So that** future additions don't recreate disorganization
 
 **Acceptance Criteria:**
-- [ ] All skills created and populated
-- [ ] builder.md references skills instead of inline content
-- [ ] builder.md line count between 800-1000
-- [ ] All existing tests pass
-- [ ] Manual workflow verification complete
+- [ ] Add "Before Adding Content to Agents" section to toolkit.md
+- [ ] Include 4-item checklist (reusable? self-contained? duplicated? conditional?)
+- [ ] Position near top of agent modification guidance
+
+### US-011: Validate organization improvements
+
+**As a** toolkit maintainer  
+**I want** to verify the refactor achieved its goals  
+**So that** we know the effort was worthwhile
+
+**Acceptance Criteria:**
+- [ ] builder.md reduced to 900-1100 lines (from 2,255)
+- [ ] Total lines saved across toolkit: 1000+ lines
+- [ ] No behavior changes (manual testing)
+- [ ] All new skills documented in toolkit-structure.json
+
+---
+
+## Success Metrics
+
+| Metric | Before | After |
+|--------|--------|-------|
+| builder.md lines | 2,255 | 900-1100 |
+| Duplicated "Toolkit Updates" sections | 15 | 0 (reference AGENTS.md) |
+| Duplicated "Test Failure Policy" sections | 6 | 0 (reference AGENTS.md) |
+| New shared skills | 0 | 6-7 |
+| Total lines saved | 0 | 1000-1500 |
+
+---
+
+## Risks and Mitigations
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Breaking existing workflows | Medium | High | Comprehensive testing before/after |
+| AGENTS.md becomes too large | Low | Medium | Keep only truly universal guardrails |
+| Skill loading adds latency | Low | Low | Skills already load conditionally |
+| Over-extraction | Low | Medium | Use the new prevention checklist |
+
+---
+
+## Open Questions
+
+1. **Should AGENTS.md guardrails be mandatory or advisory?**
+   - Currently advisory (agents can override)
+   - Could make some CRITICAL rules mandatory
+
+2. **How do we handle agent-specific variations of shared patterns?**
+   - e.g., "Requesting Toolkit Updates" has agent name in filename
+   - Solution: Template with placeholder?
+
+3. **Should we version skills?**
+   - Decided: No, strict coupling is acceptable for now
+
+---
 
 ## Timeline Estimate
 
 | Phase | Effort | Dependencies |
 |-------|--------|--------------|
-| Phase 1: Deduplicate existing | 2-3 hours | None |
-| Phase 2: Extract new skills | 4-6 hours | Phase 1 |
-| Phase 3: Streamline core | 2-3 hours | Phase 2 |
+| Phase 1: AGENTS.md consolidation | 2-3 hours | None |
+| Phase 2: Extract new skills | 6-8 hours | Phase 1 |
+| Phase 3: Update agent references | 3-4 hours | Phase 2 |
+| Phase 4: Add prevention guidance | 30 min | None |
 | Testing and validation | 2-3 hours | Phase 3 |
-| **Total** | **10-15 hours** | |
+| **Total** | **14-19 hours** | |
+
+---
 
 ## Related Documents
 
-- `agents/builder.md` — Current Builder agent
+- `AGENTS.md` — Global agent guardrails
+- `agents/builder.md` — Primary refactor target
 - `skills/builder-state/SKILL.md` — Existing state management skill
-- `skills/prd-workflow/SKILL.md` — Existing PRD workflow skill
-- `skills/adhoc-workflow/SKILL.md` — Existing ad-hoc workflow skill
 - `skills/test-flow/SKILL.md` — Existing test flow skill
 - `docs/drafts/prd-agent-reputation.md` — Related (dynamic reassignment could use reputation)
