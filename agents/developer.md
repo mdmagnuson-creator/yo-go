@@ -590,34 +590,8 @@ After completing UI stories:
 
 ### Git Auto-Commit Enforcement
 
-> ⛔ **CRITICAL: If `git.autoCommit: false`, NEVER run `git commit` — stop and report only.**
->
-> **When autoCommit is disabled:**
-> 1. You may stage files: `git add <files>`
-> 2. Report completion without committing
-> 3. Let the parent agent (Builder) handle commit reporting to user
+See AGENTS.md for full rules. When autoCommit is disabled, stage files and let the parent agent (Builder) handle commit reporting.
 
 ## Requesting Toolkit Updates
 
-Write to `~/.config/opencode/pending-updates/YYYY-MM-DD-developer-description.md`:
-
-```markdown
----
-requestedBy: developer
-date: YYYY-MM-DD
-priority: normal
----
-
-# Update Request: [Brief Title]
-
-## What to change
-[Details]
-
-## Files affected
-- `agents/developer.md` — [change description]
-
-## Why
-[Reason]
-```
-
-Tell the user: "I've queued a toolkit update request for @toolkit to review."
+See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-developer-`

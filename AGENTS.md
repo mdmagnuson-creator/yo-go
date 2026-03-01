@@ -76,6 +76,90 @@ Minimum checks:
 3. Check key states (hover/active/disabled/loading/error/empty)
 4. Check edge cases (long text, dense data, small viewports)
 
+## Git Auto-Commit Enforcement
+
+> ⛔ **CRITICAL: Check `git.autoCommit` setting before ANY commit operation**
+>
+> **Trigger:** Before running `git commit`, `git add && git commit`, or any commit delegation.
+>
+> **Check:** Read `project.json` → `git.autoCommit`
+>
+> **Failure behavior:** Running `git commit` when autoCommit is `manual` or `false` violates a harsh project constraint.
+
+### Auto-Commit Modes
+
+| Value | Behavior |
+|-------|----------|
+| `onStoryComplete` | (default) Commit after each completed PRD story or ad-hoc task |
+| `onFileChange` | Commit after each file modification — more granular history |
+| `manual` | Stage changes but do NOT run `git commit` (see protocol below) |
+| `true` | (legacy) Same as `onStoryComplete` |
+| `false` | (legacy) Same as `manual` |
+
+### When `manual` or `false`:
+
+1. Stage changes: `git add <files>`
+2. Report what would be committed:
+   ```
+   📋 READY TO COMMIT (manual commit required)
+   
+   Staged files:
+     - src/components/Button.tsx
+     - src/styles/button.css
+   
+   Suggested commit message:
+     feat: add Button component with hover states
+   
+   Run: git commit -m "feat: add Button component with hover states"
+   ```
+3. **Do NOT run `git commit`** — wait for user to commit manually
+
+## Test Failure Output Policy
+
+> ⛔ **IMPORTANT: Never truncate test failure output**
+>
+> When tests fail, show the **complete failure output** — every failing test, every error message, every stack trace.
+> Do not summarize, truncate, or omit failure details.
+>
+> - Successful test runs: summarize (e.g., "42 tests passed")
+> - Failed test runs: show full output, no truncation
+>
+> Truncating test failures defeats the purpose of running tests.
+
+## Requesting Toolkit Updates
+
+If you discover a needed toolkit change (agent bug, missing capability, etc.), **do not modify toolkit files directly**. Instead:
+
+1. Write a request file to `~/.config/opencode/pending-updates/`:
+   ```
+   ~/.config/opencode/pending-updates/YYYY-MM-DD-{agent-name}-description.md
+   ```
+
+2. Use this format:
+   ```markdown
+   ---
+   requestedBy: {agent-name}
+   date: YYYY-MM-DD
+   priority: normal
+   ---
+   
+   # Update Request: [Brief Title]
+   
+   ## What to change
+   
+   [Describe the change in detail]
+   
+   ## Files affected
+   
+   - `agents/{agent-name}.md` — [change description]
+   
+   ## Why
+   
+   [Why this change is needed]
+   ```
+
+3. Tell the user: "I've queued a toolkit update request. Next time you run @toolkit, it will offer to apply it."
+
 ## Instruction Ownership
 
 This root file defines universal guardrails only.

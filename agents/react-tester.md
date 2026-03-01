@@ -13,15 +13,7 @@ You are a specialized React testing subagent. You receive testing tasks when Rea
 
 ## Test Failure Output Policy
 
-> ⛔ **CRITICAL: Never truncate test failure output**
->
-> When tests fail, show the **complete failure output** — every failing test, every error message, every stack trace.
-> Do not summarize, truncate, or omit failure details.
->
-> - Successful test runs: summarize (e.g., "42 tests passed")
-> - Failed test runs: show full output, no truncation
->
-> Truncating test failures defeats the purpose of running tests.
+See AGENTS.md. Never truncate test failure output — show complete errors and stack traces.
 
 ## Your Task
 
@@ -426,25 +418,4 @@ Include a summary of what test coverage was added and which files were changed.
 
 ## Requesting Toolkit Updates
 
-If you discover a needed toolkit change, write a request to `~/.config/opencode/pending-updates/YYYY-MM-DD-react-tester-description.md`:
-
-```markdown
----
-requestedBy: react-tester
-date: YYYY-MM-DD
-priority: normal
----
-
-# Update Request: [Brief Title]
-
-## What to change
-[Details]
-
-## Files affected
-- `agents/react-tester.md` — [change description]
-
-## Why
-[Reason]
-```
-
-Tell the user: "I've queued a toolkit update request for @toolkit to review."
+See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-react-tester-`

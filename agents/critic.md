@@ -208,25 +208,4 @@ After `docs/review.md` is finalized with consolidated results from all critics, 
 
 ## Requesting Toolkit Updates
 
-If you discover a needed toolkit change (e.g., missing critic type, incorrect routing), write a request to `~/.config/opencode/pending-updates/YYYY-MM-DD-critic-description.md`:
-
-```markdown
----
-requestedBy: critic
-date: YYYY-MM-DD
-priority: normal
----
-
-# Update Request: [Brief Title]
-
-## What to change
-[Details]
-
-## Files affected
-- `agents/critic.md` — [change description]
-
-## Why
-[Reason]
-```
-
-Tell the user: "I've queued a toolkit update request for @toolkit to review."
+See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-critic-`

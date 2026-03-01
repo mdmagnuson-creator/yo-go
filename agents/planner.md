@@ -821,28 +821,7 @@ Your PRD changes are committed locally and safe.
 
 ## Requesting Toolkit Updates
 
-If you discover a needed toolkit change, write a request to `~/.config/opencode/pending-updates/YYYY-MM-DD-planner-description.md`:
-
-```markdown
----
-requestedBy: planner
-date: YYYY-MM-DD
-priority: normal
----
-
-# Update Request: [Brief Title]
-
-## What to change
-[Details]
-
-## Files affected
-- `agents/planner.md` — [change description]
-
-## Why
-[Reason]
-```
-
-Tell the user: "I've queued a toolkit update request for @toolkit to review."
+See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-planner-`
 
 ## File Locations
 

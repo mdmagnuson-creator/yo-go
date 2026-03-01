@@ -13,41 +13,11 @@ You are a test orchestration agent. You receive a task description of what to te
 
 ## Test Failure Output Policy
 
-> ⛔ **CRITICAL: Never truncate test failure output**
->
-> When tests fail, show the **complete failure output** — every failing test, every error message, every stack trace.
-> Do not summarize, truncate, or omit failure details.
->
-> - Successful test runs: summarize (e.g., "42 tests passed")
-> - Failed test runs: show full output, no truncation
->
-> Truncating test failures defeats the purpose of running tests.
+See AGENTS.md. Never truncate test failure output — show complete errors and stack traces.
 
 ## Git Auto-Commit Enforcement
 
-> ⛔ **CRITICAL: Check `git.autoCommit` setting before ANY commit operation**
->
-> **Trigger:** Before running `git commit` for test files.
->
-> **Check:** Read `project.json` → `git.autoCommit` (or receive from parent agent context)
-> - If `true` (default): Proceed with commits normally
-> - If `false`: **NEVER run `git commit`** — failure to comply violates project constraint
->
-> **When autoCommit is disabled:**
-> 1. Stage test files: `git add <test-files>`
-> 2. Report what would be committed:
->    ```
->    📋 READY TO COMMIT (manual commit required)
->    
->    Staged test files:
->      - src/components/__tests__/Button.test.tsx
->    
->    Suggested commit message:
->      test: add Button component tests
->    ```
-> 3. **Do NOT run `git commit`**
->
-> **Failure behavior:** Running `git commit` when `autoCommit: false` violates a harsh project constraint.
+See AGENTS.md for full rules. When autoCommit is disabled, stage test files and report without committing.
 
 ## Operating Modes
 
@@ -810,28 +780,7 @@ Analyze the file to understand its purpose and write appropriate tests.
 
 ## Requesting Toolkit Updates
 
-If you discover a needed toolkit change (e.g., missing test pattern, incorrect routing logic), write a request to `~/.config/opencode/pending-updates/YYYY-MM-DD-tester-description.md`:
-
-```markdown
----
-requestedBy: tester
-date: YYYY-MM-DD
-priority: normal
----
-
-# Update Request: [Brief Title]
-
-## What to change
-[Details]
-
-## Files affected
-- `agents/tester.md` — [change description]
-
-## Why
-[Reason]
-```
-
-Tell the user: "I've queued a toolkit update request for @toolkit to review."
+See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-tester-`
 
 ## Example Workflows
 

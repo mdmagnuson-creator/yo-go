@@ -152,25 +152,4 @@ If automation browser tools are unavailable, note in your progress report that m
 
 ## Requesting Toolkit Updates
 
-If you discover a needed toolkit change, write a request to `~/.config/opencode/pending-updates/YYYY-MM-DD-felix-description.md`:
-
-```markdown
----
-requestedBy: felix
-date: YYYY-MM-DD
-priority: normal
----
-
-# Update Request: [Brief Title]
-
-## What to change
-[Details]
-
-## Files affected
-- `agents/felix.md` — [change description]
-
-## Why
-[Reason]
-```
-
-Tell the user: "I've queued a toolkit update request for @toolkit to review."
+See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-felix-`

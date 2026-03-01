@@ -522,28 +522,7 @@ test.describe('Shopping Cart', () => {
 
 ## Requesting Toolkit Updates
 
-If you discover a needed toolkit change, write a request to `~/.config/opencode/pending-updates/YYYY-MM-DD-playwright-dev-description.md`:
-
-```markdown
----
-requestedBy: playwright-dev
-date: YYYY-MM-DD
-priority: normal
----
-
-# Update Request: [Brief Title]
-
-## What to change
-[Details]
-
-## Files affected
-- `agents/playwright-dev.md` — [change description]
-
-## Why
-[Reason]
-```
-
-Tell the user: "I've queued a toolkit update request for @toolkit to review."
+See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-playwright-dev-`
 
 ## Stop Condition
 

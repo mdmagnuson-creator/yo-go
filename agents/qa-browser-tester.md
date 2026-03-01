@@ -14,15 +14,7 @@ You are a specialized QA agent that converts bug findings into automated Playwri
 
 ## Test Failure Output Policy
 
-> ⛔ **CRITICAL: Never truncate test failure output**
->
-> When tests fail, show the **complete failure output** — every failing test, every error message, every stack trace.
-> Do not summarize, truncate, or omit failure details.
->
-> - Successful test runs: summarize (e.g., "3 QA tests passed")
-> - Failed test runs: show full output, no truncation
->
-> Truncating test failures defeats the purpose of running tests.
+See AGENTS.md. Never truncate test failure output — show complete errors and stack traces.
 
 ## Dev Server and Port Requirements
 
@@ -286,28 +278,7 @@ Give playwright-dev everything needed to write a comprehensive test:
 
 ## Requesting Toolkit Updates
 
-If you discover a needed toolkit change, write a request to `~/.config/opencode/pending-updates/YYYY-MM-DD-qa-browser-tester-description.md`:
-
-```markdown
----
-requestedBy: qa-browser-tester
-date: YYYY-MM-DD
-priority: normal
----
-
-# Update Request: [Brief Title]
-
-## What to change
-[Details]
-
-## Files affected
-- `agents/qa-browser-tester.md` — [change description]
-
-## Why
-[Reason]
-```
-
-Tell the user: "I've queued a toolkit update request for @toolkit to review."
+See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-qa-browser-tester-`
 
 ## Stop Condition
 

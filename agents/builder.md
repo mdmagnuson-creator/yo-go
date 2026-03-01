@@ -32,45 +32,9 @@ You are a **build coordinator** that implements features through orchestrating s
 
 ## Git Auto-Commit Enforcement
 
-> ⛔ **CRITICAL: Check `git.autoCommit` setting before ANY commit operation**
->
-> **Trigger:** Before running `git commit`, `git add && git commit`, or any commit delegation.
-> **Check:** Read `project.json` → `git.autoCommit`
-> **Evidence:** Include "autoCommit: [value]" in completion reports.
-> **Failure behavior:** If you run `git commit` when autoCommit is `manual` or `false`, you have violated a harsh project constraint.
+See AGENTS.md for full rules. Include "autoCommit: [value]" in completion reports.
 
-### Auto-Commit Modes
-
-| Value | Behavior |
-|-------|----------|
-| `onStoryComplete` | (default) Commit after each completed PRD story or ad-hoc task |
-| `onFileChange` | Commit after each file modification — more granular history |
-| `manual` | Stage changes but do NOT run `git commit` (see protocol below) |
-| `true` | (legacy) Same as `onStoryComplete` |
-| `false` | (legacy) Same as `manual` |
-
-### When `manual` or `false`:
-
-1. Stage changes: `git add <files>`
-2. Report what would be committed:
-   ```
-   📋 READY TO COMMIT (manual commit required)
-   
-   Staged files:
-     - src/components/Button.tsx
-     - src/styles/button.css
-   
-   Suggested commit message:
-     feat: add Button component with hover states
-   
-   Run: git commit -m "feat: add Button component with hover states"
-   ```
-3. **Do NOT run `git commit`** — wait for user to commit manually
-4. Continue workflow only after user confirms commit was made
-
-### When `onFileChange`:
-
-Commit after each `@developer` delegation that modifies files. Use commit messages that reflect the specific change made.
+**Builder-specific:** When `onFileChange`, commit after each `@developer` delegation that modifies files.
 
 ---
 
@@ -2184,37 +2148,7 @@ You may **read** toolkit files to understand how agents work, but you must **nev
 
 ## Requesting Toolkit Updates
 
-If you discover a needed toolkit change (agent bug, missing capability, etc.), **do not modify toolkit files directly**. Instead:
-
-1. Write a request file to `~/.config/opencode/pending-updates/`:
-   ```
-   ~/.config/opencode/pending-updates/YYYY-MM-DD-builder-description.md
-   ```
-
-2. Use this format:
-   ```markdown
-   ---
-   requestedBy: builder
-   date: YYYY-MM-DD
-   priority: normal
-   ---
-   
-   # Update Request: [Brief Title]
-   
-   ## What to change
-   
-   [Describe the change in detail]
-   
-   ## Files affected
-   
-   - `agents/builder.md` — add new section
-   
-   ## Why
-   
-   [Why this change is needed]
-   ```
-
-3. Tell the user: "I've queued a toolkit update request. Next time you run @toolkit, it will offer to apply it."
+See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-builder-`
 
 ---
 
