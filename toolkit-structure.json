@@ -1,10 +1,10 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-02-28T16:30:00Z",
+  "generatedAt": "2026-02-28T18:45:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
-    "total": 63,
+    "total": 64,
     "categories": {
       "primary": {
         "description": "User-invokable primary agents",
@@ -94,6 +94,11 @@
       "testing": {
         "description": "Test creation and QA agents",
         "agents": [
+          {
+            "name": "e2e-auditor",
+            "file": "agents/e2e-auditor.md",
+            "description": "Autonomous E2E test auditor that analyzes apps and generates comprehensive test coverage"
+          },
           {
             "name": "e2e-playwright",
             "file": "agents/e2e-playwright.md",
@@ -349,7 +354,7 @@
     }
   },
   "skills": {
-    "total": 44,
+    "total": 45,
     "categories": {
       "workflow": {
         "description": "Workflow and lifecycle skills",
@@ -575,6 +580,11 @@
             "description": "Playwright E2E testing patterns for Electron desktop applications. Covers app launch, main/renderer process testing, IPC mocking, and native dialog handling. Triggers on: electron test, desktop app test, e2e-electron."
           },
           {
+            "name": "e2e-full-audit",
+            "path": "skills/e2e-full-audit/SKILL.md",
+            "description": "Comprehensive E2E test auditing workflow. Analyzes apps, generates test manifests, and executes with 5-retry resilience. Triggers on: e2e audit, full coverage audit, comprehensive e2e."
+          },
+          {
             "name": "merge-conflicts",
             "path": "skills/merge-conflicts/SKILL.md",
             "description": "Resolve merge conflicts on a pull request by merging the target branch into the source branch and fixing conflicts. Use when a PR has merge conflicts, a branch needs to be updated, or when asked to fix conflicts. Triggers on: fix merge conflicts, resolve conflicts, merge conflicts on PR, update branch, rebase PR."
@@ -599,7 +609,7 @@
     }
   },
   "schemas": {
-    "total": 14,
+    "total": 15,
     "items": [
       {
         "name": "applied-updates.schema",
@@ -610,6 +620,11 @@
         "name": "builder-state.schema",
         "file": "schemas/builder-state.schema.json",
         "description": "Tracks Builder session state for resumability. Lives at docs/builder-state.json in each project."
+      },
+      {
+        "name": "e2e-audit-manifest.schema",
+        "file": "schemas/e2e-audit-manifest.schema.json",
+        "description": "Schema for tracking comprehensive E2E test audits with resilient execution and per-test commit tracking"
       },
       {
         "name": "merge-queue.schema",
@@ -859,37 +874,44 @@
     "generatedFrom": "git log --since=30 days",
     "entries": [
       {
-        "date": "2026-03-01",
+        "date": "2026-02-28",
         "changes": [
           {
             "type": "feat",
+            "scope": "agents",
+            "description": "add e2e-auditor agent for comprehensive autonomous E2E test auditing",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
             "scope": "skills",
-            "description": "add supabase-skill-generator for database/RLS/client patterns",
+            "description": "add e2e-full-audit skill for audit workflow patterns and resilient execution",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "schema",
+            "description": "add e2e-audit-manifest schema for test tracking with 5-retry resilience",
             "hash": "pending"
           },
           {
             "type": "feat",
             "scope": "agents",
-            "description": "add Phase 3B.2 to developer for auto-promoting generated skills to toolkit",
+            "description": "add audit-mode support to e2e-playwright agent",
             "hash": "pending"
           },
           {
             "type": "feat",
-            "scope": "data",
-            "description": "add supabase trigger to meta-skill-triggers.json",
+            "scope": "skills",
+            "description": "add e2e-auditor integration section to test-flow skill",
             "hash": "pending"
-          }
-        ]
-      },
-        {
-          "date": "2026-02-28",
-          "changes": [
-            {
-              "type": "feat",
-              "scope": "builder",
-              "description": "add dynamic reassignment with fallback chains (PRD #3)",
-              "hash": "122c2ad"
-            },
+          },
+          {
+            "type": "feat",
+            "scope": "builder",
+            "description": "add dynamic reassignment with fallback chains (PRD #3)",
+            "hash": "122c2ad"
+          },
             {
               "type": "feat",
               "scope": "builder",

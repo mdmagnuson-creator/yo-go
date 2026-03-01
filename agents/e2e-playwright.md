@@ -76,12 +76,39 @@ You receive a list of UI areas from `docs/e2e-areas.json` that need E2E test cov
 4. **Run tests to verify** - Ensure they pass
 5. **Update the manifest** - Mark areas as having test coverage
 
+## Operating Modes
+
+This agent supports two operating modes:
+
+### Standard Mode (Default)
+- Invoked by `@tester` or `@e2e-reviewer`
+- Writes tests for specific UI areas from `docs/e2e-areas.json`
+- Single run-fix-commit cycle
+- 3 retry attempts on failure
+
+### Audit Mode
+- Invoked by `@e2e-auditor` with `audit-mode: true` in prompt
+- Writes tests for entries in `e2e-audit-manifest.json`
+- **5 retry attempts** per test (not 3)
+- **Commit after each passing test** (incremental progress)
+- **Continue on permanent failure** (log and move to next test)
+- **AI-powered fix attempts** between retries
+- Returns detailed status for manifest updates
+
+When `audit-mode: true` is specified:
+- Read test requirements from `e2e-audit-manifest.json` instead of `e2e-areas.json`
+- Use the test ID format `{category}-{number}` (e.g., `auth-001`)
+- Include the test ID in the test description for tracking
+- Report success/failure with attempt count back to `@e2e-auditor`
+
 ## Input
 
 You receive:
 - Project path
 - Specific UI area IDs to write tests for (or "all unwritten")
 - Any additional context about the feature
+- **Audit mode flag** (optional): `audit-mode: true` when invoked by `@e2e-auditor`
+- **Test entry** (audit mode): Specific test from `e2e-audit-manifest.json`
 
 ## E2E Test Organization
 
@@ -446,6 +473,82 @@ Reply with a summary and:
 ```
 <promise>COMPLETE</promise>
 ```
+
+## Audit Mode Workflow
+
+When invoked with `audit-mode: true`:
+
+### Audit Mode Input
+
+You receive from `@e2e-auditor`:
+```
+audit-mode: true
+test-id: auth-001
+test-name: User can log in with valid credentials
+file: e2e/auth/login.spec.ts
+category: auth
+priority: critical
+platform: electron|web
+max-retries: 5
+```
+
+### Audit Mode Execution
+
+1. **Write the test file** using standard patterns
+2. **Include test ID in description** for tracking:
+   ```typescript
+   test('auth-001: User can log in with valid credentials', async ({ page }) => {
+     // ...
+   });
+   ```
+3. **Run the test** (attempt 1 of 5)
+4. **If PASS:**
+   - Return: `{ status: 'passed', attempts: 1 }`
+   - `@e2e-auditor` handles commit
+5. **If FAIL (attempt < 5):**
+   - Analyze failure (error message, screenshot if available)
+   - Attempt fix (update test selectors, add waits, fix logic)
+   - Retry the test
+6. **If FAIL (attempt = 5):**
+   - Return: `{ status: 'failed', attempts: 5, error: '...', screenshot: '...' }`
+   - `@e2e-auditor` logs failure and continues to next test
+
+### Audit Mode Fixes
+
+When a test fails in audit mode, attempt these fixes in order:
+
+| Attempt | Fix Strategy |
+|---------|--------------|
+| 1 | Original test |
+| 2 | Add explicit waits (`waitForSelector`, `waitForLoadState`) |
+| 3 | Update selectors (prefer `data-testid`, semantic locators) |
+| 4 | Add retry logic for flaky operations |
+| 5 | Simplify test (reduce assertions, focus on core behavior) |
+
+### Audit Mode Output
+
+Return structured result to `@e2e-auditor`:
+
+```json
+{
+  "testId": "auth-001",
+  "status": "passed|failed",
+  "attempts": 3,
+  "file": "e2e/auth/login.spec.ts",
+  "error": null,
+  "screenshot": null,
+  "duration": 1523
+}
+```
+
+### Audit Mode Commit Message Format
+
+When `@e2e-auditor` commits a passing test, it uses:
+```
+test(e2e): ✅ auth-001 - User can log in with valid credentials
+```
+
+Do NOT commit in audit mode — `@e2e-auditor` handles commits.
 
 ## Important Notes
 

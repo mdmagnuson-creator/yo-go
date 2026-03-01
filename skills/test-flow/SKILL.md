@@ -1047,3 +1047,151 @@ Run @quality-critic with:
 **Handle results:**
 - No critical issues → Continue
 - Critical issues → Show prompt with [F]ix / [S]kip options
+
+---
+
+## E2E Auditor Integration (Full-App Coverage Audits)
+
+The `@e2e-auditor` agent provides **proactive full-app E2E auditing** — a comprehensive workflow that differs from the reactive story-driven testing above.
+
+### When to Use E2E Auditor
+
+| Scenario | Use @e2e-auditor |
+|----------|------------------|
+| Full regression testing before release | ✅ |
+| Periodic coverage audits (weekly/monthly) | ✅ |
+| After large refactors | ✅ |
+| Inheriting a project to assess coverage | ✅ |
+| PRD-driven comprehensive testing (e.g., `prd-comprehensive-e2e-suite`) | ✅ |
+| Testing a specific story change | ❌ Use @e2e-playwright |
+| Testing a bug fix | ❌ Use @tester |
+
+### E2E Auditor Workflow Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    E2E AUDITOR WORKFLOW                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  1. LOAD CONTEXT                                                    │
+│     └─► project.json → platform, auth, commands                     │
+│     └─► Check for existing e2e-audit-manifest.json or PRD           │
+│                                                                     │
+│  2. ANALYZE (if no manifest)                                        │
+│     └─► Discover features (routes, components, APIs)                │
+│     └─► Categorize into test groups                                 │
+│     └─► Generate e2e-audit-manifest.json                            │
+│                                                                     │
+│  3. GENERATE TESTS                                                  │
+│     └─► For each manifest entry without a test file                 │
+│     └─► Delegate to @e2e-playwright (audit-mode)                    │
+│     └─► Create auth helpers if needed                               │
+│                                                                     │
+│  4. EXECUTE (resilient loop)                                        │
+│     └─► Run each test (max 5 retries)                               │
+│     └─► On pass: commit, update manifest, continue                  │
+│     └─► On fail: analyze, attempt fix, retry                        │
+│     └─► On permanent fail: log, screenshot, CONTINUE (never stop)   │
+│                                                                     │
+│  5. REPORT                                                          │
+│     └─► Generate e2e-audit-report.md                                │
+│     └─► Summary: passed/failed/skipped                              │
+│     └─► Failure details with suggested fixes                        │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Differences from Story-Driven Testing
+
+| Aspect | Story-Driven (@tester/@e2e-playwright) | Audit Mode (@e2e-auditor) |
+|--------|----------------------------------------|---------------------------|
+| Trigger | Code change, story completion | User request, scheduled audit |
+| Scope | Changed files only | Entire application |
+| Retries | 3 attempts | 5 attempts |
+| On failure | Stop, report to user | Log, continue to next test |
+| Commits | Batch at end | After each passing test |
+| Manifest | docs/e2e-areas.json | e2e-audit-manifest.json |
+| Goal | Verify change didn't break | Comprehensive coverage audit |
+
+### Invoking E2E Auditor
+
+From Builder or Tester:
+
+```
+Run @e2e-auditor with:
+  project: {project path}
+  mode: full-audit | resume | prd-driven
+  prd: {prd path, if prd-driven mode}
+```
+
+### Manifest-Driven Execution
+
+E2E Auditor tracks progress in `e2e-audit-manifest.json`:
+
+```json
+{
+  "version": "1.0.0",
+  "project": { "name": "my-app", "platform": "web" },
+  "execution": {
+    "maxRetries": 5,
+    "commitAfterPass": true,
+    "continueOnFailure": true
+  },
+  "categories": [
+    {
+      "id": "auth",
+      "name": "Authentication",
+      "tests": [
+        {
+          "id": "auth-001",
+          "name": "User can log in",
+          "status": "passed",
+          "attempts": 1,
+          "commitHash": "abc1234"
+        },
+        {
+          "id": "auth-002",
+          "name": "User can log out",
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 95,
+    "passed": 45,
+    "failed": 2,
+    "pending": 48
+  }
+}
+```
+
+### Resume After Interruption
+
+If audit is interrupted (crash, rate limit, user abort):
+
+1. Read `e2e-audit-manifest.json`
+2. Find first test with `status: "pending"` or `status: "running"`
+3. Reset any `running` tests back to `pending`
+4. Continue execution from that point
+
+### Report Output
+
+After audit completes, `test-results/e2e-audit-report.md` contains:
+
+- Summary table (passed/failed/skipped)
+- Failed test details with error messages, screenshots, suggested fixes
+- Coverage heatmap by category
+- List of commits made
+- Next steps for manual resolution
+
+### Integration with Test Debt
+
+Failed tests in audit are NOT automatically added to `test-debt.json` — they're tracked in the manifest. However, if the same test fails across multiple audits, consider adding it to hotspots for escalated attention.
+
+### Skill Dependency
+
+E2E Auditor loads these skills as needed:
+- `e2e-full-audit` — Audit workflow patterns
+- `e2e-electron` — Electron-specific testing (if platform is electron)
+- `auth-*` — Authentication skills based on project.json config
