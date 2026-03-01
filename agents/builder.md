@@ -1409,51 +1409,12 @@ Your implementation changes are committed locally and safe.
 
 ## Critic Batching Configuration
 
-Control when @critic runs during PRD work to balance thoroughness vs speed.
+> **Builder: Load `critic-dispatch` skill for review timing during PRD execution.**
 
-### Configuration Cascade
-
-Resolved in order (highest priority first):
-
-1. **CLI flag** — `--critic-mode=strict` (one-off override)
-2. **Project-level** — `project.json` → `agents.criticMode`
-3. **Hardcoded fallback** — `balanced`
-
-### Critic Modes
-
-| Mode | Behavior | Use Case |
-|------|----------|----------|
-| `strict` | Run @critic after every story | High-risk projects (payments, auth, security) |
-| `balanced` | Run @critic every 2-3 stories | Default — catches issues without excessive overhead |
-| `fast` | Run @critic once at end of PRD | Greenfield projects, low-risk changes, speed priority |
-
-### Balanced Mode Logic
-
-- Run critic after story 2, then every 3 stories (story 5, 8, 11, etc.)
-- If PRD has ≤2 stories, behave like `fast` (one critic run at end)
+Control when @critic runs during PRD work:
+- Skill provides configuration cascade (CLI → project.json → fallback)
+- Three modes: `strict` (every story), `balanced` (every 2-3), `fast` (end only)
 - Always run critic at PRD completion regardless of mode
-
-### Implementation
-
-At PRD start:
-1. Determine critic mode from config cascade
-2. Log: `"Critic mode: [mode]"`
-
-After each story completes:
-```
-if criticMode == "strict":
-    run @critic
-elif criticMode == "balanced":
-    if storyNumber == 2 or (storyNumber > 2 and (storyNumber - 2) % 3 == 0):
-        run @critic
-elif criticMode == "fast":
-    # Skip until PRD completion
-```
-
-At PRD completion (all modes):
-```
-run @critic  # Final review before PR
-```
 
 ---
 
