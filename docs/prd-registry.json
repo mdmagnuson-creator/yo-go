@@ -94,11 +94,12 @@
     {
       "id": "prd-toolkit-agent-organization",
       "title": "Toolkit-Wide Agent Organization Refactor",
-      "status": "ready",
-      "filePath": "docs/prds/prd-toolkit-agent-organization.md",
+      "status": "complete",
+      "filePath": "docs/completed/prd-toolkit-agent-organization.md",
       "createdAt": "2026-03-01",
+      "completedAt": "2026-03-01",
       "stories": 11,
-      "notes": "Extracts duplicated patterns to AGENTS.md and skills. Creates verification-contracts, dynamic-reassignment, self-correction, auth-config-check, critic-dispatch, session-state skills."
+      "notes": "Extracts duplicated patterns to AGENTS.md and skills. Creates verification-contracts, dynamic-reassignment, self-correction, auth-config-check, critic-dispatch, session-state skills. Builder reduced from 2,255 to 1,312 lines (42%)."
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-03-01T11:30:00Z",
+  "generatedAt": "2026-03-01T14:30:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -354,7 +354,7 @@
     }
   },
   "skills": {
-    "total": 45,
+    "total": 51,
     "categories": {
       "workflow": {
         "description": "Workflow and lifecycle skills",
@@ -408,6 +408,16 @@
             "name": "test-flow",
             "path": "skills/test-flow/SKILL.md",
             "description": "Automatic test generation and execution flows for Builder. Use when generating unit/E2E tests, handling test failures, or managing E2E deferral. Triggers on: generate tests, run tests, test failures, E2E deferral, test flow."
+          },
+          {
+            "name": "session-state",
+            "path": "skills/session-state/SKILL.md",
+            "description": "Session state management for resumability. Use when reading/writing session state, updating heartbeat, or recovering from compaction. Triggers on: session state, heartbeat, rate limit recovery, compaction recovery."
+          },
+          {
+            "name": "verification-contracts",
+            "path": "skills/verification-contracts/SKILL.md",
+            "description": "Create verification contracts for task completion. Defines success criteria, edge cases, and test activities. Triggers on: verification contract, success criteria, task verification."
           }
         ]
       },
@@ -603,6 +613,26 @@
             "name": "vectorize",
             "path": "skills/vectorize/SKILL.md",
             "description": "Vectorize codebase and database schemas for semantic search. Uses OpenAI/Voyage embeddings with optional Contextual Retrieval. Triggers on: semantic search, vectorize codebase, code search, find similar code."
+          },
+          {
+            "name": "auth-config-check",
+            "path": "skills/auth-config-check/SKILL.md",
+            "description": "Check authentication configuration before E2E tests. Validates project.json auth settings and credentials. Triggers on: auth config check, e2e auth, test authentication."
+          },
+          {
+            "name": "critic-dispatch",
+            "path": "skills/critic-dispatch/SKILL.md",
+            "description": "Dispatch code reviews to appropriate critic agents based on file types. Routes to frontend, backend, security critics. Triggers on: critic dispatch, code review routing, dispatch critics."
+          },
+          {
+            "name": "dynamic-reassignment",
+            "path": "skills/dynamic-reassignment/SKILL.md",
+            "description": "Dynamic task reassignment on failure. Handles fallback chains, rate limit recovery, and escalation. Triggers on: agent failed, reassign task, fallback agent, escalate task."
+          },
+          {
+            "name": "self-correction",
+            "path": "skills/self-correction/SKILL.md",
+            "description": "Self-correction loop for fixing test and build failures. Max 3 attempts before escalation. Triggers on: fix loop, self correction, retry failed tests."
           }
         ]
       }
