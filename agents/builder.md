@@ -277,6 +277,88 @@ Options:
 
 ---
 
+## Loop Detection and Bulk Fix
+
+> ⚠️ **Recognize repetitive work patterns BEFORE getting stuck in a loop.**
+>
+> If you're fixing the same issue type across multiple files one-by-one, STOP and consider a bulk approach.
+
+### Detection Triggers
+
+You are likely in a repetitive loop when:
+
+| Pattern | Example | Stuck Signal |
+|---------|---------|--------------|
+| Same test failure type | `launchElectronApp` usage bug in 8 test files | Fixing files 1, 2, 3... individually |
+| Same lint error | Missing import across 15 files | Running lint → fix → lint → fix |
+| Same type error | Interface mismatch after refactor | Updating files one at a time |
+| Same pattern change | Renaming a function/variable | Find-and-replace manually file by file |
+
+### Self-Check (Run After 3+ Similar Fixes)
+
+After fixing the same issue type 3 times, pause and ask yourself:
+
+```
+LOOP CHECK:
+1. Am I fixing the same issue type repeatedly?
+2. How many more files likely have this issue?
+3. Can I grep/search to find ALL instances at once?
+4. Would a bulk fix be faster than continuing one-by-one?
+```
+
+### Bulk Fix Protocol
+
+When you detect a repeating pattern:
+
+1. **STOP** the current one-by-one approach
+2. **Search comprehensively** for all instances:
+   ```bash
+   # Example: Find all files with the broken pattern
+   grep -r "launchElectronApp" tests/ --include="*.ts" -l
+   ```
+3. **Assess the scope** — how many files, how similar are the fixes?
+4. **Choose the right strategy:**
+
+| Scope | Strategy |
+|-------|----------|
+| 2-3 files | Continue one-by-one (it's fine) |
+| 4-10 files | Batch into 2-3 groups, fix each group together |
+| 10+ files | Use find/replace, sed, or codemod; fix ALL at once |
+
+5. **Fix all instances** before running tests again
+6. **Run the full test suite** once at the end, not after each fix
+
+### Example: Good vs Bad Approach
+
+**Bad (what triggers the loop):**
+```
+Fix test1.ts → run tests → Fix test2.ts → run tests → Fix test3.ts → run tests...
+(8 cycles later, user asks "are you stuck?")
+```
+
+**Good (bulk approach):**
+```
+Grep for pattern → Found in 8 files → Fix all 8 files → Run tests once → Done
+```
+
+### Reporting to User
+
+When you recognize you were in a loop and switch to bulk:
+
+```
+📊 PATTERN DETECTED — SWITCHING TO BULK FIX
+
+I've been fixing the same issue individually. Let me step back:
+
+• Pattern: `launchElectronApp` used incorrectly (assigning result instead of destructuring)
+• Scope: Found in 8 test files
+• Approach: Fix all 8 files at once, then run full test suite
+
+This will be faster and more reliable than continuing one-by-one.
+```
+
+---
+
 ## Current Task Tracking (Resumability)
 
 Builder tracks `currentTask` in `docs/builder-state.json` so work can resume after compaction or rate limiting.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-02-28T18:45:00Z",
+  "generatedAt": "2026-03-01T10:15:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -873,6 +873,17 @@
   "changelog": {
     "generatedFrom": "git log --since=30 days",
     "entries": [
+      {
+        "date": "2026-03-01",
+        "changes": [
+          {
+            "type": "feat",
+            "scope": "builder",
+            "description": "add loop detection and bulk fix guidance to prevent repetitive one-by-one fixes",
+            "hash": "pending"
+          }
+        ]
+      },
       {
         "date": "2026-02-28",
         "changes": [
