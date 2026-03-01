@@ -616,6 +616,107 @@ When agents delegate to specialists, they must pass:
 
 ---
 
+## Preventing Agent Disorganization
+
+> 🛡️ **Future maintenance starts now.** These guidelines prevent the duplication and inconsistency that this refactor is fixing.
+
+### 1. AGENTS.md is the Single Source of Truth
+
+**For cross-agent guardrails:**
+- Check `AGENTS.md` before adding restrictions to any agent
+- If a guardrail applies to 3+ agents, it belongs in `AGENTS.md`
+- Individual agents should reference `AGENTS.md` sections with anchors:
+  ```markdown
+  > ⚓ **AGENTS.md: Git Auto-Commit Enforcement**
+  ```
+
+**Before adding new guardrails:**
+1. Does this apply to multiple agents? → Add to `AGENTS.md`, use anchors
+2. Does this apply to one agent only? → Add directly to that agent
+3. Is this a workflow/process? → Consider a skill instead
+
+### 2. Skills for Reusable Workflows
+
+**Extract to a skill when:**
+- Same workflow appears in 2+ agents (or is likely to)
+- The logic is >20 lines and self-contained
+- Another agent might need it in the future
+
+**Skill reference format:**
+```markdown
+> 📚 **SKILL: skill-name** → "Section Name"
+>
+> Load the `skill-name` skill for [brief description of what it covers].
+```
+
+**Skill naming conventions:**
+- `*-flow` — End-to-end workflows (test-flow, auth-flow)
+- `*-state` — State management (builder-state, session-state)
+- `*-check` — Verification checks (auth-config-check)
+
+### 3. Agent Size Guidelines
+
+**Target: 800-1500 lines per primary agent**
+
+| Agent | Target Lines | Purpose |
+|-------|--------------|---------|
+| `builder.md` | 800-1200 | Orchestration, delegation, state management |
+| `planner.md` | 600-800 | PRD lifecycle, estimation |
+| `developer.md` | 400-600 | Task execution interface |
+| `toolkit.md` | 800-1000 | Toolkit maintenance |
+
+**When an agent exceeds target:**
+1. Identify sections >50 lines that could be skills
+2. Check for duplicated content across agents
+3. Extract to skill with clear reference
+
+### 4. Avoiding Duplication Patterns
+
+**Common duplication to watch for:**
+
+| Pattern | Where it belongs |
+|---------|------------------|
+| Error handling policies | `AGENTS.md` or error-handling skill |
+| Test execution rules | `test-flow` skill |
+| State persistence | `builder-state` or `session-state` skill |
+| Git commit policies | `AGENTS.md` (Git Auto-Commit Enforcement) |
+| Output formatting | Agent-specific (varies by purpose) |
+| Context passing | `AGENTS.md` or context-protocol doc |
+
+**Before writing new agent content, ask:**
+1. Does this already exist in another agent? → Extract to shared location
+2. Will another agent need this? → Start with shared location
+3. Is this truly agent-specific? → OK to add directly
+
+### 5. Review Checklist for Agent Changes
+
+Before committing changes to any agent:
+
+```
+□ Checked AGENTS.md for existing guardrails that might apply
+□ Checked skills/ for existing workflows that might apply
+□ If adding >50 lines, considered skill extraction
+□ If adding guardrails, checked if it applies to other agents
+□ Cross-referenced with similar agents for consistency
+```
+
+### 6. Organization Health Metrics
+
+Track these periodically (during major toolkit updates):
+
+| Metric | Target | Check Command |
+|--------|--------|---------------|
+| Largest agent | <1500 lines | `wc -l agents/*.md \| sort -n \| tail -5` |
+| AGENTS.md sections | 5-10 | Count `## ` headers |
+| Skills count | 25-40 | `find skills -name SKILL.md \| wc -l` |
+| Duplicated guardrails | 0 | Manual audit |
+
+**When metrics drift:**
+1. Largest agent >1500 → Extract workflows to skills
+2. AGENTS.md >15 sections → Consider skill extraction for complex sections
+3. Skills >50 → Review for consolidation opportunities
+4. Duplicated guardrails >0 → Extract to AGENTS.md
+
 ## Post-Change Workflow (MANDATORY WHEN APPLICABLE)
 
 > ⚠️ **Run this workflow for toolkit behavior/configuration changes** (agents, skills, templates, scaffolds, schemas, scripts, automations, config, governance docs, queued update handling).
