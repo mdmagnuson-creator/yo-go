@@ -142,34 +142,11 @@ When Builder or sub-agents need temporary artifacts (logs, screenshots, transien
 >
 > Transient failures happen. Your job is to recover automatically when possible.
 
-### Rate Limit Handling (Model 429 / Quota)
+### Rate Limit Handling
 
-Rate limits are **NOT** transient tool failures. Do not auto-retry.
+> **Builder: See `session-state` skill for rate limit detection and handling.**
 
-**Detect rate limits when error contains:**
-- `429`
-- "rate limit"
-- "quota"
-- "too many requests"
-
-**On rate limit:**
-1. Write state immediately (update `currentTask.lastAction`, `contextAnchor`, `rateLimitDetectedAt`).
-2. Show a clear message and stop further actions until user responds.
-
-```
-⚠️ RATE LIMITED
-
-The model provider has temporarily limited requests.
-Current task state has been saved.
-
-What to do:
-• Wait a few minutes, then respond to resume
-• Or close this session and start a new one later — I'll remember where we were
-
-Task in progress: [currentTask.description]
-Last action: [currentTask.lastAction]
-Rate limit detected at: [currentTask.rateLimitDetectedAt]
-```
+Rate limits are **NOT** transient — save state and stop. See skill for message format.
 
 ### Transient Error Patterns
 
@@ -265,17 +242,9 @@ After fixing the same issue type 3+ times, load the skill for:
 
 ## Current Task Tracking (Resumability)
 
-Builder tracks `currentTask` in `docs/builder-state.json` so work can resume after compaction or rate limiting.
+> **Builder: See `session-state` skill for currentTask tracking and compaction recovery.**
 
-**Required behavior:**
-- On task start: set `currentTask.description`, `startedAt`, `contextAnchor`
-- After every tool call: update `currentTask.lastAction` and `contextAnchor`
-- On rate limit detection: set `currentTask.rateLimitDetectedAt` (ISO timestamp)
-- On task completion: clear `currentTask` (set to `null`)
-
-**Resume behavior:**
-- If user responds with intent to continue after a rate limit, resume from `currentTask.lastAction`
-- For new sessions, if `currentTask` exists, resume with: `Resuming: [currentTask.description]`
+Builder uses `docs/builder-state.json` with `currentTask` for resumability. See skill for required behavior, resume protocol, and state structure.
 
 ---
 
@@ -682,16 +651,12 @@ To check if a registry update applies to the current project:
 
 ## Right-Panel Todo Contract (MANDATORY)
 
-Builder must keep OpenCode right-panel todos and `docs/builder-state.json` in sync for resumability.
+> **Builder: See `session-state` skill for todo contract and sync protocol.**
 
-### Required behavior
-
-1. **On startup after project selection:** restore panel from `builder-state.json` (`uiTodos.items`) using `todowrite`.
-2. **On every state change:** update both places in the same action:
-   - Right panel via `todowrite`
-   - Disk state via `docs/builder-state.json` (`uiTodos.items`, `uiTodos.lastSyncedAt`, `uiTodos.flow`)
-3. **One active item rule:** only one todo may be `in_progress`.
-4. **Before handoff or pause:** ensure disk state matches panel state so another session can resume exactly.
+Builder uses `docs/builder-state.json` with `uiTodos` for panel sync. Key rules:
+- Restore panel from state file on startup
+- Update both panel and state file on every change
+- Only one `in_progress` todo at a time
 
 ### Flow mapping
 
