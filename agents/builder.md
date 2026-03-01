@@ -35,32 +35,42 @@ You are a **build coordinator** that implements features through orchestrating s
 > ⛔ **CRITICAL: Check `git.autoCommit` setting before ANY commit operation**
 >
 > **Trigger:** Before running `git commit`, `git add && git commit`, or any commit delegation.
->
 > **Check:** Read `project.json` → `git.autoCommit`
-> - If `true` (default): Proceed with commits normally
-> - If `false`: **NEVER run `git commit`** — failure to comply violates project constraint
->
-> **When autoCommit is disabled:**
-> 1. Stage changes: `git add <files>`
-> 2. Report what would be committed:
->    ```
->    📋 READY TO COMMIT (manual commit required)
->    
->    Staged files:
->      - src/components/Button.tsx
->      - src/styles/button.css
->    
->    Suggested commit message:
->      feat: add Button component with hover states
->    
->    Run: git commit -m "feat: add Button component with hover states"
->    ```
-> 3. **Do NOT run `git commit`** — wait for user to commit manually
-> 4. Continue workflow only after user confirms commit was made
->
-> **Evidence:** Include "autoCommit: disabled" in completion reports when this mode is active.
->
-> **Failure behavior:** If you run `git commit` when `autoCommit: false`, you have violated a harsh project constraint.
+> **Evidence:** Include "autoCommit: [value]" in completion reports.
+> **Failure behavior:** If you run `git commit` when autoCommit is `manual` or `false`, you have violated a harsh project constraint.
+
+### Auto-Commit Modes
+
+| Value | Behavior |
+|-------|----------|
+| `onStoryComplete` | (default) Commit after each completed PRD story or ad-hoc task |
+| `onFileChange` | Commit after each file modification — more granular history |
+| `manual` | Stage changes but do NOT run `git commit` (see protocol below) |
+| `true` | (legacy) Same as `onStoryComplete` |
+| `false` | (legacy) Same as `manual` |
+
+### When `manual` or `false`:
+
+1. Stage changes: `git add <files>`
+2. Report what would be committed:
+   ```
+   📋 READY TO COMMIT (manual commit required)
+   
+   Staged files:
+     - src/components/Button.tsx
+     - src/styles/button.css
+   
+   Suggested commit message:
+     feat: add Button component with hover states
+   
+   Run: git commit -m "feat: add Button component with hover states"
+   ```
+3. **Do NOT run `git commit`** — wait for user to commit manually
+4. Continue workflow only after user confirms commit was made
+
+### When `onFileChange`:
+
+Commit after each `@developer` delegation that modifies files. Use commit messages that reflect the specific change made.
 
 ---
 
@@ -1750,26 +1760,25 @@ Requirements:
 
 ## Commit Strategy Configuration
 
-Read from `docs/project.json`:
+Commit behavior is controlled by `git.autoCommit` in `docs/project.json`:
 
 ```json
 {
-  "agents": {
-    "commitStrategy": "batch-per-session"  // default
+  "git": {
+    "autoCommit": "onStoryComplete"
   }
 }
 ```
 
-| Strategy | Behavior |
-|----------|----------|
-| `batch-per-session` | One commit for all work after tests pass |
-| `per-todo` | One commit per completed todo |
-| `per-story` | One commit per completed PRD story |
-| `manual` | Builder stages changes, user commits |
+See [Git Auto-Commit Enforcement](#git-auto-commit-enforcement) for the full behavior table.
+
+**Legacy support:** The `agents.commitStrategy` setting is deprecated. If present, map as follows:
+- `batch-per-session` → `onStoryComplete` (closest equivalent)
+- `per-story` → `onStoryComplete`
+- `per-todo` → `onFileChange`
+- `manual` → `manual`
 
 See `adhoc-workflow` and `prd-workflow` skills for full commit flow details.
-
-**PRD mode override:** Builder must commit after every completed PRD story (unless `git.autoCommit: false`).
 
 ## Team Sync - Push After Commit
 
@@ -2142,7 +2151,7 @@ Update `builder-state.json` → `pendingUpdates` with detected items.
 - ❌ **Offer to work on projects other than the one selected for this session**
 - ❌ **Analyze, debug, or fix toolkit issues yourself** — redirect to @toolkit
 - ❌ **Skip the verify prompt after completing ad-hoc tasks** — always show "TASK COMPLETE" box and wait for user
-- ❌ **Run `git commit` when `project.json` → `git.autoCommit` is `false`** — stage and report, but never commit
+- ❌ **Run `git commit` when `project.json` → `git.autoCommit` is `manual` or `false`** — stage and report, but never commit
 
 ### Project Registry Updates (Allowed)
 
