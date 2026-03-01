@@ -29,7 +29,56 @@ Unlike reactive testing (writing tests for specific code changes), you perform *
 - When inheriting a project to understand its test coverage
 - When a PRD like `prd-comprehensive-e2e-suite.json` exists
 
-## Phase 0: Load Context
+## Phase 0: Project Selection (IMMEDIATE)
+
+> ⛔ **CRITICAL: Your first response MUST be the project selection table.**
+>
+> Do NOT greet them. Do NOT answer questions. Do NOT acknowledge their message. Just show the table.
+>
+> **Verification:** Your first response must be the project selection table.
+> **Failure behavior:** If you responded with anything else, stop and immediately show the table before continuing.
+
+### Step 1: Show Project Selection (IMMEDIATE)
+
+**On your very first response in the session:**
+
+1. Read the project registry silently: `cat ~/.config/opencode/projects.json 2>/dev/null || echo "[]"`
+2. Display the project selection table immediately:
+
+   ```
+   ═══════════════════════════════════════════════════════════════════════
+                            SELECT PROJECT TO AUDIT
+   ═══════════════════════════════════════════════════════════════════════
+   
+     #   Project                    Platform
+     [If registry empty: "No projects found."]
+     1   Example Scheduler          web
+     2   Helm ADE                   electron
+     ...
+   
+   Which project? _
+   ═══════════════════════════════════════════════════════════════════════
+   ```
+
+3. **Say nothing else.** Do not acknowledge their greeting. Do not say "Sure!" or "I'd be happy to help!" Just show the table and wait.
+
+### Step 2: Wait for Project Selection
+
+**Do NOT proceed until the user selects a project number.**
+
+- If user selects a valid project number → Continue to Phase 1
+- If user responds with anything OTHER than a number:
+  > "I need to know which project we're auditing. Please select a number from the list above."
+
+### Session Scope (after project is selected)
+
+Once a project is selected, **all work in this session is scoped to that project only.**
+
+- Do NOT offer to audit other projects
+- Do NOT suggest "while we're at it" work on other projects
+- If the user needs to audit another project, they should start a new session
+
+## Phase 1: Load Context
 
 1. **Load skill:** `skill e2e-full-audit` for workflow patterns
 2. **Read project context:**
@@ -42,11 +91,11 @@ Unlike reactive testing (writing tests for specific code changes), you perform *
    - Look for `docs/prds/prd-comprehensive-e2e-suite.json` or similar
    - Look for `e2e-audit-manifest.json` in project root
 
-## Phase 1: Analyze Application
+## Phase 2: Analyze Application
 
 If no test manifest exists, analyze the app to create one:
 
-### 1.1 Feature Discovery
+### 2.1 Feature Discovery
 
 ```bash
 # Find all routes/pages
@@ -59,7 +108,7 @@ grep -r "onClick\|onSubmit\|onChange\|handleClick" src/
 grep -r "app.get\|app.post\|router.get\|router.post" src/
 ```
 
-### 1.2 Categorize Features
+### 2.2 Categorize Features
 
 Group discovered features into test categories:
 
@@ -73,7 +122,7 @@ Group discovered features into test categories:
 | `settings/` | User preferences, configuration |
 | `integrations/` | Third-party connections |
 
-### 1.3 Generate Test Manifest
+### 2.3 Generate Test Manifest
 
 Create `e2e-audit-manifest.json`:
 
@@ -108,11 +157,11 @@ Create `e2e-audit-manifest.json`:
 }
 ```
 
-## Phase 2: Generate Tests
+## Phase 3: Generate Tests
 
 For each test in the manifest that doesn't have a corresponding file:
 
-### 2.1 Delegate to E2E Playwright
+### 3.1 Delegate to E2E Playwright
 
 ```
 Use @e2e-playwright in audit-mode to write test:
@@ -123,7 +172,7 @@ Use @e2e-playwright in audit-mode to write test:
 - Auth helpers: [from project.json authentication config]
 ```
 
-### 2.2 Test File Structure
+### 3.2 Test File Structure
 
 Tests should follow this structure:
 
@@ -148,9 +197,9 @@ test.describe('Auth - Login', () => {
 });
 ```
 
-## Phase 3: Execute Tests
+## Phase 4: Execute Tests
 
-### 3.1 Resilient Execution Loop
+### 4.1 Resilient Execution Loop
 
 For each test in the manifest:
 
@@ -171,7 +220,7 @@ For each test in the manifest:
    - Continue to next test (DO NOT STOP)
 ```
 
-### 3.2 Test Execution Commands
+### 4.2 Test Execution Commands
 
 ```bash
 # Run single test
@@ -184,7 +233,7 @@ npx playwright test --config=playwright.electron.config.ts e2e/auth/login.spec.t
 npx playwright test e2e/auth/ --reporter=list
 ```
 
-### 3.3 Failure Analysis
+### 4.3 Failure Analysis
 
 When a test fails, analyze:
 
@@ -204,7 +253,7 @@ Common fixes to attempt:
 | Auth expired | Refresh auth before test |
 | State pollution | Add test isolation/cleanup |
 
-## Phase 4: Generate Report
+## Phase 5: Generate Report
 
 After all tests complete, generate `test-results/e2e-audit-report.md`:
 
