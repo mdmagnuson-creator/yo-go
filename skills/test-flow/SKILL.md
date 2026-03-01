@@ -1195,3 +1195,177 @@ E2E Auditor loads these skills as needed:
 - `e2e-full-audit` — Audit workflow patterns
 - `e2e-electron` — Electron-specific testing (if platform is electron)
 - `auth-*` — Authentication skills based on project.json config
+
+---
+
+## Deferred E2E Test Flow (Post-PRD-Completion)
+
+> 🎯 **This is NOT ad-hoc work.** Running deferred E2E tests from a completed PRD is post-completion work — do NOT load the adhoc-workflow skill or ask about workflow preferences.
+
+When the dashboard shows deferred E2E tests and user selects "E":
+
+### Step 0: Check for Local Runtime
+
+Before proceeding, verify this project can run E2E tests locally:
+
+```bash
+# Check devPort from projects.json
+DEV_PORT=$(jq -r '.projects[] | select(.path == "'"$(pwd)"'") | .devPort' ~/.config/opencode/projects.json)
+
+if [ "$DEV_PORT" = "null" ]; then
+  echo "⏭️  Cannot run E2E tests: Project has no local runtime (devPort: null)"
+  echo "   Deferred E2E tests cannot be executed for code-only projects."
+  # Do NOT mark as complete — just report the situation
+fi
+```
+
+**If devPort is null:** Report to user that E2E tests cannot run for this project type. The tests remain deferred but cannot be executed locally.
+
+### Step 1: Identify the Source
+
+Read `builder-state.json` → `pendingTests.e2e`:
+
+```json
+{
+  "pendingTests": {
+    "e2e": {
+      "generated": ["apps/web/e2e/recurrence-ui.spec.ts"],
+      "status": "pending",
+      "deferredTo": "prd-completion",
+      "sourcePrd": "prd-recurring-events"  // tracks which PRD generated these tests
+    }
+  }
+}
+```
+
+Also check `prd-registry.json` for the PRD's current status:
+- If `status: "awaiting_e2e"` → PRD merged but E2E tests not yet run
+- If `status: "completed"` → This shouldn't happen (E2E should have been handled)
+
+### Step 2: Determine Where to Run
+
+Check if the source PRD's branch still exists:
+
+```bash
+# Get branch name from PRD registry or prd.json
+BRANCH=$(jq -r '.prds[] | select(.id == "prd-recurring-events") | .branchName' docs/prd-registry.json)
+
+# Check if branch exists locally or remotely
+git show-ref --verify --quiet "refs/heads/$BRANCH" 2>/dev/null || \
+git show-ref --verify --quiet "refs/remotes/origin/$BRANCH" 2>/dev/null
+```
+
+**If branch exists:**
+- Checkout the PRD branch: `git checkout $BRANCH`
+- E2E tests run against the feature branch
+- If tests pass and branch not merged, offer to create PR
+
+**If branch is gone (merged/deleted):**
+- Stay on current branch (likely `main`)
+- E2E tests run against `main` (the code should already be there)
+- Tests are validation-only — no PR needed
+
+### Step 3: Confirm and Run
+
+Show a simple confirmation (no workflow preference prompt):
+
+```
+═══════════════════════════════════════════════════════════════════════
+                    RUN DEFERRED E2E TESTS
+═══════════════════════════════════════════════════════════════════════
+
+Source: prd-recurring-events (awaiting_e2e)
+Branch: feature/recurring-events (checked out)  ← or "Running on main"
+
+E2E tests to run:
+  • apps/web/e2e/recurrence-ui.spec.ts
+
+This will:
+  1. Start dev server if needed
+  2. Run the E2E test(s)
+  3. Update PRD status from awaiting_e2e → completed
+
+[R] Run tests    [C] Cancel
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Step 4: Execute Tests
+
+1. **Start dev server** if not already running
+2. **Run the E2E tests:**
+   ```bash
+   npx playwright test apps/web/e2e/recurrence-ui.spec.ts
+   ```
+3. **Handle results:**
+   - **Pass:** Continue to Step 5
+   - **Fail:** Use fix loop (up to 3 attempts with @developer), then report
+
+### Step 5: Update PRD Status to Completed
+
+On successful E2E tests:
+
+1. **Clear `pendingTests.e2e`** from `builder-state.json`
+2. **Update `prd-registry.json`:**
+   - Set `status: "completed"`
+   - Set `completedAt: <now>`
+   - Set `e2ePassedAt: <now>`
+   - Move entry to `completed` array
+3. **Archive the PRD** (if not already archived):
+   - Create `docs/completed/[prd-id]/` folder
+   - Move PRD files to archive
+   - Generate human testing script
+
+### Step 6: Report Results
+
+**On success:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+                    ✅ E2E TESTS PASSED — PRD COMPLETED
+═══════════════════════════════════════════════════════════════════════
+
+  ✅ apps/web/e2e/recurrence-ui.spec.ts (1 test, 4.2s)
+
+PRD: prd-recurring-events
+Status: awaiting_e2e → completed ✅
+
+📋 Human testing script ready:
+   docs/completed/prd-recurring-events/human-testing-script.md
+
+What would you like to do?
+  [P] PRD Mode    [A] Ad-hoc Mode    [S] Status
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+**On failure (after 3 fix attempts):**
+
+```
+═══════════════════════════════════════════════════════════════════════
+                    ❌ E2E TESTS FAILED
+═══════════════════════════════════════════════════════════════════════
+
+  ❌ apps/web/e2e/recurrence-ui.spec.ts
+     • Test "should display recurrence options" failed
+     • Element not found: [data-testid="recurrence-select"]
+
+Failed after 3 fix attempts.
+
+PRD remains in `awaiting_e2e` status.
+
+Options:
+  [M] Fix manually, then type "retry"
+  [S] Skip E2E tests (mark completed anyway)
+  [D] Debug with @developer
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+**If user chooses [S] Skip:**
+- Update PRD to `completed` with `e2eSkipped: true`
+- Log: "E2E tests skipped by user after failures"
+- Clear the pending E2E queue
