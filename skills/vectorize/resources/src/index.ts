@@ -4,7 +4,7 @@
 
 import { loadProjectConfig, saveProjectConfig, VectorizationConfig } from './config.js';
 import { scanCodebase, chunkFiles, Chunk } from './chunker.js';
-import { generateEmbeddings } from './embeddings.js';
+import { generateEmbeddingsAuto, detectProviders } from './embeddings.js';
 import { addContextualDescriptions } from './contextual.js';
 import { VectorStore } from './store.js';
 import { extractDatabaseSchema, extractConfigTableRows } from './database.js';
@@ -77,16 +77,17 @@ export async function initializeVectorization(
   projectRoot: string,
   options: InitOptions = {}
 ): Promise<InitResult> {
-  // Check for required API keys
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  // Check for available embedding providers
+  const providers = await detectProviders();
   
-  if (!openaiKey) {
+  if (!providers.preferred) {
     throw new Error(
-      'OPENAI_API_KEY not found in environment.\n' +
-      'Set it with: export OPENAI_API_KEY=sk-...'
+      'No embedding provider available.\n' +
+      'Set one of: VOYAGE_API_KEY, OPENAI_API_KEY, or start Ollama locally.'
     );
   }
+  
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
   
   if (options.contextualRetrieval && !anthropicKey) {
     console.warn(
@@ -100,7 +101,7 @@ export async function initializeVectorization(
   const vectorConfig: VectorizationConfig = config.vectorization || {
     enabled: true,
     storage: 'local',
-    embeddingModel: 'openai',
+    embeddingModel: providers.preferred,
     contextualRetrieval: options.contextualRetrieval && anthropicKey ? 'auto' : 'never',
     codebase: {
       include: ['src/**', 'lib/**', 'app/**', 'docs/**'],
@@ -119,6 +120,7 @@ export async function initializeVectorization(
     credentials: {
       openai: 'env:OPENAI_API_KEY',
       anthropic: 'env:ANTHROPIC_API_KEY',
+      voyage: 'env:VOYAGE_API_KEY',
     },
   };
   
@@ -170,8 +172,9 @@ export async function initializeVectorization(
     chunks = await addContextualDescriptions(chunks, anthropicKey);
   }
   
-  // Generate embeddings
-  const embeddings = await generateEmbeddings(chunks, openaiKey);
+  // Generate embeddings (uses auto-detected provider)
+  const { results: embeddings, provider, model } = await generateEmbeddingsAuto(chunks);
+  console.log(`  Using ${provider} with model ${model}`);
   
   // Store in LanceDB
   const store = new VectorStore(indexDir);
@@ -188,7 +191,7 @@ export async function initializeVectorization(
     const dbChunks = [...schemaChunks, ...configChunks];
     
     if (dbChunks.length > 0) {
-      const dbEmbeddings = await generateEmbeddings(dbChunks, openaiKey);
+      const { results: dbEmbeddings } = await generateEmbeddingsAuto(dbChunks);
       await store.addDatabaseEmbeddings(dbChunks, dbEmbeddings);
     }
   }
@@ -246,9 +249,13 @@ export async function refreshIndex(
   const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
   const config = metadata.config as VectorizationConfig;
   
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) {
-    throw new Error('OPENAI_API_KEY not found');
+  // Check for available embedding providers
+  const providers = await detectProviders();
+  if (!providers.preferred) {
+    throw new Error(
+      'No embedding provider available.\n' +
+      'Set one of: VOYAGE_API_KEY, OPENAI_API_KEY, or start Ollama locally.'
+    );
   }
   
   const store = new VectorStore(indexDir);
@@ -268,7 +275,8 @@ export async function refreshIndex(
       }
     }
     
-    const embeddings = await generateEmbeddings(chunks, openaiKey);
+    const { results: embeddings, provider, model } = await generateEmbeddingsAuto(chunks);
+    console.log(`  Using ${provider} with model ${model}`);
     await store.clear();
     await store.addCodebaseEmbeddings(chunks, embeddings);
     await buildBM25Index(indexDir, chunks);
@@ -297,7 +305,8 @@ export async function refreshIndex(
       }
     }
     
-    const embeddings = await generateEmbeddings(chunks, openaiKey);
+    const { results: embeddings, provider, model } = await generateEmbeddingsAuto(chunks);
+    console.log(`  Using ${provider} with model ${model}`);
     await store.addCodebaseEmbeddings(chunks, embeddings);
     
     // Rebuild BM25 (full, as incremental is complex)
@@ -336,16 +345,11 @@ export async function searchIndex(
   const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
   const config = metadata.config as VectorizationConfig;
   
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) {
-    throw new Error('OPENAI_API_KEY not found');
-  }
-  
   const topK = options.topK || config.search?.topK || 20;
   const hybridWeight = config.search?.hybridWeight ?? 0.7;
   
-  // Perform hybrid search
-  const results = await hybridSearch(indexDir, query, openaiKey, {
+  // Perform hybrid search (uses auto-detected embedding provider)
+  const results = await hybridSearch(indexDir, query, {
     topK,
     hybridWeight,
     contentType: options.contentType,

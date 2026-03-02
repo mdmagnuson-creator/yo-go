@@ -1042,20 +1042,81 @@
             "include": {
               "type": "array",
               "items": { "type": "string" },
-              "default": ["src/**", "lib/**", "app/**", "docs/**"],
+              "default": ["src/**", "lib/**", "app/**", "docs/**", "tests/**", "e2e/**", "__tests__/**"],
               "description": "Glob patterns for files to include in index"
             },
             "exclude": {
               "type": "array",
               "items": { "type": "string" },
-              "default": ["node_modules/**", "dist/**", "build/**", ".git/**", "*.test.ts", "*.spec.ts"],
-              "description": "Glob patterns for files to exclude from index"
+              "default": ["node_modules/**", "dist/**", "build/**", ".git/**", ".next/**"],
+              "description": "Glob patterns for files to exclude from index. Note: test files are included by default (see indexTests)."
             },
             "chunkStrategy": {
               "type": "string",
               "enum": ["ast", "sliding-window"],
               "default": "ast",
               "description": "How to split files: ast (semantic boundaries via Tree-sitter) or sliding-window (fixed token windows)"
+            },
+            "indexTests": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether to index test files. Recommended true for understanding expected behavior."
+            }
+          }
+        },
+        "relationships": {
+          "type": "object",
+          "description": "Code relationship indexing for call graphs and dependencies",
+          "properties": {
+            "callGraph": {
+              "type": "boolean",
+              "default": true,
+              "description": "Build call graph to answer 'what calls this function?' and 'what does this function call?'"
+            },
+            "dependencies": {
+              "type": "boolean",
+              "default": true,
+              "description": "Track import/require statements to answer 'what imports this module?'"
+            },
+            "testMapping": {
+              "type": "boolean",
+              "default": true,
+              "description": "Map tests to the code they cover. Enables 'which tests cover this function?' queries."
+            }
+          }
+        },
+        "gitHistory": {
+          "type": "object",
+          "description": "Git history indexing for understanding code intent and changes",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether to index git commit history and blame data"
+            },
+            "depth": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 10000,
+              "default": 500,
+              "description": "Number of recent commits to index"
+            }
+          }
+        },
+        "architectureSummary": {
+          "type": "object",
+          "description": "AI-generated architecture summaries for high-level understanding",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether to generate architecture summaries for major modules"
+            },
+            "refreshInterval": {
+              "type": "string",
+              "enum": ["daily", "weekly", "monthly", "manual"],
+              "default": "weekly",
+              "description": "How often to regenerate architecture summaries"
             }
           }
         },

@@ -15,13 +15,13 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",
     "@lancedb/lancedb": "^0.4.0",
     "apache-arrow": "^15.0.0",
-    "better-sqlite3": "^9.4.0",
     "commander": "^12.0.0",
     "glob": "^10.3.0",
     "mysql2": "^3.9.0",
@@ -35,6 +35,9 @@
     "tree-sitter-python": "^0.21.0",
     "tree-sitter-rust": "^0.21.0",
     "tree-sitter-typescript": "^0.21.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.0.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",

@@ -171,12 +171,16 @@ export async function searchBM25(
  * Tokenize text for indexing/searching
  */
 function tokenize(text: string): string[] {
-  // Split on non-alphanumeric characters
-  const tokens = text.toLowerCase()
+  // First, handle camelCase before any splitting
+  // Insert space before uppercase letters
+  const withSpaces = text.replace(/([a-z])([A-Z])/g, '$1 $2');
+  
+  // Split on non-alphanumeric characters and lowercase
+  const tokens = withSpaces.toLowerCase()
     .split(/[^a-z0-9_]+/)
     .filter(t => t.length > 1);
   
-  // Handle camelCase and snake_case
+  // Handle snake_case
   const expanded: string[] = [];
   
   for (const token of tokens) {
@@ -184,16 +188,6 @@ function tokenize(text: string): string[] {
     if (STOPWORDS.has(token)) continue;
     
     expanded.push(token);
-    
-    // Split camelCase
-    const camelParts = token.split(/(?=[A-Z])/).map(p => p.toLowerCase());
-    if (camelParts.length > 1) {
-      for (const part of camelParts) {
-        if (part.length > 1 && !STOPWORDS.has(part)) {
-          expanded.push(part);
-        }
-      }
-    }
     
     // Split snake_case
     const snakeParts = token.split('_');

@@ -15,6 +15,23 @@ export interface VectorizationConfig {
     include?: string[];
     exclude?: string[];
     chunkStrategy?: 'ast' | 'sliding-window';
+    indexTests?: boolean; // default true
+  };
+  
+  relationships?: {
+    callGraph?: boolean; // default true
+    dependencies?: boolean; // default true
+    testMapping?: boolean; // default true
+  };
+  
+  gitHistory?: {
+    enabled?: boolean; // default true
+    depth?: number; // default 500
+  };
+  
+  architectureSummary?: {
+    enabled?: boolean; // default true
+    refreshInterval?: 'daily' | 'weekly' | 'monthly' | 'manual'; // default weekly
   };
   
   database?: {
