@@ -22,7 +22,9 @@ Vectorization enables agents to query project knowledge semantically instead of 
 
 ### Requirements
 
-- **OPENAI_API_KEY**: Required for embeddings (text-embedding-3-small)
+- **Embedding API Key** (one of):
+  - `OPENAI_API_KEY` — For OpenAI embeddings (text-embedding-3-small)
+  - `VOYAGE_API_KEY` — For Voyage AI embeddings (voyage-code-3) ⭐ Recommended for code
 - **ANTHROPIC_API_KEY**: Required for Contextual Retrieval (Claude Haiku)
 - **DATABASE_URL**: Optional, for database schema indexing
 
@@ -57,7 +59,7 @@ Detected stack: Next.js + TypeScript + Supabase
 Found 1,247 source files
 
 Configuration:
-  Embedding model: OpenAI text-embedding-3-small
+  Embedding model: Voyage AI voyage-code-3
   Contextual retrieval: enabled
   Storage: local (.vectorindex/)
 
@@ -139,7 +141,7 @@ Storage:
   Total: 42MB
 
 Configuration:
-  Embedding model: openai (text-embedding-3-small)
+  Embedding model: voyage (voyage-code-3)
   Contextual retrieval: enabled
   Hybrid weight: 0.7 (semantic)
   Top-K: 20
@@ -225,6 +227,19 @@ vectorize config
 │   └── project.json           # Contains vectorization config
 ```
 
+### Embedding Models
+
+| Provider | Model | Best For | Env Var |
+|----------|-------|----------|---------|
+| **Voyage AI** | `voyage-code-3` | Code retrieval ⭐ | `VOYAGE_API_KEY` |
+| Voyage AI | `voyage-3.5` | General purpose | `VOYAGE_API_KEY` |
+| Voyage AI | `voyage-3.5-lite` | Low latency/cost | `VOYAGE_API_KEY` |
+| OpenAI | `text-embedding-3-small` | General purpose | `OPENAI_API_KEY` |
+| OpenAI | `text-embedding-3-large` | Higher quality | `OPENAI_API_KEY` |
+| Ollama | Local models | Free, offline | None (local) |
+
+**Recommendation:** Use `voyage-code-3` for code search. It's specifically optimized for code retrieval and is [recommended by Anthropic](https://docs.anthropic.com/en/docs/build-with-claude/embeddings).
+
 ### Configuration in project.json
 
 ```json
@@ -232,7 +247,7 @@ vectorize config
   "vectorization": {
     "enabled": true,
     "storage": "local",
-    "embeddingModel": "openai",
+    "embeddingModel": "voyage-code-3",
     "contextualRetrieval": "auto",
     
     "codebase": {
@@ -274,6 +289,7 @@ vectorize config
     },
     
     "credentials": {
+      "voyage": "env:VOYAGE_API_KEY",
       "openai": "env:OPENAI_API_KEY",
       "anthropic": "env:ANTHROPIC_API_KEY"
     }
@@ -514,6 +530,15 @@ When an agent session starts:
 
 ## Troubleshooting
 
+### "VOYAGE_API_KEY not found"
+
+Get an API key from [Voyage AI](https://www.voyageai.com/) and set it:
+```bash
+export VOYAGE_API_KEY=pa-...
+```
+
+Or add to your shell profile (~/.zshrc, ~/.bashrc).
+
 ### "OPENAI_API_KEY not found"
 
 Set the environment variable:
@@ -539,8 +564,9 @@ vectorize refresh
 
 ### "High embedding costs"
 
+- Use Voyage lite: Set `embeddingModel: "voyage-3.5-lite"` for lower cost
 - Disable contextual retrieval: Set `contextualRetrieval: "never"`
-- Use local Ollama: Set `embeddingModel: "ollama"`
+- Use local Ollama: Set `embeddingModel: "ollama"` (free)
 - Reduce include patterns to essential directories
 
 ---
