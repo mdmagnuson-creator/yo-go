@@ -3,7 +3,7 @@
  */
 
 import { loadProjectConfig, saveProjectConfig, VectorizationConfig } from './config.js';
-import { scanCodebase, chunkFiles, Chunk } from './chunker.js';
+import { scanCodebase, chunkFiles, Chunk, FileInfo } from './chunker.js';
 import { generateEmbeddingsAuto, detectProviders } from './embeddings.js';
 import { addContextualDescriptions } from './contextual.js';
 import { VectorStore } from './store.js';
@@ -11,6 +11,11 @@ import { extractDatabaseSchema, extractConfigTableRows } from './database.js';
 import { installGitHook, getChangedFilesSinceIndex } from './git.js';
 import { buildBM25Index, searchBM25 } from './bm25.js';
 import { hybridSearch, SearchResult } from './search.js';
+// Phase 2 modules
+import { extractRelationships } from './relationships.js';
+import { indexCommitHistory, isGitRepository } from './git-history.js';
+import { createTestMappings, isTestFile } from './test-mapping.js';
+import { detectModules, generateSummaries, saveSummaries, ModuleInfo } from './summaries.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -18,6 +23,11 @@ export interface InitOptions {
   dryRun?: boolean;
   skipDatabase?: boolean;
   contextualRetrieval?: boolean;
+  // Phase 2 options
+  skipRelationships?: boolean;
+  skipGitHistory?: boolean;
+  skipTestMapping?: boolean;
+  skipSummaries?: boolean;
 }
 
 export interface InitResult {
@@ -25,6 +35,11 @@ export interface InitResult {
   cost?: number;
   chunks: number;
   files: number;
+  // Phase 2 stats
+  relationships?: number;
+  commits?: number;
+  testMappings?: number;
+  modules?: number;
 }
 
 export interface RefreshOptions {
@@ -196,6 +211,59 @@ export async function initializeVectorization(
     }
   }
   
+  // Phase 2: Index relationships, git history, test mappings, and summaries
+  let relationshipCount = 0;
+  let commitCount = 0;
+  let testMappingCount = 0;
+  let moduleCount = 0;
+  
+  // Extract relationships (call graph, dependencies)
+  if (!options.skipRelationships) {
+    console.log('  Indexing code relationships...');
+    const relationships = await extractRelationships(files);
+    if (relationships.length > 0) {
+      await store.addRelationships(relationships);
+      relationshipCount = relationships.length;
+    }
+  }
+  
+  // Index git commit history
+  if (!options.skipGitHistory && await isGitRepository(projectRoot)) {
+    console.log('  Indexing git history...');
+    const { records: historyRecords, latestCommit } = await indexCommitHistory(
+      projectRoot,
+      { maxCommits: 500 }
+    );
+    if (historyRecords.length > 0) {
+      await store.addGitHistory(historyRecords);
+      commitCount = historyRecords.length;
+    }
+  }
+  
+  // Extract test mappings
+  if (!options.skipTestMapping) {
+    console.log('  Indexing test mappings...');
+    const testFiles = files.filter(f => isTestFile(f.path));
+    const testMappings = await createTestMappings(testFiles, projectRoot);
+    if (testMappings.length > 0) {
+      await store.addTestMappings(testMappings);
+      testMappingCount = testMappings.length;
+    }
+  }
+  
+  // Generate architecture summaries
+  if (!options.skipSummaries) {
+    console.log('  Detecting modules...');
+    const modules = detectModules(projectRoot, files);
+    moduleCount = modules.length;
+    
+    if (modules.length > 0) {
+      console.log(`  Found ${modules.length} modules, generating summaries...`);
+      const summaries = await generateSummaries(projectRoot, modules, files);
+      saveSummaries(indexDir, summaries);
+    }
+  }
+  
   // Save metadata
   const metadata = {
     version: '1.0.0',
@@ -207,6 +275,10 @@ export async function initializeVectorization(
       chunks: chunks.length,
       languages: [...new Set(chunks.map(c => c.language).filter(Boolean))],
     },
+    relationships: relationshipCount,
+    commits: commitCount,
+    testMappings: testMappingCount,
+    modules: moduleCount,
     config: vectorConfig,
   };
   fs.writeFileSync(
@@ -223,11 +295,22 @@ export async function initializeVectorization(
   
   const cost = estimateCost(chunks.length, options.contextualRetrieval || false);
   
+  // Build summary with Phase 2 stats
+  let summaryParts = [`Indexed ${files.length} files (${chunks.length} chunks)`];
+  if (relationshipCount > 0) summaryParts.push(`${relationshipCount} relationships`);
+  if (commitCount > 0) summaryParts.push(`${commitCount} commits`);
+  if (testMappingCount > 0) summaryParts.push(`${testMappingCount} test mappings`);
+  if (moduleCount > 0) summaryParts.push(`${moduleCount} modules`);
+  
   return {
-    summary: `Indexed ${files.length} files (${chunks.length} chunks)`,
+    summary: summaryParts.join(', '),
     cost,
     chunks: chunks.length,
     files: files.length,
+    relationships: relationshipCount,
+    commits: commitCount,
+    testMappings: testMappingCount,
+    modules: moduleCount,
   };
 }
 
