@@ -393,6 +393,36 @@ Update `builder-state.json`:
 
 Update right panel todos via `todowrite` to match.
 
+---
+
+## Per-Task Quality Checks (MANDATORY)
+
+> ⛔ **Quality checks run automatically after EVERY story. No prompts, no skipping.**
+>
+> **Trigger:** After @developer completes each story.
+>
+> **Failure behavior:** If any check fails after 3 fix attempts, STOP and report to user.
+
+After @developer completes each story, Builder automatically runs:
+
+| Step | Check | Command | Fix loop |
+|------|-------|---------|----------|
+| 1 | **Typecheck** | `npm run typecheck` (or project equivalent) | Yes, max 3 attempts |
+| 2 | **Lint** | `npm run lint` (or project equivalent) | Yes, max 3 attempts |
+| 3 | **Unit tests** | `CI=true npm test` (MUST include CI=true) | Yes, max 3 attempts |
+| 4 | **Critic** | Run @critic for code review | Report findings, @developer fixes |
+
+> ⚠️ **CI=true is MANDATORY for test commands.**
+>
+> Without CI=true, test runners (Vitest, Jest) may start in **watch mode** and become orphaned processes consuming CPU indefinitely.
+>
+> **Correct:** `CI=true npm test`
+> **Wrong:** `npm test` (may trigger watch mode)
+
+**After all checks pass**, show the story completion prompt (see Step 1.4 below).
+
+---
+
 ### Step 1.1: Setup Execution Branch
 
 Read git workflow from `project.json`:
@@ -450,7 +480,7 @@ Requirements:
 - Ensure typecheck passes
 ```
 
-4. **Run quality checks** (automatic, see test-flow skill)
+4. **Run quality checks** (automatic — see [Per-Task Quality Checks](#per-task-quality-checks-mandatory) above)
 5. **Mark story complete** — update todos, registry, Task Spec file
 6. **Update scope estimate** — check if scope is growing
 
