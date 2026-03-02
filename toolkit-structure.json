@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-03-02T11:00:00Z",
+  "generatedAt": "2026-03-02T13:00:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -932,28 +932,34 @@
         "date": "2026-03-02",
         "changes": [
           {
+            "type": "fix",
+            "scope": "skills",
+            "description": "restore CI=true enforcement to adhoc-workflow to prevent orphaned vitest processes",
+            "hash": "fba9e0f"
+          },
+          {
             "type": "feat",
             "scope": "schema",
             "description": "add task-registry schema for ad-hoc Task Spec lifecycle tracking",
-            "hash": "pending"
+            "hash": "92c40d4"
           },
           {
             "type": "feat",
             "scope": "templates",
             "description": "add task-spec and task-promotion templates for ad-hoc analysis phase",
-            "hash": "pending"
+            "hash": "92c40d4"
           },
           {
             "type": "feat",
             "scope": "skills",
             "description": "add full analysis phase and Task Spec lifecycle to adhoc-workflow skill",
-            "hash": "pending"
+            "hash": "92c40d4"
           },
           {
             "type": "feat",
             "scope": "planner",
             "description": "add Task Spec promotion pickup to Planner startup",
-            "hash": "pending"
+            "hash": "92c40d4"
           },
           {
             "type": "docs",
