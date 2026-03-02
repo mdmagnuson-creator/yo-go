@@ -515,6 +515,54 @@ After the user selects a project number, show a **fast inline dashboard** — no
        ⚠️ Vector index configured but missing. Rebuild? (v/skip)
        ```
 
+4.7 **Detect available CLIs (one-time per session):**
+   
+   Check which service CLIs are available and authenticated:
+   ```bash
+   # Run in parallel for speed
+   which vercel && vercel whoami 2>/dev/null
+   which supabase && supabase projects list 2>/dev/null | head -1
+   which aws && aws sts get-caller-identity 2>/dev/null | jq -r '.Account'
+   which gh && gh auth status 2>/dev/null | head -1
+   which netlify && netlify status 2>/dev/null | head -1
+   which fly && fly auth whoami 2>/dev/null
+   which railway && railway whoami 2>/dev/null
+   which wrangler && wrangler whoami 2>/dev/null
+   ```
+   
+   **Store results in session memory** as `availableCLIs`:
+   ```json
+   {
+     "vercel": { "installed": true, "authenticated": true, "user": "username" },
+     "supabase": { "installed": true, "authenticated": true },
+     "aws": { "installed": true, "authenticated": true, "account": "123456789" },
+     "gh": { "installed": true, "authenticated": true },
+     "netlify": { "installed": false },
+     "fly": { "installed": false },
+     "railway": { "installed": false },
+     "wrangler": { "installed": false }
+   }
+   ```
+   
+   **Show in dashboard** (only authenticated CLIs):
+   ```
+   CLIs: vercel ✓ | supabase ✓ | aws ✓ | gh ✓
+   ```
+   
+   **Use throughout session:** When you need to deploy, manage env vars, or interact with services, check `availableCLIs` first. If a CLI is available and authenticated, **use it directly** instead of telling the user to do it manually.
+   
+   Common CLI capabilities:
+   | CLI | Capabilities |
+   |-----|--------------|
+   | `vercel` | Deploy, env vars, domains, logs, rollback |
+   | `supabase` | DB migrations, edge functions, secrets, logs |
+   | `aws` | S3, Lambda, CloudFormation, SSM params, secrets |
+   | `gh` | PRs, issues, releases, actions, secrets |
+   | `netlify` | Deploy, env vars, functions, forms |
+   | `fly` | Deploy, secrets, logs, scaling |
+   | `railway` | Deploy, env vars, logs |
+   | `wrangler` | Workers, KV, R2, secrets |
+
 5. **Check for resumable session** — see `builder-state` skill for state structure.
    - If an in-progress PRD exists, **do not auto-resume it**.
    - Always show a resume chooser that lets the user explicitly pick one of:
