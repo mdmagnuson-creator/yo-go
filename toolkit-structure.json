@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-03-01T15:00:00Z",
+  "generatedAt": "2026-03-02T11:00:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -644,7 +644,7 @@
     }
   },
   "schemas": {
-    "total": 15,
+    "total": 16,
     "items": [
       {
         "name": "applied-updates.schema",
@@ -690,6 +690,11 @@
         "name": "skill-mapping.schema",
         "file": "schemas/skill-mapping.schema.json",
         "description": "Schema for framework-to-skill mapping definitions used for automatic skill suggestions"
+      },
+      {
+        "name": "task-registry.schema",
+        "file": "schemas/task-registry.schema.json",
+        "description": "Schema for project-level Task Spec registry tracking ad-hoc task lifecycle (parallel to prd-registry)"
       },
       {
         "name": "toolkit-structure.schema",
@@ -756,6 +761,21 @@
           "name": "CONVENTIONS",
           "file": "templates/CONVENTIONS.md",
           "description": "Template file"
+        }
+      ]
+    },
+    "taskSpec": {
+      "description": "Task Spec templates for ad-hoc analysis phase",
+      "items": [
+        {
+          "name": "task-spec",
+          "file": "templates/task-spec.md",
+          "description": "Template for generating Task Spec documents during ad-hoc analysis"
+        },
+        {
+          "name": "task-promotion",
+          "file": "templates/task-promotion.md",
+          "description": "Template for Task Spec to PRD promotion handoff documents"
         }
       ]
     },
@@ -908,6 +928,41 @@
   "changelog": {
     "generatedFrom": "git log --since=30 days",
     "entries": [
+      {
+        "date": "2026-03-02",
+        "changes": [
+          {
+            "type": "feat",
+            "scope": "schema",
+            "description": "add task-registry schema for ad-hoc Task Spec lifecycle tracking",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "templates",
+            "description": "add task-spec and task-promotion templates for ad-hoc analysis phase",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "add full analysis phase and Task Spec lifecycle to adhoc-workflow skill",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "planner",
+            "description": "add Task Spec promotion pickup to Planner startup",
+            "hash": "pending"
+          },
+          {
+            "type": "docs",
+            "scope": "prd",
+            "description": "promote ad-hoc analysis phase PRD to ready status",
+            "hash": "cb3fe16"
+          }
+        ]
+      },
       {
         "date": "2026-03-01",
         "changes": [

@@ -104,9 +104,10 @@
     {
       "id": "prd-adhoc-analysis-phase",
       "title": "Ad-hoc Analysis Phase with Task Specs",
-      "status": "ready",
-      "filePath": "docs/prds/prd-adhoc-analysis-phase.md",
+      "status": "complete",
+      "filePath": "docs/completed/prd-adhoc-analysis-phase.md",
       "createdAt": "2026-03-01",
+      "completedAt": "2026-03-02",
       "stories": 14,
       "notes": "Adds analysis phase to ad-hoc mode. Introduces Task Specs with PRD-like lifecycle. Enables promotion to formal PRD when scope grows."
     }

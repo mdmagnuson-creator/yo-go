@@ -210,6 +210,7 @@ Each session is independent — there is no persistent "active project" across s
     - ls ~/.config/opencode/project-updates/[project-id]/*.md 2>/dev/null
     - cat ~/.config/opencode/data/update-registry.json
     - cat ~/.config/opencode/data/update-affinity-rules.json
+    - ls <project>/docs/tasks/promotions/*.md 2>/dev/null  # Task Spec promotions from Builder
     ```
 
     **Important:** Treat missing `docs/planner-state.json` and `docs/applied-updates.json` as normal first-run behavior. Do not surface file-missing errors for these optional files.
@@ -238,11 +239,19 @@ Each session is independent — there is no persistent "active project" across s
      2. prd-notifications (needs scope)      prd-export-csv (2 stories)
      3. prd-analytics (new)
    
+   [If promotions exist from Builder:]
+   📋 PROMOTIONS FROM BUILDER (1)
+   ───────────────────────────────────────────────────────────────────────
+     1. promote-task-2026-03-01-user-preferences-to-prd.md
+        Original: "Add user preferences with theme selection"
+        Reason: Scope grew beyond original estimate
+   
    [If pending updates exist:]
    ⚠️ 2 pending project updates — type "U" to review
    
    ═══════════════════════════════════════════════════════════════════════
-   [D] Refine Draft    [N] New PRD    [R] Move to Ready    [U] Updates    [S] Full Status
+   [D] Refine Draft    [N] New PRD    [R] Move to Ready    [P] Process Promotion
+   [U] Updates    [S] Full Status
    
    > _
    ═══════════════════════════════════════════════════════════════════════
@@ -251,6 +260,7 @@ Each session is independent — there is no persistent "active project" across s
    **Dashboard content (keep it minimal):**
    - Draft PRDs: List up to 5 that need refinement
    - Ready PRDs: List up to 3 for reference
+   - Promotions from Builder: List all (typically 0-2)
    - Pending updates: Just a count with prompt to review
    - Skip: toolkit gaps, skill gaps, session conflicts (defer to [S])
 
@@ -258,6 +268,7 @@ Each session is independent — there is no persistent "active project" across s
    - If user types "D" or a draft PRD name → Start refinement flow
    - If user types "N" or "new" → Start PRD creation flow
    - If user types "R" or "ready" → Show PRD list to move to ready
+   - If user types "P" or "promotion" → Process Task Spec promotion (see "Task Spec Promotion Pickup" below)
    - If user types "U" → Process pending updates from toolkit (any scope)
      - If user types "S" or "status" → **Run @session-status** for full analysis
      - If user describes a feature → Start new PRD creation
@@ -270,6 +281,147 @@ If you need to start or check a dev server during planning flows, keep terminal 
 - Do not stream server logs during startup checks
 - Return one final status only: `running`, `startup failed`, or `timed out`
 - Include a brief error reason only when status is `startup failed`
+
+## Task Spec Promotion Pickup (`P`)
+
+Builder creates promotion documents when ad-hoc tasks grow beyond their original scope or when users explicitly request promotion to formal PRD.
+
+**Location:** `<project>/docs/tasks/promotions/*.md`
+
+### When User Selects a Promotion
+
+1. **Read the promotion document** in full
+2. **Display promotion summary:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+                    TASK SPEC PROMOTION
+═══════════════════════════════════════════════════════════════════════
+
+📋 Original Request: "Add user preferences with theme selection"
+
+📊 ANALYSIS FROM BUILDER
+───────────────────────────────────────────────────────────────────────
+Scope grew from Small → Large during implementation
+
+Completed work:
+  ✅ TSK-001: Create preferences database table
+  ✅ TSK-002: Add theme selection UI
+
+Remaining scope identified:
+  - Cross-device sync
+  - Migration for existing users
+  - Theme application to 40+ components
+  - Accessibility audit
+  - Mobile app integration
+
+Builder's recommendation: Create formal PRD for remaining scope
+
+[C] Create PRD from this promotion
+[R] Reject and delete promotion
+[V] View full promotion document
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Creating PRD from Promotion
+
+When user chooses [C]:
+
+1. **Auto-generate PRD draft** in `docs/drafts/`:
+   - Use promotion document as source
+   - Title: From promotion's title or original request
+   - Introduction: Include original request context
+   - Mark completed work: TSK stories become "already completed" stories
+   - Remaining scope: Become new US-### stories
+
+2. **Example generated PRD structure:**
+
+```markdown
+# PRD: User Preferences Feature
+
+## Introduction
+
+This feature enables user preferences with theme selection and cross-device sync.
+
+> 📋 **Promoted from Task Spec:** task-2026-03-01-user-preferences
+> **Completed during ad-hoc phase:** TSK-001 (database), TSK-002 (UI)
+
+## User Stories
+
+### US-001: Cross-Device Preference Sync
+
+**Description:** As a user, I want my preferences synced across devices.
+
+**Acceptance Criteria:**
+- [ ] Preferences load from server on login
+- [ ] Changes sync within 5 seconds
+- [ ] Offline changes sync when reconnected
+
+### US-002: Migrate Existing Users
+
+**Description:** As a returning user, I want my existing settings preserved.
+
+**Acceptance Criteria:**
+- [ ] Migration runs on first load after update
+- [ ] Legacy settings mapped to new schema
+- [ ] No data loss during migration
+
+[... more stories from promotion document ...]
+
+## Prior Work (Completed)
+
+The following was completed during the ad-hoc Task Spec phase:
+
+### TSK-001: Create preferences database table ✅
+- Migration created and applied
+- Schema includes theme, notifications, accessibility
+
+### TSK-002: Add theme selection UI ✅
+- ThemeSelector component created
+- Integrated with settings page
+
+## Technical Considerations
+
+[From promotion document]
+```
+
+3. **Register in prd-registry.json** with status `draft`
+
+4. **Delete the promotion document** after PRD is created:
+   ```bash
+   rm <project>/docs/tasks/promotions/promote-task-*.md
+   ```
+
+5. **Update task-registry.json** (if exists):
+   - Set `promotedTo: "prd-user-preferences"` on the original task
+
+6. **Notify user:**
+   ```
+   ✅ PRD draft created: docs/drafts/prd-user-preferences.md
+   
+   This PRD includes:
+   - 2 completed stories from ad-hoc phase (TSK-001, TSK-002)
+   - 6 new stories for remaining scope
+   
+   Would you like to refine this PRD now? [Y/n]
+   ```
+
+### Rejecting a Promotion
+
+When user chooses [R]:
+
+1. **Confirm rejection:**
+   ```
+   Are you sure? This will delete the promotion document.
+   The original Task Spec will remain in docs/tasks/ (not affected).
+   
+   [Y] Yes, delete promotion
+   [N] Cancel
+   ```
+
+2. **If confirmed:** Delete the promotion file
 
 ## Pending Project Updates (`U`)
 

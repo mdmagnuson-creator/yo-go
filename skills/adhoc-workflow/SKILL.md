@@ -7,6 +7,25 @@ description: "Ad-hoc mode workflow for Builder. Use when handling direct request
 
 > Load this skill when: handling direct requests without a PRD, ad-hoc mode, quick fixes, one-off tasks.
 
+## Overview
+
+Ad-hoc mode now includes a **mandatory Analysis Phase** that generates **Task Specs** — planning documents that mirror the PRD lifecycle while maintaining strict separation from Planner's domain.
+
+```
+┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
+│  PHASE 0: ANALYSIS  │ ──► │  PHASE 1: EXECUTE   │ ──► │   PHASE 2: SHIP     │
+│                     │     │                     │     │                     │
+│ Analyze request,    │     │ Implement stories,  │     │ Commit, merge,      │
+│ generate Task Spec, │     │ auto quality        │     │ push to main        │
+│ confirm with user   │     │ checks per task     │     │                     │
+└─────────────────────┘     └─────────────────────┘     └─────────────────────┘
+        │                                                       ▲
+        │                    [N] Next story ────────────────────┘
+        │                    [C] Commit ─────────────────────────┘
+        │
+        └── [P] Promote to PRD (handoff to Planner)
+```
+
 ## Context Loading (CRITICAL — Do This First)
 
 > ⚠️ **Ad-hoc tasks fail when project context is missing or stale.**
@@ -26,120 +45,365 @@ description: "Ad-hoc mode workflow for Builder. Use when handling direct request
    - `commands` — test, lint, build commands
    - `styling` — CSS framework, dark mode
    - `testing` — test framework, patterns
+   - `agents.prdRecommendationThreshold` — when to recommend PRD (default: `medium`)
+   - `agents.analysisTimeoutMs` — analysis time limit (default: 10000)
+   - `agents.taskSpecEnabled` — whether Task Specs are enabled (default: true)
 
 2. Read `docs/CONVENTIONS.md` and prepare a 2-5 sentence summary of key patterns
 
 3. Store this context for the session — you'll pass it to @developer, @tester, @critic
 
-**Why this matters:** Without context, @developer makes assumptions that violate project conventions. This causes fix loops, wasted tokens, and frustrated users.
+---
 
-## Git Auto-Commit Enforcement
+## Task Specs vs PRDs
 
-> ⛔ **CRITICAL: Check `git.autoCommit` setting before ANY commit operation**
->
-> **Trigger:** Before running `git commit` at any step in this workflow.
->
-> **Check:** `project.json` → `git.autoCommit`
-> - If `true` (default): Proceed with commits normally
-> - If `false`: **NEVER run `git commit`** — failure to comply violates project constraint
->
-> **When autoCommit is disabled, replace commit steps with:**
-> 1. Stage changes: `git add -A` (or specific files)
-> 2. Report what would be committed:
->    ```
->    📋 READY TO COMMIT (manual commit required)
->    
->    Staged files:
->      [list of files]
->    
->    Suggested commit message:
->      feat: [summary of changes]
->    
->    Run: git commit -m "feat: [summary of changes]"
->    ```
-> 3. **Do NOT run `git commit`** — wait for user to commit manually
-> 4. Continue workflow only after user confirms commit was made
->
-> **This applies to ALL commit steps** including "Stop after each" and "All at once" modes.
+Task Specs follow the **same lifecycle as PRDs** but in a parallel folder structure:
 
-## Overview
+| Aspect | Task Spec (Builder) | PRD (Planner) |
+|--------|---------------------|---------------|
+| **Created by** | Builder | Planner |
+| **Drafts location** | `docs/tasks/drafts/` | `docs/drafts/` |
+| **Ready location** | `docs/tasks/` | `docs/prds/` |
+| **Completed location** | `docs/tasks/completed/` | `docs/completed/` |
+| **Abandoned location** | `docs/tasks/abandoned/` | `docs/abandoned/` |
+| **Registry** | `docs/task-registry.json` | `docs/prd-registry.json` |
+| **Story prefix** | `TSK-001`, `TSK-002`, etc. | `US-001`, `US-002`, etc. |
+| **User involvement** | Confirm understanding | Multi-round refinement |
 
-Ad-hoc mode handles direct requests without a PRD. Quality checks run automatically after each task:
+**Strict separation:**
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   TASK PHASE    │ ──► │  E2E (OPTIONAL) │ ──► │   SHIP PHASE    │
-│                 │     │                 │     │                 │
-│ Implement task, │     │ Write/run E2E   │     │ Commit, merge   │
-│ auto quality    │     │ tests if user   │     │ to main, push   │
-│ checks per task │     │ chooses [E]     │     │                 │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-        │                                               ▲
-        │ [N] Next task ─────────────────────────────── │
-        │ [C] Commit ────────────────────────────────────┘
-```
+| Agent | Owns | Never touches |
+|-------|------|---------------|
+| Builder | `docs/tasks/`, `docs/task-registry.json` | `docs/prds/`, `docs/drafts/`, `docs/prd-registry.json` |
+| Planner | `docs/prds/`, `docs/drafts/`, `docs/prd-registry.json` | `docs/tasks/`, `docs/task-registry.json` |
 
-**⚠️ PRD PROTECTION:** If a PRD is currently checked out (`docs/prd.json` exists), do NOT modify it. Ad-hoc work is tracked separately.
+**Trigger:** Before any write to `docs/` subdirectories.
 
-## Git Execution Mode (Ad-hoc)
+**Failure behavior:** If Builder is about to write to a Planner-owned path, STOP and redirect to `@planner`. If Planner is about to write to a Builder-owned path, STOP and redirect to `@builder`.
 
-Resolve from `docs/project.json`:
-
-1. `agents.gitWorkflow`
-2. If `trunk`, resolve `agents.trunkMode` (default: `branchless`)
-3. Resolve default branch from `git.defaultBranch` (fallback: `main`)
-
-Rules:
-- `trunk + branchless`: work directly on default branch, no ad-hoc branch creation, no PR flow by default
-- Other workflows (or `trunk + pr-based`): use existing ad-hoc branch flow
+**Exception:** Builder MAY inject `TSK-###` stories into an active PRD at user request (this modifies a PRD file, which is allowed only for story injection).
 
 ---
 
-## Per-Task Quality Checks (MANDATORY)
+## Phase 0: Analysis & Task Spec Generation
 
-> ⛔ **Quality checks run automatically after EVERY task. No prompts, no skipping.**
+> ⛔ **MANDATORY: Every ad-hoc request goes through analysis.**
 >
-> This behavior is defined in the `test-flow` skill and applies to both ad-hoc and PRD modes.
+> **Trigger:** User provides an ad-hoc task request.
+>
+> **Evidence:** Analysis output block with alternatives/consequences MUST appear in response.
+>
+> **Failure behavior:** If proceeding to implementation without showing analysis output, STOP and run analysis first.
 
-After @developer completes each task, Builder automatically runs:
+When user gives a task in ad-hoc mode:
 
-1. **Typecheck** — `npm run typecheck` (or project equivalent)
-2. **Lint** — `npm run lint` (or project equivalent)
-3. **Unit tests** — Auto-generate with @tester, then `CI=true npm test`
-4. **Critic** — Run @critic for code review
+### Step 0.1: Time-Boxed Analysis (10 seconds)
 
-If any check fails, Builder runs a fix loop (max 3 attempts). If still failing, STOP and report to user.
+Run analysis with visible progress indicator:
 
-**After all checks pass**, show the task completion prompt (see Step 4 below).
+```
+═══════════════════════════════════════════════════════════════════════
+                         ANALYZING REQUEST
+═══════════════════════════════════════════════════════════════════════
+
+"Add loading spinner to submit button"
+
+⏳ Scanning imports...
+⏳ Identifying affected files...
+⏳ Checking for downstream impacts...
+⏳ Estimating scope...
+
+═══════════════════════════════════════════════════════════════════════
+```
+
+**Analysis methods (run in parallel, 10-second timeout):**
+
+1. **AST/Import Analysis** — Find files importing affected components
+2. **Semantic Understanding** — Identify related functionality
+3. **Checklist Review** — Check for:
+   - Database schema changes needed
+   - API contract changes
+   - Breaking changes to exports
+   - Migration requirements
+   - Test impact
+
+If analysis times out, show what was found with note: "⚠️ Analysis may be incomplete (timed out)"
+
+### Step 0.2: Show Analysis Dashboard
+
+Display results with progressive disclosure:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                         ANALYSIS COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+📋 REQUEST: "Add loading spinner to submit button"
+
+📊 UNDERSTANDING                                    Confidence: HIGH
+───────────────────────────────────────────────────────────────────────
+Add visual loading feedback to SubmitButton component:
+- Show spinner icon during form submission
+- Disable button while loading to prevent double-submit
+- Use existing Spinner component from design system
+
+🎯 SCOPE: Small (2 files, no breaking changes)
+
+📁 AFFECTED FILES
+───────────────────────────────────────────────────────────────────────
+• src/components/SubmitButton.tsx (modify)
+• src/components/SubmitButton.test.tsx (add/modify tests)
+
+⚠️ CONSEQUENCES: None identified
+
+🔀 ALTERNATIVES                                              [D] Details
+───────────────────────────────────────────────────────────────────────
+1. Use Spinner component ← RECOMMENDED (consistent, accessible)
+2. CSS-only animation (simpler but inconsistent)
+3. Full-page overlay (overkill for single button)
+
+📝 STORY PREVIEW
+───────────────────────────────────────────────────────────────────────
+TSK-001: Add loading state to SubmitButton
+TSK-002: Show Spinner when loading  
+TSK-003: Disable button during submission
+TSK-004: Add unit tests
+
+═══════════════════════════════════════════════════════════════════════
+
+[G] Go ahead — create Task Spec and start
+[E] Edit/Clarify — refine understanding  
+[P] Promote to PRD — hand off to Planner
+[C] Cancel — abort this request
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+**Dashboard rules:**
+- **Confidence:** HIGH (clear request) / MEDIUM (some ambiguity) / LOW (needs clarification)
+- **Scope:** Small (<5 files, no breaking changes) / Medium (5-15 files, minor impacts) / Large (15+ files, breaking changes)
+- **Consequences:** Collapsed if none; expanded if any exist
+- **Alternatives:** Collapsed to recommendation if only one sensible approach
+
+### Step 0.3: Clarifying Questions (If Needed)
+
+For MEDIUM or LOW confidence, show questions in series format:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                       CLARIFYING QUESTIONS
+═══════════════════════════════════════════════════════════════════════
+
+I need to clarify a few things:
+
+1. Where should the spinner appear?
+   A. Inside the button (replaces text)
+   B. Next to the button
+   C. Overlay on the entire form
+
+2. Should the spinner use the existing design system component?
+   A. Yes, use <Spinner /> from @/components/ui
+   B. No, create a new custom spinner
+
+3. What triggers the loading state?
+   A. Form submission only
+   B. Any button click that triggers async action
+
+Reply with codes (e.g., "1A, 2A, 3A") or describe your preference.
+Type "just do it" to proceed with my best interpretation.
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+**Question rules:**
+- Single round of questions — ask all at once
+- User can reply with letter codes for speed
+- "just do it" skips questions and proceeds with stated interpretation
+
+### Step 0.4: PRD Recommendation (For Medium/Large Scope)
+
+For medium or large scope requests, recommend PRD with auto-created promotion doc:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                       PRD RECOMMENDED
+═══════════════════════════════════════════════════════════════════════
+
+⚠️ This request is MEDIUM scope with potential impacts:
+
+• Affects 12 files across 3 modules
+• Requires database schema changes
+• Has downstream impacts on API consumers
+
+💡 I recommend creating a formal PRD for proper planning.
+   (Promotion document ready: docs/tasks/promotions/promote-to-prd.md)
+
+[P] Promote to Planner — use prepared promotion doc
+[O] Override and continue — proceed with Task Spec anyway
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+**Before showing this prompt:**
+1. Auto-create promotion document at `docs/tasks/promotions/promote-task-YYYY-MM-DD-name-to-prd.md`
+2. Include full analysis, understanding, alternatives, consequences
+
+If user chooses [O] (override), proceed but warn again at ~50% completion if scope grew.
+
+### Step 0.5: Generate Task Spec
+
+On [G] Go ahead:
+
+1. **Create Task Spec file** at `docs/tasks/drafts/task-YYYY-MM-DD-brief-name.md`:
+
+```markdown
+---
+id: task-2026-03-01-add-spinner
+title: Add Loading Spinner to Submit Button
+status: draft
+scope: small
+confidence: high
+createdAt: 2026-03-01T10:30:00Z
+---
+
+# Task: Add Loading Spinner to Submit Button
+
+## Summary
+
+Add visual loading feedback to SubmitButton component with spinner icon
+during form submission, disabled state to prevent double-submit.
+
+**Original Request:** "Add loading spinner to submit button"
+
+## Analysis
+
+**Scope:** Small (2 files, no breaking changes)
+**Confidence:** High
+
+**Approach:** Use existing Spinner component, disable button during submission.
+
+**Alternatives Considered:**
+- CSS-only animation — simpler but inconsistent with design system
+- Full-page overlay — overkill for single button
+
+**Recommendation:** Use Spinner component (consistent, accessible, already styled)
+
+**Consequences:** None identified
+
+## Stories
+
+### TSK-001: Add loading state to SubmitButton component
+
+**Description:** Add isLoading prop to track submission state.
+
+**Acceptance Criteria:**
+
+- [ ] Add `isLoading` prop to SubmitButton
+- [ ] Pass loading state from parent form
+- [ ] Typecheck passes
+
+### TSK-002: Show Spinner when loading
+
+**Description:** Display spinner icon during submission.
+
+**Acceptance Criteria:**
+
+- [ ] Import Spinner component
+- [ ] Render Spinner when `isLoading` is true
+- [ ] Hide button text while loading
+- [ ] Verify in browser
+
+### TSK-003: Disable button during submission
+
+**Description:** Prevent double-submit during loading.
+
+**Acceptance Criteria:**
+
+- [ ] Add `disabled={isLoading}` to button
+- [ ] Style disabled state appropriately
+- [ ] Works in both light and dark mode
+
+### TSK-004: Add unit tests
+
+**Description:** Test loading behavior.
+
+**Acceptance Criteria:**
+
+- [ ] Test loading state renders spinner
+- [ ] Test button is disabled during loading
+- [ ] Unit tests pass
+```
+
+2. **Register in task-registry.json:**
+
+```json
+{
+  "$schema": "https://opencode.ai/schemas/task-registry.json",
+  "tasks": [
+    {
+      "id": "task-2026-03-01-add-spinner",
+      "title": "Add Loading Spinner to Submit Button",
+      "status": "draft",
+      "scope": "small",
+      "confidence": "high",
+      "filePath": "docs/tasks/drafts/task-2026-03-01-add-spinner.md",
+      "storyCount": 4,
+      "createdAt": "2026-03-01T10:30:00Z"
+    }
+  ]
+}
+```
+
+3. **Move to ready and start:**
+   - Move file from `docs/tasks/drafts/` to `docs/tasks/`
+   - Update status to `ready` in registry
+   - Update `builder-state.json` with `activeTask`
+   - Proceed to Phase 1
 
 ---
 
 ## Phase 1: Task Execution
 
-When user enters ad-hoc mode or gives a task:
+### Step 1.0: Setup State
 
-### Resume Behavior
+Update `builder-state.json`:
 
-If `docs/builder-state.json` contains `uiTodos.flow = "adhoc"` with unfinished items:
-- Restore those items to the right panel via `todowrite`
-- Continue from the first `in_progress` item (or first `pending` if none in progress)
-- Do not silently discard existing tasks
-
-### Step 1: Setup Execution Branch
-
-If `trunk + branchless`, stay on default branch:
-
-```bash
-git checkout <default-branch>
+```json
+{
+  "activePrd": null,
+  "activeTask": {
+    "id": "task-2026-03-01-add-spinner",
+    "currentStory": "TSK-001",
+    "completedStories": []
+  },
+  "uiTodos": {
+    "items": [
+      {"content": "TSK-001: Add loading state", "status": "in_progress", "priority": "high"},
+      {"content": "TSK-002: Show Spinner", "status": "pending", "priority": "high"},
+      {"content": "TSK-003: Disable button", "status": "pending", "priority": "high"},
+      {"content": "TSK-004: Add unit tests", "status": "pending", "priority": "high"}
+    ],
+    "flow": "task"
+  }
+}
 ```
 
-Otherwise, on first task in a session, create or checkout the ad-hoc branch:
+Update right panel todos via `todowrite` to match.
+
+### Step 1.1: Setup Execution Branch
+
+Read git workflow from `project.json`:
+
+- If `trunk + branchless`: Stay on default branch
+- Otherwise: Create/checkout ad-hoc branch
 
 ```bash
 # Branch naming: adhoc/YYYY-MM-DD
 BRANCH="adhoc/$(date +%Y-%m-%d)"
 
-# Check if branch exists
 if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
     git checkout "$BRANCH"
 else
@@ -147,591 +411,493 @@ else
 fi
 ```
 
-If a branch `adhoc/YYYY-MM-DD` already exists from an earlier session today, continue on it.
+### Step 1.2: Execute Story
 
-### Step 2: Understand the Request
+For each story (TSK-001, TSK-002, etc.):
 
-Parse the user's request to understand:
-- What they want built/changed
-- Which files are likely affected
-- Whether this is a UI change (needs visual verification later)
+1. **Mark story in_progress** in todos and registry
+2. **Generate verification contract** (see builder.md)
+3. **Delegate to @developer** with context block:
 
----
+```yaml
+<context>
+version: 1
+project:
+  path: {absolute path}
+  stack: {stack from project.json}
+  commands:
+    test: {commands.test}
+    lint: {commands.lint}
+conventions:
+  summary: |
+    {2-5 sentence summary}
+currentWork:
+  mode: task-spec
+  taskId: task-2026-03-01-add-spinner
+  story: TSK-001
+  title: Add loading state to SubmitButton component
+  acceptanceCriteria:
+    - Add isLoading prop to SubmitButton
+    - Pass loading state from parent form
+    - Typecheck passes
+</context>
 
-### Step 3: Create Todo and Implement
+Implement TSK-001: Add loading state to SubmitButton component
 
-1. **Create a todo** for the task (status: `in_progress`)
-   - Write it to right panel with `todowrite`
-   - Persist it in `docs/builder-state.json` under `uiTodos.items[]` with:
-     - `content`: short task label
-     - `status`: `in_progress`
-     - `priority`: `high|medium|low` (default `medium`)
-     - `flow`: `adhoc`
-     - `refId`: `adhoc-###`
+Requirements:
+- Add `isLoading` prop to SubmitButton
+- Pass loading state from parent form
+- Ensure typecheck passes
+```
 
-1.5. **Generate verification contract BEFORE delegation:**
+4. **Run quality checks** (automatic, see test-flow skill)
+5. **Mark story complete** — update todos, registry, Task Spec file
+6. **Update scope estimate** — check if scope is growing
 
-   Before delegating to @developer, generate a verification contract (see `builder.md` → "Verification Contracts"):
-   
-   ```
-   Contract generation for ad-hoc task:
-   1. Parse task description for advisory/skip patterns
-   2. Identify expected file changes from task context
-   3. Generate criteria based on file patterns
-   4. Store contract in builder-state.json → verificationContract
-   ```
-   
-   **Include contract in specialist prompt:**
-   
-   After the context block, include the verification contract in human-readable format:
-   
-   ```markdown
-   ## Verification Contract
-   
-   Your work will be verified by:
-   1. **Typecheck** — No type errors
-   2. **Lint** — No lint errors
-   3. **Unit tests** — Tests for [component/module name] must pass
-   4. **E2E test** — [If applicable] Page behavior test (runs immediately/deferred)
-   
-   Write your implementation knowing these criteria will be checked.
-   ```
-   
-   This gives the specialist clear targets and helps them write testable code.
+### Step 1.3: Scope Growth Warning
 
-2. **Run @developer with context block** (REQUIRED)
-
-   > ⚠️ **CRITICAL: Always pass a context block when delegating to @developer**
-   >
-   > Ad-hoc tasks fail when @developer lacks project context. Build and pass the context block.
-
-   Build the context block from project files you've already read:
-
-   ```yaml
-   <context>
-   version: 1
-   project:
-     path: {absolute path to project}
-     stack: {stack from project.json}
-     commands:
-       dev: {commands.dev}
-       test: {commands.test}
-       build: {commands.build}
-       lint: {commands.lint}
-   conventions:
-     summary: |
-       {2-5 sentence summary of key conventions relevant to the task}
-     fullPath: {path}/docs/CONVENTIONS.md
-   currentWork:
-     mode: adhoc
-     task: {short description of the task}
-     branch: {current branch name}
-   </context>
-   ```
-
-   **Example delegation:**
-
-   ```markdown
-   <context>
-   version: 1
-   project:
-     path: /Users/dev/code/my-app
-     stack: nextjs-prisma
-     commands:
-       test: npm test
-       lint: npm run lint
-   conventions:
-     summary: |
-       TypeScript strict. Tailwind + shadcn/ui. App Router.
-       Server components by default. Prisma ORM. Zod validation.
-     fullPath: /Users/dev/code/my-app/docs/CONVENTIONS.md
-   currentWork:
-     mode: adhoc
-     task: Add loading spinner to submit button
-     branch: adhoc/2026-02-25
-   </context>
-
-   Implement: Add a loading spinner to the submit button.
-
-   Requirements:
-   - Show spinner while form is submitting
-   - Disable button during submission
-   - Use existing Spinner component if available
-   ```
-
-3. **Mark todo complete** immediately when @developer finishes
-   - Update right panel via `todowrite`
-   - Update `uiTodos.items[]` and `uiTodos.lastSyncedAt`
-
-4. **Track changed files** — store list of files modified for quality checks
-
-### Todo Sync Rules (Ad-hoc)
-
-- Keep exactly one `in_progress` todo at any time
-- If multiple pending tasks are queued, set only the active one to `in_progress`
-- On user "status", read from `uiTodos.items` (not memory-only)
-- Before ending ad-hoc mode, ensure panel and `uiTodos.items` are synchronized
-
-### Step 4: Run Quality Checks (Automatic)
-
-> ⛔ **These checks run automatically after EVERY task. No user prompt needed.**
-
-After @developer finishes and the todo is marked complete, immediately run:
-
-1. **Typecheck** — `npm run typecheck` (or project equivalent)
-2. **Lint** — `npm run lint` (or project equivalent)
-3. **Unit tests** — Run @tester to generate tests, then `CI=true npm test`
-4. **Critic** — Run @critic for code review
-
-**Fix loop:** If any check fails, run @developer to fix (max 3 attempts). If still failing, STOP and report to user.
-
-### Step 5: Show Completion Prompt
-
-After all quality checks pass, show:
+If at ~50% story completion, scope has grown significantly (files or stories increased by >50%):
 
 ```
 ═══════════════════════════════════════════════════════════════════════
-                          TASK COMPLETE
+                       ⚠️ SCOPE GROWTH DETECTED
 ═══════════════════════════════════════════════════════════════════════
 
-✅ Add loading spinner to submit button
+This task has grown beyond the original estimate:
+
+Original: Small (2 files, 4 stories)
+Current:  Medium (8 files, 7 stories)
+
+Consider promoting to formal PRD for better tracking.
+(Promotion document ready)
+
+[P] Promote to PRD now
+[K] Keep going with Task Spec
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+This is a one-time warning per task.
+
+### Step 1.4: Story Completion Prompt
+
+After each story completes:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                         STORY COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+✅ TSK-001: Add loading state to SubmitButton component
 
 Quality checks:
   ✅ Typecheck: passed
   ✅ Lint: passed
-  ✅ Unit tests: 3 generated, all passing
-  ✅ Critic: no issues
-
-Changed files: 2 (SubmitButton.tsx, SubmitButton.css)
-
-Options:
-  [E] Write E2E tests (Playwright automated UI testing)
-  [C] Commit this change
-  [N] Next task (add more work)
-
-> _
-═══════════════════════════════════════════════════════════════════════
-```
-
-**Handle response:**
-
-| Choice | Action |
-|--------|--------|
-| **E** | Run @playwright-dev to generate E2E tests, then prompt to run them (see E2E Sub-flow below) |
-| **C** | Commit the changes (respecting `git.autoCommit` setting), then prompt for next task |
-| **N** | Return to task prompt for more work |
-
-### E2E Sub-flow (When User Chooses "E")
-
-1. Run @playwright-dev to generate E2E tests for changed files
-2. Show prompt:
-   ```
-   📝 E2E tests generated:
-      • e2e/loading-spinner.spec.ts
-   
-   [R] Run E2E tests now
-   [S] Save for later (queue tests, continue working)
-   ```
-3. If "R": Start dev server if needed, run tests, handle failures with fix loop
-4. If "S": Queue tests in `builder-state.json`, return to completion prompt
-
-### E2E During Active PRD
-
-If an active PRD exists (`docs/builder-state.json` has `activePrd`), add a deferral option:
-
-```
-📝 E2E tests generated:
-   • e2e/quick-fix.spec.ts
-
-⚠️  Active PRD: prd-error-logging (US-003)
-
-[R] Run E2E tests now (then return to PRD)
-[D] Defer to PRD completion (run with PRD's E2E tests)
-[S] Save for later
-```
-
-> ⚠️ **Required: Always show completion prompts**
->
-> After quality checks pass, you MUST show the completion prompt.
-> Do NOT skip this prompt. Do NOT just say "Done, what's next?" or wait silently.
-
----
-
-## Phase 2: E2E Test Batch (Optional)
-
-> ℹ️ **Quality checks now run automatically after every task (see Per-Task Quality Checks above).**
->
-> Phase 2 is for running **batched E2E tests** when you want to test multiple changes together,
-> or when you have queued E2E tests from multiple tasks.
-
-When user chooses `[E]` from the task completion prompt, or has multiple queued E2E tests:
-
-### Step 1: Check for Active PRD
-
-```bash
-# Check if PRD is active
-cat docs/builder-state.json 2>/dev/null | grep -q '"activePrd"'
-```
-
-- If `activePrd` exists and is not null → Use **Deferral Flow** (option to defer to PRD completion)
-- If no active PRD → Continue with this flow
-
-### Step 2: Run Queued E2E Tests
-
-1. Start dev server if needed
-2. Run all queued E2E tests (with retry loop on failure)
-3. If pass → Continue to Phase 3: Ship
-4. If fail after 3 attempts → Report failure, ask user
-
-### Deferral Flow (Ad-hoc During PRD)
-
-If `activePrd` exists, show deferral option:
-
-```
-═══════════════════════════════════════════════════════════════════════
-                          E2E TESTS READY
-═══════════════════════════════════════════════════════════════════════
-
-📝 Queued E2E tests:
-   • e2e/quick-fix.spec.ts
-
-⚠️  Active PRD: prd-error-logging (US-003)
-
-Options:
-   [R] Run E2E tests now (then return to PRD)
-   [D] Defer to PRD completion (run with PRD's E2E tests)
-   [S] Save for later (stay in ad-hoc mode)
-
-> _
-═══════════════════════════════════════════════════════════════════════
-```
-
-**Handle response:**
-
-- "R" or "Run":
-  1. Start dev server if needed
-  2. Run E2E tests
-  3. If pass → Commit ad-hoc work separately, return to PRD
-  4. If fail → Fix loop, then commit and return
-
-- "D" or "Defer":
-  1. Add E2E tests to PRD's deferred queue:
-     ```json
-     {
-       "pendingTests": {
-         "e2e": {
-           "generated": ["e2e/story1.spec.ts", "e2e/quick-fix.spec.ts"],
-           "deferredTo": "prd-completion"
-         }
-       }
-     }
-     ```
-  2. Commit ad-hoc work with separate commit message
-  3. Return to PRD work
-
-- "S" or "Save":
-  1. E2E tests remain queued (not deferred)
-  2. Return to task prompt
-
----
-
-## Phase 3: Ship (US-007)
-
-When verification passes and user confirms (or types "ship anyway"):
-
-**The behavior depends on commit strategy** — see Commit Strategy section below.
-
-### For `batch-per-session` (default):
-
-#### Step 1: Show Commit Prompt
-
-Display summary with all changes:
-
-```
-═══════════════════════════════════════════════════════════════════════
-                          READY TO COMMIT
-═══════════════════════════════════════════════════════════════════════
-
-Summary: [summary of all completed todos]
-
-Files changed: [count]
-  [list of files]
-
-Status:
   ✅ Unit tests: passed
-  ✅ E2E tests: passed (or skipped)
-  ✅ Docs: [completed/skipped/pending]
 
-Commit message:
-  feat: [auto-generated message]
+Progress: 1/4 stories (25%)
 
-[C] Commit with this message
-[E] Edit commit message
-[W] Keep working
+[N] Next story (TSK-002: Show Spinner when loading)
+[C] Commit and continue later
+[P] Promote to PRD
+[A] Abandon task
 
 > _
 ═══════════════════════════════════════════════════════════════════════
 ```
 
-#### Step 2: Commit Changes
+---
 
-Commit behavior depends on git mode:
+## Mid-PRD Task Injection
 
-- `trunk + branchless`: commit on default branch
-- otherwise: commit on ad-hoc branch
+When user says "add a task to handle X after US-002" during active PRD work:
+
+### Step 1: Generate TSK Story
+
+```markdown
+### TSK-001: Handle error states for theme save [INJECTED]
+
+**Description:** As a user, I want to see error feedback if theme save fails.
+
+**Acceptance Criteria:**
+
+- [ ] Show toast on save failure
+- [ ] Allow retry
+- [ ] Verify in browser
+```
+
+### Step 2: Inject into PRD File
+
+Insert after the specified story (US-002 in this example).
+
+### Step 3: Update Builder State
+
+```json
+{
+  "activePrd": {
+    "id": "prd-user-settings",
+    "currentStory": "US-002",
+    "injectedTasks": ["TSK-001"]
+  }
+}
+```
+
+### Step 4: Update Todos
+
+Insert TSK-001 at correct position in right panel todos.
+
+---
+
+## Task Spec Completion (US-011)
+
+When all stories complete:
+
+### Step 1: Generate Completion Summary
+
+```
+═══════════════════════════════════════════════════════════════════════
+                       TASK SPEC COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+✅ All stories complete!
+
+Task: Add Loading Spinner to Submit Button
+Stories: 4/4 complete
+Time: 15 minutes
+
+Files changed:
+  • src/components/SubmitButton.tsx
+  • src/components/SubmitButton.test.tsx
+
+Tests added: 3 unit tests
+
+Commits:
+  • abc1234: feat: Add loading state to SubmitButton
+  • def5678: feat: Add spinner and disable during loading
+  • ghi9012: test: Add unit tests for loading behavior
+
+[C] Commit and ship
+[E] Write E2E tests first
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Step 2: Archive Task Spec
+
+1. Move file to `docs/tasks/completed/`
+2. Update registry status to `completed` with `completedAt` timestamp
+3. Update Task Spec file with completion section:
+
+```markdown
+## Completion
+
+**Completed:** 2026-03-01T11:15:00Z
+**Files Changed:** 2
+**Tests Added:** 3 unit tests
+**Summary:** Added loading spinner to SubmitButton with isLoading prop, Spinner component, and disabled state during submission.
+```
+
+4. Clear `activeTask` from `builder-state.json`
+
+---
+
+## Task Spec Abandonment (US-012)
+
+When user types "abandon" or chooses [A]:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                       ABANDON TASK SPEC
+═══════════════════════════════════════════════════════════════════════
+
+Task: Add Loading Spinner to Submit Button
+Progress: 2/4 stories complete
+
+Optional: Why are you abandoning? (press Enter to skip)
+> _
+
+Revert uncommitted changes? 
+[Y] Yes — discard uncommitted work
+[N] No — keep all changes as-is
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+### On Abandonment:
+
+1. If [Y]: `git checkout -- .` to discard uncommitted changes
+2. Move Task Spec to `docs/tasks/abandoned/`
+3. Update registry with `status: abandoned`, `abandonedAt`, `abandonReason`
+4. Clear `activeTask` from `builder-state.json`
+5. Notify: "Task abandoned. You can resume later with `resume task-2026-03-01-add-spinner`"
+
+### Resuming Abandoned Task:
+
+When user says "resume task-2026-03-01-add-spinner":
+
+1. Move Task Spec from `docs/tasks/abandoned/` to `docs/tasks/`
+2. Update registry with `status: in_progress`
+3. Update `activeTask` in `builder-state.json`
+4. Resume from first incomplete story
+
+---
+
+## Task Spec Promotion (US-008, US-011)
+
+When user chooses [P] Promote to PRD:
+
+### Step 1: Create/Update Promotion Document
+
+Save to `docs/tasks/promotions/promote-task-YYYY-MM-DD-name-to-prd.md`:
+
+```markdown
+---
+taskId: task-2026-03-01-add-spinner
+promotedAt: 2026-03-01T11:00:00Z
+preserveWork: true
+reason: User requested promotion
+---
+
+# Promotion Request: Add Loading Spinner Feature
+
+## Original Request
+
+"Add loading spinner to submit button"
+
+## Analysis Summary
+
+**Original Scope Estimate:** Small
+**Actual Scope:** Medium (scope grew during implementation)
+**Confidence:** High
+
+**Why promotion is recommended:**
+- Discovered need for accessibility improvements
+- Animation timing requires design input
+- Should be part of larger button component refactor
+
+## Work Completed
+
+### TSK-001: Add loading state ✅
+- Added isLoading prop to SubmitButton
+- Passes typecheck
+
+### TSK-002: Show Spinner ✅
+- Using existing Spinner component
+
+## Remaining Scope (for PRD)
+
+- TSK-003: Disable button during submission
+- TSK-004: Add unit tests
+- (Additional stories may be needed for accessibility)
+
+## Files Modified
+
+- src/components/SubmitButton.tsx
+
+## Recommended PRD Structure
+
+1. **Loading State** — completed (TSK-001, TSK-002)
+2. **Disable Behavior** — from TSK-003
+3. **Testing** — from TSK-004
+4. **Accessibility Audit** — new story needed
+5. **Animation Timing** — design review needed
+```
+
+### Step 2: Ask About Work Preservation
+
+```
+═══════════════════════════════════════════════════════════════════════
+                       PROMOTE TO PRD
+═══════════════════════════════════════════════════════════════════════
+
+Promotion document created:
+  docs/tasks/promotions/promote-task-2026-03-01-add-spinner-to-prd.md
+
+Completed work (2 stories):
+  ✅ TSK-001: Add loading state
+  ✅ TSK-002: Show Spinner
+
+[K] Keep completed work — PRD continues from here
+[F] Fresh start — Planner re-evaluates everything
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Step 3: Update State
+
+1. Update Task Spec registry: `status: promoted`, `promotedTo: null` (set when PRD created)
+2. Clear `activeTask` from `builder-state.json`
+3. Notify: "Promotion request created. Run @planner to continue."
+
+---
+
+## Git Auto-Commit Enforcement
+
+> ⛔ **CRITICAL: Check `git.autoCommit` setting before ANY commit operation**
+>
+> **Trigger:** Before running `git commit` or any commit delegation.
+>
+> **Check:** Read `project.json` → `git.autoCommit` value.
+>
+> **Failure behavior:** If `autoCommit` is `manual` or `false`, do NOT run `git commit`. Stage files and report suggested commit message instead.
+>
+> See AGENTS.md for full rules.
+
+---
+
+## Phase 2: Ship
+
+When all stories complete and user chooses [C] Commit:
+
+### Step 1: Commit Changes
 
 ```bash
 git add -A
-git commit -m "feat: [summary of changes]"
+git commit -m "feat: Add loading spinner to submit button
+
+- TSK-001: Add loading state
+- TSK-002: Show Spinner when loading
+- TSK-003: Disable button during submission
+- TSK-004: Add unit tests
+
+Task-Spec: task-2026-03-01-add-spinner"
 ```
 
-#### Step 3: Push Prompt
+### Step 2: Push and Merge
 
-```
-═══════════════════════════════════════════════════════════════════════
-                          COMMIT COMPLETE
-═══════════════════════════════════════════════════════════════════════
+Follow existing merge/push flow based on git workflow mode.
 
-✅ Committed: feat: [message]
+### Step 3: Cleanup
 
-Push to remote? [Y/n]
-
-> _
-═══════════════════════════════════════════════════════════════════════
-```
-
-#### Step 4: Merge/Push Behavior (if pushing)
-
-If `trunk + branchless`:
-
-```bash
-git push origin <default-branch>
-```
-
-Skip local branch merge/delete steps.
-
-If not branchless trunk mode:
-
-```bash
-git checkout main
-git merge adhoc/YYYY-MM-DD --no-ff -m "Merge adhoc/YYYY-MM-DD"
-```
-
-If merge conflicts occur:
-- Attempt to resolve automatically
-- If unresolvable, report to user and wait for guidance
-
-#### Step 5: Push Main to GitHub (non-branchless mode)
-
-```bash
-git push origin main
-```
-
-#### Step 6: Cleanup and Clear State
-
-```bash
-# Delete the ad-hoc branch locally (non-branchless mode)
-git branch -d adhoc/YYYY-MM-DD
-
-# Clear test checkpoint
-rm -f .tmp/.test-checkpoint.json
-
-# Clear builder state
-rm docs/builder-state.json 2>/dev/null
-```
-
-### For `per-todo`:
-
-Commits happen after each todo completion (in the task flow), so Phase 3 only handles:
-
-1. **Push prompt** — Push all commits to remote
-2. **Merge and cleanup** — Same as above
-
-### For `manual`:
-
-1. **Stage changes:** `git add -A`
-2. **Report:** "Changes staged. Commit manually when ready."
-3. **Clear state** (except `uncommittedWork` tracking)
+1. Clear test checkpoints
+2. Archive Task Spec to `docs/tasks/completed/`
+3. Clear `activeTask` from `builder-state.json`
 
 ---
 
-## Commit Strategy Configuration
+## Configuration
 
 Read from `docs/project.json`:
 
 ```json
 {
   "agents": {
-    "commitStrategy": "batch-per-session"  // default
+    "prdRecommendationThreshold": "medium",
+    "analysisTimeoutMs": 10000,
+    "taskSpecEnabled": true
   }
 }
 ```
 
-| Strategy | Behavior | Use Case |
-|----------|----------|----------|
-| `batch-per-session` | One commit for all work after tests pass | Default, clean history |
-| `per-todo` | One commit per completed todo | Granular history, easier bisect |
-| `manual` | Builder stages changes, user commits | Full control |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `prdRecommendationThreshold` | `"medium"` | Scope at which PRD is recommended: `small`, `medium`, `large` |
+| `analysisTimeoutMs` | `10000` | Max analysis time in milliseconds |
+| `taskSpecEnabled` | `true` | Set `false` for legacy behavior (not recommended) |
 
 ---
 
-## Ad-hoc Report Generation
-
-After shipping, generate report to `docs/completed/adhoc/adhoc-YYYY-MM-DD-brief-description.md`
-
-Include:
-- All tasks completed in this batch
-- Files modified
-- Testing notes
-
----
-
-## Example Flow
+## Example Flow (Complete)
 
 ```
-User: "Add a loading spinner to the submit button"
+User: "Add loading spinner to submit button"
 
 Builder:
-1. [setup] Creating branch adhoc/2026-02-20...
-   ✅ Branch created
-
-2. [build] Creating todo, running @developer...
-   ✅ Developer completed: Modified SubmitButton.tsx, SubmitButton.css
-
-3. [quality] Running automatic quality checks...
-   ✅ Typecheck: passed
-   ✅ Lint: passed
-   ✅ Unit tests: 2 generated, all passing
-   ✅ Critic: no issues
-
 ═══════════════════════════════════════════════════════════════════════
-                          TASK COMPLETE
+                         ANALYZING REQUEST
 ═══════════════════════════════════════════════════════════════════════
 
-✅ Add loading spinner to submit button
-
-Quality checks:
-  ✅ Typecheck: passed
-  ✅ Lint: passed
-  ✅ Unit tests: 2 generated, all passing
-  ✅ Critic: no issues
-
-Changed files: 2 (SubmitButton.tsx, SubmitButton.css)
-
-Options:
-  [E] Write E2E tests (Playwright automated UI testing)
-  [C] Commit this change
-  [N] Next task (add more work)
-
-> _
-═══════════════════════════════════════════════════════════════════════
-
-User: "N"  (next task)
-User: "Also fix the footer alignment"
-
-Builder:
-4. [build] Creating todo, running @developer...
-   ✅ Developer completed: Modified Footer.tsx
-
-5. [quality] Running automatic quality checks...
-   ✅ Typecheck: passed
-   ✅ Lint: passed
-   ✅ Unit tests: 1 generated, all passing
-   ✅ Critic: no issues
+⏳ Scanning imports...
+⏳ Identifying affected files...
+⏳ Estimating scope...
 
 ═══════════════════════════════════════════════════════════════════════
-                          TASK COMPLETE
+                         ANALYSIS COMPLETE
 ═══════════════════════════════════════════════════════════════════════
 
-✅ Fix footer alignment
+📋 REQUEST: "Add loading spinner to submit button"
 
-Quality checks:
-  ✅ Typecheck: passed
-  ✅ Lint: passed
-  ✅ Unit tests: 1 generated, all passing
-  ✅ Critic: no issues
+📊 UNDERSTANDING                                    Confidence: HIGH
+Add visual loading feedback to SubmitButton component.
 
-Changed files: 1 (Footer.tsx)
+🎯 SCOPE: Small (2 files, no breaking changes)
 
-Options:
-  [E] Write E2E tests (Playwright automated UI testing)
-  [C] Commit this change
-  [N] Next task (add more work)
+📁 AFFECTED FILES
+• src/components/SubmitButton.tsx
+• src/components/SubmitButton.test.tsx
 
-> _
-═══════════════════════════════════════════════════════════════════════
+⚠️ CONSEQUENCES: None identified
 
-User: "E"  (write E2E tests)
+📝 STORY PREVIEW
+TSK-001: Add loading state
+TSK-002: Show Spinner
+TSK-003: Disable button
+TSK-004: Add unit tests
 
-Builder:
-6. [e2e-gen] Generating E2E tests (@playwright-dev)...
-   ✅ Generated: e2e/footer.spec.ts
-
-📝 E2E tests generated:
-   • e2e/footer.spec.ts
-
-[R] Run E2E tests now
-[S] Save for later (queue tests, continue working)
+[G] Go ahead | [E] Edit | [P] Promote to PRD | [C] Cancel
 
 > _
 
-User: "R"  (run now)
+User: G
 
 Builder:
-7. [dev-server] Starting dev server on port 4000...
-   ✅ Server ready
+✅ Task Spec created: docs/tasks/task-2026-03-01-add-spinner.md
+📋 Registered in task-registry.json
 
-8. [e2e] Running E2E tests...
-   ✅ 1 test passed
+Starting TSK-001: Add loading state...
+
+[Delegates to @developer, runs quality checks, completes story]
 
 ═══════════════════════════════════════════════════════════════════════
-                          TASK COMPLETE
+                         STORY COMPLETE
 ═══════════════════════════════════════════════════════════════════════
 
-✅ Fix footer alignment
+✅ TSK-001: Add loading state
 
-All checks passed:
-  ✅ Quality checks: passed
-  ✅ E2E tests: 1 passed
+Progress: 1/4 stories (25%)
 
-Options:
-  [C] Commit this change
-  [N] Next task (add more work)
+[N] Next | [C] Commit | [P] Promote | [A] Abandon
 
 > _
-═══════════════════════════════════════════════════════════════════════
 
-User: "C"  (commit)
+User: N
 
-Builder:
-9. [commit] Committing changes...
-   ✅ Committed: "feat: Add loading spinner, fix footer alignment"
+[Continues through TSK-002, TSK-003, TSK-004...]
 
 ═══════════════════════════════════════════════════════════════════════
-                          COMMIT COMPLETE
+                       TASK SPEC COMPLETE
 ═══════════════════════════════════════════════════════════════════════
 
-✅ Committed: feat: Add loading spinner, fix footer alignment
+✅ All 4 stories complete!
+
+Files changed: 2
+Tests added: 3
+
+[C] Commit and ship | [E] Write E2E tests
+
+> _
+
+User: C
+
+═══════════════════════════════════════════════════════════════════════
+                         COMMIT COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+✅ Committed: feat: Add loading spinner to submit button
+✅ Archived to docs/tasks/completed/
 
 Push to remote? [Y/n]
 
 > _
-═══════════════════════════════════════════════════════════════════════
 
-User: "Y"
+User: Y
 
-Builder:
-10. [merge] Merging to main...
-    ✅ Merged adhoc/2026-02-20 → main
-
-11. [push] Pushing main to GitHub...
-    ✅ Pushed to origin/main
-
-12. [cleanup] Cleaning up...
-    ✅ Deleted branch adhoc/2026-02-20
-    ✅ Report saved to docs/completed/adhoc/adhoc-2026-02-20-spinner-footer.md
-
-Done! Changes are live on main.
+✅ Pushed to origin/main
+✅ Task complete!
 ```
 
 ---
@@ -751,11 +917,7 @@ If any files exist, notify the user:
 📋 TOOLKIT UPDATE REQUESTS
 ───────────────────────────────────────────────────────────────────────
 
-Sub-agents queued 2 toolkit update request(s) during this session:
-
-  • 2026-02-20-jest-tester-mock-pattern.md (from @jest-tester)
-  • 2026-02-20-react-tester-rtl-version.md (from @react-tester)
-
+Sub-agents queued update request(s) during this session.
 Run @toolkit to review and apply these updates.
 ───────────────────────────────────────────────────────────────────────
 ```
