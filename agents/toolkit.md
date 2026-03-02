@@ -563,6 +563,46 @@ Required behavior:
 - Do NOT modify project source code after cloning
 - Do NOT run project-specific build/test commands (leave that for @builder)
 
+### 11. Project Extraction (New Project from Existing)
+
+**Special Exception:** When creating a new project by extracting content from an existing project, Toolkit may perform one-time seeding operations.
+
+**Use Case:** Splitting a monorepo, extracting a subsystem to its own repo, or creating a new project based on existing code.
+
+**Allowed Operations:**
+
+1. **Create new GitHub repo:** `gh repo create [name] --public/--private`
+2. **Initialize the new repo:** Clone into `codeRoot/`, set up basic structure
+3. **Copy files from source project:** One-time content seeding (copy, not move)
+4. **Create project structure:** `docs/`, `src/`, config files
+5. **Bootstrap with project.json:** Run project-bootstrap skill
+6. **Move/copy PRD to new project:** If extraction was planned via PRD
+7. **Initial commit:** Commit extracted content with clear provenance
+
+**Constraints:**
+
+| Rule | Description |
+|------|-------------|
+| **Source unchanged** | Extraction is a COPY — source project remains intact |
+| **One-time operation** | This is seeding, not ongoing cross-project work |
+| **Handoff to Builder** | After bootstrap, Builder owns the new project |
+| **No source modifications** | Do NOT modify, delete, or "archive" content in source project |
+| **Clear provenance** | Commit message should note source of extracted content |
+
+**Workflow:**
+
+```
+1. Create repo: gh repo create [org]/[name] --private
+2. Clone: git clone into codeRoot/
+3. Copy content from source project (preserving structure)
+4. Create docs/project.json via bootstrap
+5. Create docs/CONVENTIONS.md
+6. Move PRD to docs/prds/ (if applicable)
+7. Initial commit with extraction note
+8. Register in projects.json
+9. Report completion — Builder can now implement PRD
+```
+
 ## Agent File Format
 
 All agents must have this structure:
