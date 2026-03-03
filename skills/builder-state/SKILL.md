@@ -56,6 +56,68 @@ Write state atomically (read → modify → write) at these key moments:
 | **Commit work** | Update `uncommittedWork` to reflect remaining uncommitted changes |
 | **Any action** | Always update `lastHeartbeat` |
 
+### CLI State Persistence (Compaction Resilience)
+
+The `availableCLIs` field persists detected CLI authentication state so it survives context compaction.
+
+| Event | State Changes |
+|-------|---------------|
+| **Session start (fresh)** | Detect CLIs, write `availableCLIs` with `detectedAt` timestamps |
+| **Session start (resume)** | Read `availableCLIs`, skip detection if fresh (<24h) |
+| **CLI auth expires** | User reports auth failure → clear that CLI's `authenticated` flag |
+| **Re-authentication** | User confirms re-auth → re-run detection for that CLI |
+
+**Structure:**
+```json
+{
+  "availableCLIs": {
+    "vercel": { 
+      "installed": true, 
+      "authenticated": true, 
+      "user": "my-team", 
+      "detectedAt": "2026-03-03T10:00:00Z" 
+    },
+    "supabase": { 
+      "installed": true, 
+      "authenticated": true, 
+      "detectedAt": "2026-03-03T10:00:00Z" 
+    },
+    "gh": { 
+      "installed": true, 
+      "authenticated": true, 
+      "user": "username", 
+      "detectedAt": "2026-03-03T10:00:00Z" 
+    },
+    "aws": { 
+      "installed": true, 
+      "authenticated": false 
+    }
+  }
+}
+```
+
+**Why this matters:**
+- Long PRD sessions trigger context compaction
+- Without persistence, Builder "forgets" it has CLI access
+- Results in Builder telling users to manually configure services when CLI could do it
+- Persistence ensures CLI knowledge survives across compaction boundaries
+
+**Staleness check:**
+```bash
+CLI_DETECTED_AT=$(jq -r '.availableCLIs.vercel.detectedAt // empty' docs/builder-state.json)
+if [ -n "$CLI_DETECTED_AT" ]; then
+  # Check if older than 24 hours
+  DETECTED_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$CLI_DETECTED_AT" +%s 2>/dev/null || date -d "$CLI_DETECTED_AT" +%s)
+  NOW_EPOCH=$(date +%s)
+  AGE_HOURS=$(( (NOW_EPOCH - DETECTED_EPOCH) / 3600 ))
+  if [ "$AGE_HOURS" -lt 24 ]; then
+    echo "CLI state is fresh ($AGE_HOURS hours old), reusing"
+  else
+    echo "CLI state is stale ($AGE_HOURS hours old), re-detecting"
+  fi
+fi
+```
+
 ### Checkpoint Triggers
 
 Update the `checkpoint` field at these moments (see "Checkpoint Operations" section for details):

@@ -735,9 +735,23 @@ After the user selects a project number, show a **fast inline dashboard** — no
          3. Continue to dashboard
      - If index is fresh (within 24h) → continue silently
 
-4.7 **Detect available CLIs (one-time per session):**
+4.7 **Detect available CLIs (with persistence for compaction resilience):**
    
-   Check which service CLIs are available and authenticated:
+   > ⚠️ **CLI state survives context compaction.** This is critical for long PRD sessions.
+   
+   **First, check for persisted CLI state:**
+   ```bash
+   # Check if we already have CLI state from a previous detection
+   CLI_STATE=$(jq -r '.availableCLIs // empty' docs/builder-state.json 2>/dev/null)
+   CLI_DETECTED_AT=$(echo "$CLI_STATE" | jq -r '.vercel.detectedAt // .gh.detectedAt // empty' 2>/dev/null)
+   ```
+   
+   **If CLI state exists and is fresh (<24h), reuse it:**
+   - Skip re-detection
+   - Log: "Restored CLI state from previous session"
+   - Continue to dashboard
+   
+   **If no CLI state or stale (>24h), detect CLIs:**
    ```bash
    # Run in parallel for speed
    which vercel && vercel whoami 2>/dev/null
@@ -750,28 +764,28 @@ After the user selects a project number, show a **fast inline dashboard** — no
    which wrangler && wrangler whoami 2>/dev/null
    ```
    
-   **Store results in session memory** as `availableCLIs`:
-   ```json
-   {
-     "vercel": { "installed": true, "authenticated": true, "user": "username" },
-     "supabase": { "installed": true, "authenticated": true },
-     "aws": { "installed": true, "authenticated": true, "account": "123456789" },
-     "gh": { "installed": true, "authenticated": true },
-     "netlify": { "installed": false },
-     "fly": { "installed": false },
-     "railway": { "installed": false },
-     "wrangler": { "installed": false }
-   }
+   **Persist to builder-state.json (CRITICAL):**
+   ```bash
+   # Read existing state, add/update availableCLIs, write back
+   TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+   jq --arg ts "$TIMESTAMP" '.availableCLIs = {
+     "vercel": { "installed": true, "authenticated": true, "user": "team-name", "detectedAt": $ts },
+     "supabase": { "installed": true, "authenticated": true, "detectedAt": $ts },
+     "gh": { "installed": true, "authenticated": true, "user": "username", "detectedAt": $ts },
+     "aws": { "installed": false, "authenticated": false },
+     "netlify": { "installed": false, "authenticated": false },
+     "fly": { "installed": false, "authenticated": false },
+     "railway": { "installed": false, "authenticated": false },
+     "wrangler": { "installed": false, "authenticated": false }
+   }' docs/builder-state.json > docs/builder-state.json.tmp && mv docs/builder-state.json.tmp docs/builder-state.json
    ```
    
    **Show in dashboard** (only authenticated CLIs):
    ```
-   CLIs: vercel ✓ | supabase ✓ | aws ✓ | gh ✓
+   CLIs: vercel ✓ | supabase ✓ | gh ✓
    ```
    
-   **Use throughout session:** When you need to deploy, manage env vars, or interact with services, check `availableCLIs` first. If a CLI is available and authenticated, **use it directly** instead of telling the user to do it manually.
-   
-   Common CLI capabilities:
+   **Common CLI capabilities:**
    | CLI | Capabilities |
    |-----|--------------|
    | `vercel` | Deploy, env vars, domains, logs, rollback |
@@ -782,6 +796,77 @@ After the user selects a project number, show a **fast inline dashboard** — no
    | `fly` | Deploy, secrets, logs, scaling |
    | `railway` | Deploy, env vars, logs |
    | `wrangler` | Workers, KV, R2, secrets |
+
+---
+
+### Proactive CLI Usage (CRITICAL)
+
+> ⛔ **NEVER tell the user to manually configure a service when you have CLI access.**
+>
+> Before ANY instruction like "Go to [service] dashboard and configure...", check `availableCLIs` in `builder-state.json`. If the CLI is authenticated, **use it directly**.
+>
+> **Failure behavior:** If you find yourself about to write "Go to Vercel dashboard" or "Configure in Supabase console" — STOP. Check if CLI can do it.
+
+**Proactive CLI Triggers:**
+
+| Instead of telling user... | Check CLI | Use command instead |
+|---------------------------|-----------|---------------------|
+| "Go to Vercel → Domains → Add domain" | `vercel` | `vercel domains add [domain]` |
+| "Go to Vercel → Settings → Environment Variables" | `vercel` | `vercel env add [NAME]` / `vercel env ls` |
+| "Go to Vercel → Settings → Git → Production Branch" | `vercel` | `vercel project [name] --prod-branch [branch]` |
+| "Deploy to Vercel" | `vercel` | `vercel deploy` / `vercel --prod` |
+| "Check Vercel deployment status" | `vercel` | `vercel ls` / `vercel inspect [url]` |
+| "View Vercel logs" | `vercel` | `vercel logs [deployment]` |
+| "Go to Supabase dashboard → SQL Editor" | `supabase` | `supabase db diff` / `supabase db push` |
+| "Configure Supabase secrets" | `supabase` | `supabase secrets set [NAME]=[VALUE]` |
+| "Check Supabase migration status" | `supabase` | `supabase db status` / `supabase migration list` |
+| "Add GitHub secret in Settings" | `gh` | `gh secret set [NAME]` |
+| "Create GitHub release" | `gh` | `gh release create [tag]` |
+| "Check PR status/checks" | `gh` | `gh pr checks` / `gh pr view` |
+| "View GitHub Actions logs" | `gh` | `gh run view [run-id] --log` |
+| "Deploy to Netlify" | `netlify` | `netlify deploy` / `netlify deploy --prod` |
+| "Configure Netlify env vars" | `netlify` | `netlify env:set [NAME] [VALUE]` |
+| "Deploy to Fly.io" | `fly` | `fly deploy` |
+| "Set Fly secrets" | `fly` | `fly secrets set [NAME]=[VALUE]` |
+| "Deploy to Railway" | `railway` | `railway up` |
+| "Set Railway env vars" | `railway` | `railway variables set [NAME]=[VALUE]` |
+| "Deploy Cloudflare Worker" | `wrangler` | `wrangler deploy` |
+| "Set Cloudflare secrets" | `wrangler` | `wrangler secret put [NAME]` |
+
+**Decision flow:**
+
+```
+About to tell user to configure something manually?
+    │
+    ▼
+Read availableCLIs from docs/builder-state.json
+    │
+    ▼
+Is the relevant CLI authenticated?
+    │
+    ├─── YES ──► Use the CLI command directly. Show output.
+    │
+    └─── NO ──► OK to tell user to configure manually.
+                Include: "Tip: Install [cli] to automate this in future"
+```
+
+**Common patterns where CLIs help:**
+
+| Scenario | CLI Solution |
+|----------|--------------|
+| Setting up staging/preview environments | `vercel env add`, `supabase link` |
+| Domain configuration | `vercel domains`, `netlify domains` |
+| Checking deployment health | `vercel ls`, `fly status`, `railway status` |
+| Debugging deployment failures | `vercel logs`, `fly logs`, `railway logs` |
+| Database migrations | `supabase db push`, `supabase migration up` |
+| Secret management | `gh secret set`, `fly secrets set`, `vercel env add` |
+
+**After using CLI, verify:**
+- Command succeeded (exit code 0)
+- Show relevant output to user
+- If command fails, THEN suggest manual dashboard approach as fallback
+
+---
 
 5. **Check for resumable session** — see `builder-state` skill for state structure.
    - If an in-progress PRD exists, **do not auto-resume it**.

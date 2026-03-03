@@ -944,6 +944,18 @@
           {
             "type": "feat",
             "scope": "builder",
+            "description": "add CLI state persistence and proactive CLI usage triggers for compaction resilience",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "schema",
+            "description": "add availableCLIs to builder-state schema for CLI state persistence",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "builder",
             "description": "add environment-database context diagnosis protocol and vercel-supabase-alignment skill",
             "hash": "pending"
           },

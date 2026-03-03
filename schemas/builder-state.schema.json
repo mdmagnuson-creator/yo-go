@@ -45,6 +45,43 @@
       }
     },
 
+    "availableCLIs": {
+      "type": ["object", "null"],
+      "description": "Detected CLIs and their authentication status. Persisted to survive context compaction.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "installed": {
+            "type": "boolean",
+            "description": "Whether the CLI is installed on this machine"
+          },
+          "authenticated": {
+            "type": "boolean",
+            "description": "Whether the CLI is authenticated (can make API calls)"
+          },
+          "user": {
+            "type": ["string", "null"],
+            "description": "Authenticated user/account identifier (if available)"
+          },
+          "detectedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this CLI was last detected/verified"
+          }
+        },
+        "required": ["installed", "authenticated"]
+      },
+      "examples": [
+        {
+          "vercel": { "installed": true, "authenticated": true, "user": "my-team", "detectedAt": "2026-03-03T10:00:00Z" },
+          "supabase": { "installed": true, "authenticated": true, "detectedAt": "2026-03-03T10:00:00Z" },
+          "gh": { "installed": true, "authenticated": true, "user": "username", "detectedAt": "2026-03-03T10:00:00Z" },
+          "aws": { "installed": true, "authenticated": false, "detectedAt": "2026-03-03T10:00:00Z" },
+          "netlify": { "installed": false, "authenticated": false }
+        }
+      ]
+    },
+
     "activePrd": {
       "type": ["object", "null"],
       "description": "Currently active PRD being worked on. Null if no PRD work in progress.",
