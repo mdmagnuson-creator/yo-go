@@ -258,11 +258,73 @@ If any check fails, Builder runs a fix loop (max 3 attempts). If still failing, 
 
 See `test-flow` skill for full verification flow details (UI Verification section).
 
+**Skip patterns — verification automatically skipped when:**
+
+| Pattern | Example Files | Skip Reason |
+|---------|---------------|-------------|
+| `*.md` | `README.md`, `docs/*.md` | Documentation changes |
+| `.*rc`, `*.config.*` | `.eslintrc`, `tailwind.config.js` | Config changes |
+| `*.test.*`, `*.spec.*` | `Button.test.tsx` | Test files |
+| `.github/*` | `.github/workflows/ci.yml` | CI/CD files |
+| Non-UI extensions | `*.go`, `*.py`, `*.sql` | Backend files |
+
 **Story-level behavior:**
 - If verification returns `verified` → Story can complete
 - If verification returns `unverified` → Story BLOCKED (remains `in_progress`)
 - If verification returns `skipped` → Story can complete with warning (logged to `test-debt.json`)
-- If verification returns `not-required` → Story can complete (no UI changes)
+- If verification returns `not-required` → Story can complete (no UI changes, or all files match skip patterns)
+
+**Completion message with verification status:**
+
+```
+✅ STORY US-003 COMPLETE
+
+Summary: Added password reset flow
+
+Verification: ✅ VERIFIED
+  - Tests: 2 passed
+  - Screenshot: ai-tmp/verification/screenshots/password-reset-form.png
+  - Generated: tests/ui-verify/password-reset.spec.ts
+
+Files changed: 4
+Components updated: 1 (added data-testid)
+```
+
+**Completion message when skipped (auto):**
+
+```
+✅ STORY US-004 COMPLETE
+
+Summary: Updated API documentation
+
+Verification: ➖ SKIPPED (auto)
+  Reason: All changed files are documentation (*.md)
+  Files: docs/api-reference.md
+
+Files changed: 1
+```
+
+**Override mechanism:**
+
+Users can bypass verification with explicit reason:
+
+```
+User: mark complete without verification
+
+Builder: ⚠️ OVERRIDE REQUESTED
+
+         This story modified UI files that normally require verification.
+         Reason required: _
+
+User: component is behind disabled feature flag
+
+Builder: ⚠️ Story US-003 completing WITHOUT verification.
+
+         Reason: Component behind disabled feature flag
+         Files: src/components/NewFeature.tsx
+         
+         Added to test-debt.json for follow-up.
+```
 
 **After all checks pass**, Builder continues to the next story (or shows completion prompt if E2E is offered).
 

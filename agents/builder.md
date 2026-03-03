@@ -777,6 +777,45 @@ Options:
 - Add to story completion notes: `"verification skipped by user"`
 - Allow task/story to complete with warning banner
 
+**Override mechanism:**
+
+Users can override verification requirements by typing "mark complete without verification" or "skip verification":
+
+1. **Detect override request:**
+   - Watch for: "mark complete without verification", "skip verification", "complete anyway"
+   
+2. **Require reason:**
+   ```
+   ⚠️ OVERRIDE REQUESTED
+   
+   This bypasses mandatory verification for UI changes.
+   Reason required: _
+   ```
+
+3. **Log override with reason:**
+   - Record in `test-debt.json`:
+     ```json
+     {
+       "overrides": [{
+         "file": "src/components/NewFeature.tsx",
+         "reason": "Component behind disabled feature flag",
+         "overrideAt": "2026-03-03T10:30:00Z",
+         "story": "US-003"
+       }]
+     }
+     ```
+   - Add to story completion notes: `"verification overridden: [reason]"`
+
+4. **Show confirmation with recommendation:**
+   ```
+   ⚠️ Story US-003 completing WITHOUT verification.
+   
+   Reason: Component behind disabled feature flag
+   Files: src/components/NewFeature.tsx
+   
+   Recommendation: Verify manually when feature flag is enabled.
+   ```
+
 **State updates when blocked:**
 - Task/story remains `in_progress` (NOT completed)
 - `builder-state.json` → `verificationStatus: "unverified"`

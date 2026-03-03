@@ -443,8 +443,12 @@ Steps 1-4 pass
 │   • "no-ui" → Skip verification, proceed to completion              │
 │   • "playwright-required" → Check changed files                     │
 │                                                                     │
-│ Check changed files:                                                │
-│   • No UI files (*.tsx, *.jsx, *.vue) → Skip verification           │
+│ Check changed files against SKIP PATTERNS:                          │
+│   • *.md (documentation) → Skip with reason                         │
+│   • .*rc, *.config.* (config) → Skip with reason                   │
+│   • *.test.*, *.spec.* (test files) → Skip with reason             │
+│   • .github/* (CI/CD) → Skip with reason                           │
+│   • No UI files (*.tsx, *.jsx, *.vue) → Skip with reason           │
 │   • Has UI files → REQUIRE verification                             │
 └─────────────────────────────────────────────────────────────────────┘
     │
@@ -472,6 +476,67 @@ Steps 1-4 pass
     │                    └─────────────────────────┘
     │
     └─── status: "skipped" ──► WARN, add to test-debt.json, proceed
+```
+
+#### Skip Patterns
+
+When ALL changed files match skip patterns, verification is automatically skipped:
+
+| Pattern | Example Files | Skip Reason |
+|---------|---------------|-------------|
+| `*.md` | `README.md`, `docs/guide.md` | Documentation changes don't affect UI |
+| `.*rc`, `*.config.*` | `.eslintrc`, `tailwind.config.js` | Config changes require rebuild, not visual test |
+| `*.test.*`, `*.spec.*` | `Button.test.tsx`, `api.spec.ts` | Test files don't render in browser |
+| `.github/*` | `.github/workflows/ci.yml` | CI/CD changes don't affect UI |
+| Non-UI extensions | `*.go`, `*.py`, `*.sql` | Backend files don't affect UI |
+
+**Skip reason in completion message:**
+
+```
+✅ STORY COMPLETE
+
+Summary: Updated API documentation
+
+Verification: ➖ SKIPPED (auto)
+  Reason: All changed files are documentation (*.md)
+  Files: README.md, docs/api-guide.md
+
+Files changed: 2
+```
+
+#### Override Mechanism
+
+Users can override verification requirements with explicit reason:
+
+**To force verification when skipped:**
+```
+User: verify anyway
+
+Builder: Running UI verification for documentation changes...
+         (Normally skipped, but you requested manual verification)
+```
+
+**To skip verification when required:**
+```
+User: mark complete without verification
+
+Builder: ⚠️ OVERRIDE REQUESTED
+
+         This bypasses mandatory verification for UI changes.
+         Reason required: _
+
+User: component is behind a feature flag that's disabled
+
+Builder: ⚠️ SKIPPING VERIFICATION (user override)
+
+         Reason: Component behind disabled feature flag
+         Files: src/components/FeatureFlagged.tsx
+         
+         Recommendation: Verify manually when feature flag is enabled.
+         
+         Added to test-debt.json with:
+         - overrideReason: "Component behind disabled feature flag"
+         - requiresFollowUp: true
 ```
 
 **Verification required prompt (when blocked):**
