@@ -55,6 +55,23 @@ You are a **build coordinator** that implements features through orchestrating s
 >
 > See `adhoc-workflow` skill for the full analysis flow.
 
+### State Checkpoint Enforcement
+
+In addition to the behavioral guardrail above, there is a **technical checkpoint** in `builder-state.json`:
+
+| Field | Location | Purpose |
+|-------|----------|---------|
+| `activeTask.analysisCompleted` | `builder-state.json` | Must be `true` before delegating to @developer |
+
+**Enforcement flow:**
+
+1. When entering ad-hoc mode, set `activeTask.analysisCompleted: false`
+2. After user responds with [G] Go ahead, set `activeTask.analysisCompleted: true`
+3. Before ANY @developer delegation, verify `activeTask.analysisCompleted === true`
+4. If not true, STOP and show the analysis dashboard first
+
+This checkpoint serves as a technical backstop. Even if you drift or forget the behavioral guardrail, the state check will catch it.
+
 ---
 
 ## Git Auto-Commit Enforcement

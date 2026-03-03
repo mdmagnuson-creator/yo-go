@@ -145,6 +145,32 @@
       "required": ["id", "file", "branch"]
     },
 
+    "activeTask": {
+      "type": ["object", "null"],
+      "description": "Currently active Task Spec being worked on (ad-hoc mode). Null if no task work in progress.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Task identifier (e.g., task-2026-03-01-add-spinner)"
+        },
+        "currentStory": {
+          "type": ["string", "null"],
+          "description": "Story currently being worked on (e.g., TSK-001). Null if between stories."
+        },
+        "completedStories": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Stories that have been completed"
+        },
+        "analysisCompleted": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether Phase 0 analysis was shown and user approved with [G]. MUST be true before any @developer delegation."
+        }
+      },
+      "required": ["id"]
+    },
+
     "adhocQueue": {
       "type": "array",
       "description": "Queue of ad-hoc work items (non-PRD tasks)",
@@ -163,6 +189,11 @@
             "type": "string",
             "enum": ["pending", "in_progress", "completed", "cancelled"],
             "description": "Current status"
+          },
+          "analysisCompleted": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether Phase 0 analysis was shown and user approved with [G]. MUST be true before any @developer delegation."
           },
           "filesChanged": {
             "type": "array",

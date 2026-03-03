@@ -360,8 +360,13 @@ during form submission, disabled state to prevent double-submit.
 3. **Move to ready and start:**
    - Move file from `docs/tasks/drafts/` to `docs/tasks/`
    - Update status to `ready` in registry
-   - Update `builder-state.json` with `activeTask`
+   - Update `builder-state.json` with `activeTask` and **set `analysisCompleted: true`**
    - Proceed to Phase 1
+
+> ⚠️ **CRITICAL: Only set `analysisCompleted: true` after user responds with [G] Go ahead.**
+>
+> This flag is the technical checkpoint that prevents implementation without approval.
+> If this flag is `false`, @developer delegation is BLOCKED.
 
 ---
 
@@ -377,7 +382,8 @@ Update `builder-state.json`:
   "activeTask": {
     "id": "task-2026-03-01-add-spinner",
     "currentStory": "TSK-001",
-    "completedStories": []
+    "completedStories": [],
+    "analysisCompleted": true
   },
   "uiTodos": {
     "items": [
@@ -390,6 +396,10 @@ Update `builder-state.json`:
   }
 }
 ```
+
+> ⛔ **Before ANY @developer delegation, verify `activeTask.analysisCompleted === true`.**
+>
+> If not true, STOP and show the analysis dashboard first.
 
 Update right panel todos via `todowrite` to match.
 
