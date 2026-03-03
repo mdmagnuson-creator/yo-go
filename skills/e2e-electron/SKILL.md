@@ -275,6 +275,78 @@ if (process.env.NODE_ENV === 'test') {
 }
 ```
 
+### 6. Single-Instance Lock (CRITICAL)
+
+Electron apps are single-instance by default. If the app is already running, `electron.launch()` will fail or behave unexpectedly.
+
+**Trigger:** Before calling `electron.launch()` in test setup.
+
+**Verification:** Check that no existing app processes are running before launch.
+
+**Failure behavior:** If existing instances are not killed, tests will fail with "app already running" errors or hang indefinitely.
+
+**Always kill existing instances before launching:**
+
+```typescript
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+/**
+ * Kill any existing instances of the app before launching.
+ * Required because Electron apps are single-instance by default.
+ */
+async function killExistingInstances(appName: string): Promise<void> {
+  try {
+    if (process.platform === 'darwin') {
+      // macOS: Use pkill with app name
+      await execAsync(`pkill -f "${appName}"`);
+    } else if (process.platform === 'win32') {
+      // Windows: Use taskkill
+      await execAsync(`taskkill /F /IM "${appName}.exe" /T`);
+    } else {
+      // Linux: Use pkill
+      await execAsync(`pkill -f "${appName}"`);
+    }
+    // Wait for processes to fully exit
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  } catch {
+    // Ignore errors — process may not be running
+  }
+}
+
+// Usage in test setup
+test.beforeAll(async () => {
+  await killExistingInstances('YourApp');
+  
+  electronApp = await electron.launch({
+    executablePath: '/Applications/YourApp.app/Contents/MacOS/YourApp',
+  });
+});
+```
+
+**For installed app testing**, this is especially important because:
+- The user may have the app open while running tests
+- Previous test runs may have left zombie processes
+- CI environments may have stale processes from failed runs
+
+**Alternative: Disable single-instance lock in test mode**
+
+If you control the app's source, you can disable single-instance in test mode:
+
+```typescript
+// In main process (main.ts)
+if (process.env.NODE_ENV !== 'test') {
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    app.quit();
+  }
+}
+```
+
+This allows multiple test instances but requires code changes to the app.
+
 ## Playwright Config for Electron
 
 Add to `playwright.config.ts`:
