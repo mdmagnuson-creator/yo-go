@@ -42,16 +42,20 @@ When invoked after a UI change:
    - If modified, mark for regeneration
 
 3. **Regenerate affected screenshots.** For each affected screenshot:
-   - **Get the dev port from the project registry:**
-     1. Read `~/.config/opencode/projects.json`
-     2. Find the project entry by `id` or `path`
-     3. Check if `devPort` is `null` — if so, stop with message:
+   - **Resolve test base URL:**
+     1. Read `~/.config/opencode/projects.json` and find the project entry
+     2. Read `<project>/docs/project.json` for URL configuration
+     3. Resolve URL using this priority:
+        - `project.json` → `agents.verification.testBaseUrl` (explicit override)
+        - Preview URL env vars: `VERCEL_URL`, `DEPLOY_URL`, `RAILWAY_PUBLIC_DOMAIN`, `RENDER_EXTERNAL_URL`, `FLY_APP_NAME`
+        - `project.json` → `environments.staging.url`
+        - `http://localhost:{devPort}` (if devPort is not null)
+     4. If no URL can be resolved, stop with message:
         ```
-        ⏭️  Screenshots skipped: Project has no local runtime (devPort: null)
+        ⏭️  Screenshots skipped: No test URL available (no testBaseUrl, preview URL, staging URL, or devPort)
         ```
-     4. Use `http://localhost:{devPort}` as the base URL
-   - **Verify dev server is running** (Builder ensures this when invoking you; if running standalone, ensure the server is running at the port from the registry)
-   - Use Playwright to navigate to `http://localhost:{devPort}` + `captureConfig.url`
+   - **Verify test environment is accessible** (For localhost, Builder ensures the dev server is running. For remote URLs, perform a health check.)
+   - Use Playwright to navigate to `${TEST_BASE_URL}` + `captureConfig.url`
    - Execute any `captureConfig.actions` (click, wait, type, etc.)
    - Set viewport to `captureConfig.viewport`
    - Set theme if specified

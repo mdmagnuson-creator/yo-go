@@ -33,20 +33,36 @@ You receive a task description describing what needs to be tested or implemented
         - Selector preferences
       - **These override generic patterns.** Follow project-specific conventions.
    
-   c. **Get the dev server port:**
-      - **Read `~/.config/opencode/projects.json`** to find the project's `devPort`
-      - **Port policy:** Do not hardcode ports (3000, 4000, 5001, etc.); always resolve `devPort` from `projects.json`
-      - **No-runtime check:** If `devPort` is `null`, stop immediately:
-        ```
-        ⏭️  Playwright work skipped: Project has no local runtime (devPort: null)
-        ```
-      - **Verification:** `baseURL` and health checks use the resolved `devPort`
-      - **Failure behavior:** If `devPort` cannot be resolved or is `null`, stop and report
-      - Use `baseURL` in playwright.config.ts set to `http://localhost:<devPort>`
+   c. **Resolve test base URL:**
+      
+      > 📚 **SKILL: test-url-resolution** — Load this skill for full resolution logic.
+      
+      Resolve the base URL for tests using this priority chain:
+      1. `projects.json` → `testBaseUrl` (explicit per-project override)
+      2. `project.json` → `agents.verification.testBaseUrl` (explicit project config)
+      3. Environment → `VERCEL_URL`, `DEPLOY_URL`, etc. (preview detection)
+      4. `project.json` → `environments.staging.url` (staging config)
+      5. `projects.json` → `devPort` → `http://localhost:${devPort}`
+      6. `null` → cannot test
       
       ```bash
-      # Get port for current project
-      jq '.projects[] | select(.path | contains("project-name")) | .devPort' ~/.config/opencode/projects.json
+      # Quick resolution
+      TEST_URL=$(jq -r --arg path "$PROJECT_PATH" '.projects[] | select(.path == $path) | .testBaseUrl // empty' ~/.config/opencode/projects.json)
+      [ -z "$TEST_URL" ] && TEST_URL=$(jq -r '.agents.verification.testBaseUrl // empty' "$PROJECT_PATH/docs/project.json" 2>/dev/null)
+      [ -z "$TEST_URL" ] && [ -n "$VERCEL_URL" ] && TEST_URL="https://$VERCEL_URL"
+      [ -z "$TEST_URL" ] && TEST_URL=$(jq -r '.environments.staging.url // empty' "$PROJECT_PATH/docs/project.json" 2>/dev/null)
+      [ -z "$TEST_URL" ] && DEV_PORT=$(jq -r --arg path "$PROJECT_PATH" '.projects[] | select(.path == $path) | .devPort // empty' ~/.config/opencode/projects.json) && [ -n "$DEV_PORT" ] && [ "$DEV_PORT" != "null" ] && TEST_URL="http://localhost:$DEV_PORT"
+      ```
+      
+      **If TEST_URL cannot be resolved:**
+      ```
+      ❌ Cannot determine test URL — see test-url-resolution skill for options
+      ```
+      
+      **Log the resolved URL:**
+      ```
+      🌐 Test environment: [type]
+         URL: [resolved-url]
       ```
 
 2. **Understand project conventions** - Read AGENTS.md files in relevant directories
@@ -345,8 +361,9 @@ The dev server is managed externally by Builder (via `check-dev-server.sh` at se
 ```typescript
 import { defineConfig, devices } from '@playwright/test';
 
-// Read port from environment (set by test-flow before running)
-const DEV_PORT = process.env.DEV_PORT || '3000';
+// Read base URL from environment (set by test-flow before running)
+// This supports localhost, staging, and preview URLs
+const BASE_URL = process.env.TEST_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${process.env.DEV_PORT || '3000'}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -354,7 +371,7 @@ export default defineConfig({
   reporter: 'list',
   
   use: {
-    baseURL: `http://localhost:${DEV_PORT}`,
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
   },
 
@@ -371,7 +388,7 @@ export default defineConfig({
 **Why no webServer:**
 - `webServer` starts a server AND kills it when tests complete
 - External management keeps the server running across test runs
-- `DEV_PORT` comes from `projects.json` via test-flow skill
+- `TEST_BASE_URL` supports localhost, staging, and preview environments
 
 ### Multi-Browser Testing
 

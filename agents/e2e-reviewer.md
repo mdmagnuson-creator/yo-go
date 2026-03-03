@@ -108,21 +108,26 @@ Create/update `docs/e2e-areas.json` with this structure:
 > **BEFORE** navigating to any pages:
 > 1. Read `~/.config/opencode/projects.json`
 > 2. Find the project entry by `id` or `path`
-> 3. Check if `devPort` is `null` — if so, stop immediately:
+> 3. Resolve test base URL using this priority:
+>    - `project.json` → `agents.verification.testBaseUrl` (explicit override)
+>    - Preview URL env vars: `VERCEL_URL`, `DEPLOY_URL`, `RAILWAY_PUBLIC_DOMAIN`, `RENDER_EXTERNAL_URL`, `FLY_APP_NAME`
+>    - `project.json` → `environments.staging.url`
+>    - `http://localhost:{devPort}` (if devPort is not null)
+> 4. If no URL can be resolved, stop immediately:
 >    ```
->    ⏭️  E2E review skipped: Project has no local runtime (devPort: null)
+>    ⏭️  E2E review skipped: No test URL available (no testBaseUrl, preview URL, staging URL, or devPort)
 >    ```
-> 4. Use `http://localhost:{devPort}` as your base URL
+> 5. Use the resolved URL as your base URL
 >
-> **Evidence:** Note the resolved `devPort` in your findings output.
+> **Evidence:** Note the resolved test URL and its source in your findings output.
 >
-> **Failure behavior:** If no project entry is found, or `devPort` is null, stop navigation and report the missing/unsupported registry data.
+> **Failure behavior:** If no project entry is found, or no test URL can be resolved, stop navigation and report the issue.
 
 Use Playwright/browser automation tools to:
 
-1. **Verify dev server is running** — Builder ensures this when invoking you. If running standalone, check that the server is up at the port specified in `~/.config/opencode/projects.json` → `projects[].devPort`
+1. **Verify test environment is accessible** — For localhost, Builder ensures the dev server is running. For remote URLs (preview/staging), perform a health check to verify the endpoint is reachable.
 2. **Authenticate** if needed (use test credentials or storage state)
-3. **Navigate to each UI area** using `http://localhost:{devPort}/{path}`
+3. **Navigate to each UI area** using `${TEST_BASE_URL}/{path}` (where TEST_BASE_URL is the resolved URL from step 5 above)
 4. **Verify elements exist and are interactive**
 5. **Take screenshots** for documentation
 6. **Note any issues** (broken layouts, missing elements, console errors)

@@ -56,10 +56,22 @@ Use documentation lookup tools.
         - `commands.test`, `commands.testUnit`, `commands.testE2E` — test commands
       - **Read `<project>/docs/CONVENTIONS.md`** if it exists — this tells you testing patterns and conventions
    
-   c. **Load project registry entry:**
-      - **Read `~/.config/opencode/projects.json`** to find the current project's registry entry
-      - Check for `devPort` — if `null`, this project has no local runtime (E2E tests will be skipped)
-      - Save this for the E2E phase decision
+   c. **Resolve test base URL:**
+      
+      > 📚 **SKILL: test-url-resolution** — Load this skill for full resolution logic.
+      
+      Resolve the base URL for E2E tests using this priority chain:
+      1. `projects.json` → `testBaseUrl` (explicit per-project override)
+      2. `project.json` → `agents.verification.testBaseUrl` (explicit project config)
+      3. Environment → `VERCEL_URL`, `DEPLOY_URL`, etc. (preview detection)
+      4. `project.json` → `environments.staging.url` (staging config)
+      5. `projects.json` → `devPort` → `http://localhost:${devPort}`
+      6. `null` → cannot test (skip E2E)
+      
+      **Old behavior (devPort: null → skip):** Now replaced with URL resolution.
+      Projects without `devPort` can still run E2E tests if they have `testBaseUrl` or staging URL.
+      
+      Save the resolved URL for the E2E phase.
    
    d. **Check for project-specific testers** in `<project>/docs/agents/` directory
       - These override global testers for this project
@@ -197,10 +209,13 @@ You'll receive:
 ```
 mode: visual-audit
 project: /path/to/project
-baseUrl: http://localhost:3000
+baseUrl: <resolved-test-url>  # from test-url-resolution (localhost, staging, or preview)
 paths: ["/", "/pricing", "/docs/getting-started"]  # optional; discover if omitted
 afterFix: false  # true when running targeted re-verification
 ```
+
+> **Note:** The `baseUrl` is resolved using the test-url-resolution skill priority chain.
+> It may be localhost, a staging URL, or a preview environment URL.
 
 ### Visual Audit Workflow
 

@@ -108,10 +108,12 @@ For more targeted screenshots, you can write a quick Playwright script:
 import { chromium } from 'playwright';
 import { authenticate, loadEnvFile, getSupabaseAdmin, ensureTestUserData, DEFAULT_TEST_EMAIL } from './auth-helper';
 
-// IMPORTANT: Get the port from projects.json, don't hardcode!
-// Read ~/.config/opencode/projects.json and find devPort for this project
-const DEV_PORT = /* read from projects.json */;
-const BASE_URL = `http://localhost:${DEV_PORT}`;
+// IMPORTANT: Resolve test URL using the standard priority chain
+// 1. project.json → agents.verification.testBaseUrl (explicit override)
+// 2. Preview URL env vars: VERCEL_URL, DEPLOY_URL, RAILWAY_PUBLIC_DOMAIN, etc.
+// 3. project.json → environments.staging.url
+// 4. http://localhost:{devPort} (from projects.json)
+const BASE_URL = process.env.TEST_BASE_URL || /* resolve using priority chain */;
 
 async function captureElement() {
   loadEnvFile();

@@ -27,16 +27,19 @@ See AGENTS.md. Never truncate test failure output — show complete errors and s
 >
 > **BEFORE** inspecting any pages or delegating to @playwright-dev:
 > 1. Read `~/.config/opencode/projects.json`
-> 2. Find the project entry by `id` or `path`
-> 3. Check if `devPort` is `null` — if so, stop immediately:
->    ```
->    ⏭️  Browser testing skipped: Project has no local runtime (devPort: null)
->    ```
-> 4. Use the `devPort` value from that entry
+> 📚 **SKILL: test-url-resolution** — Load this skill for full URL resolution.
 >
-> **Evidence:** Include `http://localhost:{devPort}/...` in delegated task context.
+> **Resolve test base URL using priority chain:**
+> 1. `projects.json` → `testBaseUrl` (explicit override)
+> 2. `project.json` → `agents.verification.testBaseUrl` (explicit config)
+> 3. Environment → `VERCEL_URL`, `DEPLOY_URL`, etc. (preview detection)
+> 4. `project.json` → `environments.staging.url` (staging config)
+> 5. `projects.json` → `devPort` → `http://localhost:${devPort}`
+> 6. `null` → cannot test
 >
-> **Failure behavior:** If registry lookup fails or `devPort` is `null`, stop and report instead of guessing.
+> **Evidence:** Include resolved `TEST_BASE_URL` in delegated task context.
+>
+> **Failure behavior:** If URL cannot be resolved, stop and report the resolution options.
 
 **Prerequisites:** The dev server must be running. When invoked by @builder or @qa, the server is already started. If running standalone, ensure the server is running at the port specified in `projects.json`.
 
@@ -150,12 +153,12 @@ Call @playwright-dev with a clear task description that includes:
 ```
 Write a Playwright test for QA finding QA-001: "Form submits with invalid email"
 
-Dev server is running at: http://localhost:{devPort}
+Test base URL: ${TEST_BASE_URL}  # resolved from testBaseUrl config, preview URL, or localhost
 
 Severity: high
 
 Steps to reproduce:
-1. Navigate to http://localhost:{devPort}/contact
+1. Navigate to ${TEST_BASE_URL}/contact
 2. Fill in the email field with "invalid-email"
 3. Click the Submit button
 4. Observe that form submits without validation error

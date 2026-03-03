@@ -195,14 +195,16 @@ await stable.verify();
 >
 > Playwright's default `webServer` behavior kills the dev server when tests complete.
 > The dev server is managed externally by Builder/test-flow.
+> For remote URLs (Vercel preview, staging), no server management is needed.
 
 **Correct config pattern:**
 
 ```typescript
 import { defineConfig, devices } from '@playwright/test';
 
-// Read port from environment (set by test-flow before running)
-const DEV_PORT = process.env.DEV_PORT || '3000';
+// Read base URL from environment (set by test-flow before running)
+// Supports localhost, preview URLs (Vercel, Netlify, etc.), and staging URLs
+const TEST_BASE_URL = process.env.TEST_BASE_URL || `http://localhost:${process.env.DEV_PORT || '3000'}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -210,12 +212,13 @@ export default defineConfig({
   reporter: 'list',  // Use list reporter to avoid hanging
   
   use: {
-    baseURL: `http://localhost:${DEV_PORT}`,
+    baseURL: TEST_BASE_URL,
     trace: 'on-first-retry',
   },
 
   // NO webServer config — dev server is managed externally
   // This prevents Playwright from killing the server after tests
+  // For remote URLs (preview deployments, staging), no server management needed
 
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
@@ -227,7 +230,8 @@ export default defineConfig({
 ```
 
 **Key points:**
-- Use `DEV_PORT` from environment, not hardcoded values
+- Use `TEST_BASE_URL` from environment (supports localhost, preview, and staging URLs)
+- Fall back to `DEV_PORT` for backward compatibility with localhost testing
 - Use `reporter: 'list'` to prevent process hanging
 - No `webServer` config — external management keeps server running
 - Include multi-browser projects for comprehensive testing

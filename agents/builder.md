@@ -1013,13 +1013,35 @@ COMPLETED PRDs (recent)
 
 **The dev server is checked/started after workflow selection** (`P`, `A`, `U`, or `E`), not immediately after project selection.
 
-> ⛔ **CRITICAL: Never begin PRD, ad-hoc, updates, or E2E work without confirming dev server is running.**
+> ⛔ **CRITICAL: Never begin PRD, ad-hoc, updates, or E2E work without confirming a test environment is available.**
 >
-> Once the user chooses a workflow, verify it's running before proceeding.
+> Once the user chooses a workflow, verify a test URL is accessible before proceeding.
+> This may be a local dev server OR a remote URL (preview deployment, staging).
 >
-> **Failure behavior:** If not running, restart/repair server first and do not execute PRD or ad-hoc tasks.
+> **Failure behavior:** If no test environment is available, stop and report. Do not execute PRD or ad-hoc tasks.
 
-> ⚠️ **SINGLE SOURCE OF TRUTH: `~/.config/opencode/projects.json`**
+### Test URL Resolution
+
+Before starting work that requires browser testing, resolve the test URL:
+
+**Priority order:**
+1. `project.json` → `agents.verification.testBaseUrl` (explicit override)
+2. Preview URL environment variables:
+   - Vercel: `VERCEL_URL`, `NEXT_PUBLIC_VERCEL_URL`
+   - Netlify: `DEPLOY_URL`, `DEPLOY_PRIME_URL`
+   - Railway: `RAILWAY_PUBLIC_DOMAIN`
+   - Render: `RENDER_EXTERNAL_URL`
+   - Fly.io: `FLY_APP_NAME` (appended with `.fly.dev`)
+3. `project.json` → `environments.staging.url`
+4. `http://localhost:{devPort}` (from `projects.json`)
+
+**If remote URL detected:** Skip local server startup, perform health check on remote URL instead.
+
+**If localhost URL:** Start dev server as normal (see below).
+
+**If no URL resolvable:** Check if project has `capabilities.ui: false` — if so, no test URL needed. Otherwise, stop and report missing configuration.
+
+> ⚠️ **SINGLE SOURCE OF TRUTH FOR LOCALHOST: `~/.config/opencode/projects.json`**
 >
 > The dev port is stored ONLY in the projects registry: `projects[].devPort`
 >
@@ -1030,13 +1052,59 @@ COMPLETED PRDs (recent)
 >
 > Always read from: `~/.config/opencode/projects.json` → find project by path/name → use `devPort`
 
-### When Dev Server Is Required
+### CLI Triggers for Remote Testing
+
+When Builder detects preview/staging environment variables, it can proactively offer testing against deployed environments:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                     PREVIEW ENVIRONMENT DETECTED
+═══════════════════════════════════════════════════════════════════════
+
+Vercel preview URL available: https://my-app-abc123.vercel.app
+
+Options:
+  [P] Test against preview URL (no local server needed)
+  [L] Test against localhost (start dev server)
+  [S] Skip E2E for this session
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+**When to show this prompt:**
+- `VERCEL_URL`, `DEPLOY_URL`, or other preview env vars are set
+- User starts a workflow that requires E2E testing
+- Project has `capabilities.ui: true`
+
+### When Test Environment Is Required
 
 - E2E tests — `e2e`, `e2e-write`
 - Visual verification — `visual-verify`
 - Any sub-agent using browser automation tooling (Playwright, browser-use, or equivalent)
 
-### Dev Server Lifecycle
+### Test Environment Lifecycle
+
+**For remote URLs (preview deployments, staging):**
+
+1. **Resolve remote URL** using the priority chain above
+2. **Health check with retry:**
+   ```bash
+   # Retry with exponential backoff (cold starts)
+   for i in 1 2 3; do
+     if curl -sf --max-time 30 "$TEST_BASE_URL" > /dev/null 2>&1; then
+       echo "Remote environment ready: $TEST_BASE_URL"
+       break
+     fi
+     sleep $((5 * i))
+   done
+   ```
+3. **Export for downstream:**
+   ```bash
+   export TEST_BASE_URL="$REMOTE_URL"
+   ```
+
+**For localhost (local dev server):**
 
 1. **Read port from registry:**
    ```bash
@@ -1057,6 +1125,11 @@ COMPLETED PRDs (recent)
 4. **Never make a running claim without immediate verification:**
    - Re-run the script immediately before replying "running"
    - If second check is not `running`, report failure state instead
+
+5. **Export for downstream:**
+   ```bash
+   export TEST_BASE_URL="http://localhost:${DEV_PORT}"
+   ```
 
 > ⚠️ **ALWAYS LEAVE THE DEV SERVER RUNNING**
 >

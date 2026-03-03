@@ -1314,6 +1314,11 @@
               "default": "playwright-required",
               "description": "playwright-required: Builder must verify UI changes with Playwright before marking complete. no-ui: Skip Playwright (for backends, CLIs, libraries)."
             },
+            "testBaseUrl": {
+              "type": "string",
+              "pattern": "^https?://",
+              "description": "Explicit base URL for E2E tests and verification. Overrides automatic URL resolution. Must include protocol (http:// or https://). Example: 'https://staging.myapp.com'. See test-url-resolution skill for resolution priority."
+            },
             "selectorStrategy": {
               "type": "string",
               "enum": ["strict", "flexible"],

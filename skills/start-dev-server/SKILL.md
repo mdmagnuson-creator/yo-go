@@ -11,30 +11,135 @@ description: "Start the development server for a project and wait for it to be r
 
 This skill starts the project's dev server(s) using configuration from `project.json` and `projects.json`, then waits for all services to be ready before returning.
 
+**For remote testing:** If a remote test URL is configured (preview deployment, staging), this skill can verify the remote environment is reachable instead of starting a local server.
+
 **Why use this skill:** Saves tokens by handling server startup automatically instead of Builder figuring out the process each time.
 
 ## Input
 
 When invoking this skill, provide:
 - **projectPath**: Absolute path to the project root (e.g., `/Users/markmagnuson/code/my-project`)
+- **mode** (optional): `local` (default) or `remote-check`
 
 ## Steps
 
-### Step 0: Check for Local Runtime Capability
+### Step 0: Resolve Test URL and Determine Mode
 
-Before doing anything else, check if this project can run locally:
+Before doing anything else, resolve the test URL to determine if local or remote testing:
+
+```bash
+cd "$projectPath"
+
+# Resolution priority:
+# 1. project.json → agents.verification.testBaseUrl (explicit override)
+# 2. Preview URL env vars (Vercel, Netlify, Railway, Render, Fly.io)
+# 3. project.json → environments.staging.url
+# 4. http://localhost:{devPort} (from projects.json)
+
+TEST_BASE_URL=""
+
+# Check for explicit testBaseUrl first
+if [ -f "docs/project.json" ]; then
+  TEST_BASE_URL=$(jq -r '.agents.verification.testBaseUrl // empty' docs/project.json 2>/dev/null)
+fi
+
+# Check preview environment variables
+if [ -z "$TEST_BASE_URL" ]; then
+  if [ -n "$VERCEL_URL" ]; then
+    TEST_BASE_URL="https://${VERCEL_URL}"
+  elif [ -n "$DEPLOY_URL" ]; then
+    TEST_BASE_URL="$DEPLOY_URL"
+  elif [ -n "$DEPLOY_PRIME_URL" ]; then
+    TEST_BASE_URL="$DEPLOY_PRIME_URL"
+  elif [ -n "$RAILWAY_PUBLIC_DOMAIN" ]; then
+    TEST_BASE_URL="https://${RAILWAY_PUBLIC_DOMAIN}"
+  elif [ -n "$RENDER_EXTERNAL_URL" ]; then
+    TEST_BASE_URL="$RENDER_EXTERNAL_URL"
+  elif [ -n "$FLY_APP_NAME" ]; then
+    TEST_BASE_URL="https://${FLY_APP_NAME}.fly.dev"
+  fi
+fi
+
+# Check staging URL
+if [ -z "$TEST_BASE_URL" ] && [ -f "docs/project.json" ]; then
+  TEST_BASE_URL=$(jq -r '.environments.staging.url // empty' docs/project.json 2>/dev/null)
+fi
+
+# Determine mode based on URL
+if [ -n "$TEST_BASE_URL" ] && [[ "$TEST_BASE_URL" != http://localhost* ]]; then
+  # Remote URL detected — skip local server, do remote health check
+  echo "Remote test URL detected: $TEST_BASE_URL"
+  MODE="remote"
+else
+  # Local URL — need to start dev server
+  MODE="local"
+fi
+```
+
+### Step 0a: Remote Health Check (if MODE=remote)
+
+If a remote URL is detected, verify it's reachable instead of starting a local server:
+
+```bash
+if [ "$MODE" = "remote" ]; then
+  echo "Checking remote test environment..."
+  
+  # Retry with exponential backoff (preview deployments may be cold-starting)
+  MAX_RETRIES=3
+  RETRY_DELAY=5
+  
+  for i in $(seq 1 $MAX_RETRIES); do
+    HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 30 "$TEST_BASE_URL" 2>/dev/null)
+    
+    if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+      echo "✓ Remote environment ready: $TEST_BASE_URL"
+      export TEST_BASE_URL
+      exit 0
+    fi
+    
+    if [ $i -lt $MAX_RETRIES ]; then
+      echo "Remote not ready (HTTP $HTTP_CODE), retrying in ${RETRY_DELAY}s... ($i/$MAX_RETRIES)"
+      sleep $RETRY_DELAY
+      RETRY_DELAY=$((RETRY_DELAY * 2))
+    fi
+  done
+  
+  echo "❌ Remote test URL not reachable after $MAX_RETRIES attempts: $TEST_BASE_URL"
+  echo "Last HTTP status: $HTTP_CODE"
+  exit 1
+fi
+```
+
+**Why retry with backoff?** Preview deployments (Vercel, Netlify, Railway) may be cold-starting. A single check isn't enough — the first request may trigger a cold start that takes 5-30 seconds.
+
+### Step 0b: Check for Local Runtime Capability (if MODE=local)
+
+Before starting a local server, check if this project can run locally:
 
 ```bash
 # Check if devPort is null in projects.json
 DEV_PORT=$(cat ~/.config/opencode/projects.json | jq -r '.projects[] | select(.path == "'"$projectPath"'") | .devPort')
 
 if [ "$DEV_PORT" = "null" ]; then
-  echo "⏭️  Skipping dev server: Project has no local runtime (devPort: null)"
+  # devPort is null — check if there's a remote URL we can test against
+  echo "⚠️  Project has no local runtime (devPort: null)"
+  
+  # Re-check for any configured remote URL
+  STAGING_URL=$(jq -r '.environments.staging.url // empty' docs/project.json 2>/dev/null)
+  TEST_BASE_URL=$(jq -r '.agents.verification.testBaseUrl // empty' docs/project.json 2>/dev/null)
+  
+  if [ -n "$TEST_BASE_URL" ] || [ -n "$STAGING_URL" ]; then
+    REMOTE_URL="${TEST_BASE_URL:-$STAGING_URL}"
+    echo "Found remote URL: $REMOTE_URL"
+    echo "Run with mode=remote-check or set VERCEL_URL/DEPLOY_URL env vars"
+  fi
+  
+  echo "⏭️  Skipping local dev server startup"
   exit 0
 fi
 ```
 
-**If devPort is null:** This project cannot run locally (e.g., remote-only codebase, library, or cloud-native app without local dev). Skip all subsequent steps and return immediately.
+**If devPort is null:** This project cannot run locally (e.g., remote-only codebase, library, or cloud-native app without local dev). The skill will check for configured remote URLs and suggest alternatives.
 
 ### Step 1: Load Project Configuration
 
@@ -212,13 +317,28 @@ done
 > The code above shows killing PIDs before exit. Without this, `node` processes remain orphaned and consume CPU indefinitely.
 > **Check:** After failure, verify no orphaned processes with `lsof -i:$PORT`. **Stop** if processes remain.
 
-### Step 7: Return Result
+### Step 7: Return Result and Export TEST_BASE_URL
 
-On success, output:
+On success, export the test URL and output:
+```bash
+# Export TEST_BASE_URL for downstream consumers (test-flow, Playwright)
+export TEST_BASE_URL="http://localhost:${PRIMARY_PORT}"
+
+echo "Dev servers ready:"
+for service in $services; do
+  echo "- $service: http://localhost:${servicePorts[$service]}"
+done
+echo ""
+echo "TEST_BASE_URL=$TEST_BASE_URL"
+```
+
+Output format:
 ```
 Dev servers ready:
 - web: http://localhost:<port>
 - api: http://localhost:<api-port>
+
+TEST_BASE_URL=http://localhost:<primary-port>
 ```
 
 On failure, output the error and exit with code 1.

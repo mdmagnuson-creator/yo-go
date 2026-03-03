@@ -1336,29 +1336,85 @@ Setup checklist should include at minimum:
 
 ### E2E Execution Steps
 
-1. **Ensure dev server is running (MANDATORY)**
+1. **Resolve test base URL (MANDATORY)**
    
-   Before running any Playwright tests, verify the dev server is running:
+   Before running any Playwright tests, resolve the test URL:
    
    ```bash
-   # Get devPort for this project
-   DEV_PORT=$(jq -r '.projects[] | select(.path == "'$(pwd)'") | .devPort' ~/.config/opencode/projects.json)
+   # Resolution priority:
+   # 1. project.json → agents.verification.testBaseUrl (explicit override)
+   # 2. Preview URL env vars (Vercel, Netlify, Railway, Render, Fly.io)
+   # 3. project.json → environments.staging.url
+   # 4. http://localhost:{devPort} (from projects.json)
    
-   # Check if server is responding
-   if ! curl -sf --max-time 2 "http://localhost:${DEV_PORT}" > /dev/null 2>&1; then
-     # Start it using the shared script
+   # Check for explicit testBaseUrl first
+   TEST_BASE_URL=$(jq -r '.agents.verification.testBaseUrl // empty' docs/project.json)
+   
+   # Check preview environment variables
+   if [ -z "$TEST_BASE_URL" ]; then
+     if [ -n "$VERCEL_URL" ]; then
+       TEST_BASE_URL="https://${VERCEL_URL}"
+     elif [ -n "$DEPLOY_URL" ]; then
+       TEST_BASE_URL="$DEPLOY_URL"
+     elif [ -n "$RAILWAY_PUBLIC_DOMAIN" ]; then
+       TEST_BASE_URL="https://${RAILWAY_PUBLIC_DOMAIN}"
+     elif [ -n "$RENDER_EXTERNAL_URL" ]; then
+       TEST_BASE_URL="$RENDER_EXTERNAL_URL"
+     elif [ -n "$FLY_APP_NAME" ]; then
+       TEST_BASE_URL="https://${FLY_APP_NAME}.fly.dev"
+     fi
+   fi
+   
+   # Check staging URL
+   if [ -z "$TEST_BASE_URL" ]; then
+     TEST_BASE_URL=$(jq -r '.environments.staging.url // empty' docs/project.json)
+   fi
+   
+   # Fall back to localhost
+   if [ -z "$TEST_BASE_URL" ]; then
+     DEV_PORT=$(jq -r '.projects[] | select(.path == "'$(pwd)'") | .devPort' ~/.config/opencode/projects.json)
+     if [ -n "$DEV_PORT" ] && [ "$DEV_PORT" != "null" ]; then
+       TEST_BASE_URL="http://localhost:${DEV_PORT}"
+     fi
+   fi
+   
+   # Verify we have a URL
+   if [ -z "$TEST_BASE_URL" ]; then
+     echo "⏭️  E2E skipped: No test URL available"
+     exit 0
+   fi
+   
+   export TEST_BASE_URL
+   ```
+
+2. **Ensure test environment is accessible**
+   
+   For localhost URLs, verify the dev server is running:
+   ```bash
+   if [[ "$TEST_BASE_URL" == http://localhost:* ]]; then
+     # Start it using the shared script if not running
      ~/.config/opencode/scripts/check-dev-server.sh --project-path "$(pwd)"
+   else
+     # For remote URLs, perform a health check
+     if ! curl -sf --max-time 10 "$TEST_BASE_URL" > /dev/null 2>&1; then
+       echo "❌ Remote test URL not reachable: $TEST_BASE_URL"
+       exit 1
+     fi
    fi
    ```
    
-   **Failure behavior:** If `check-dev-server.sh` returns `startup failed` or `timed out`, stop and report the error. Do not run Playwright tests against a dead server.
+   **Failure behavior:** If the dev server fails to start or remote URL is unreachable, stop and report the error. Do not run Playwright tests against a dead server.
 
-2. **Set DEV_PORT environment variable:**
+3. **Set TEST_BASE_URL environment variable:**
    ```bash
-   export DEV_PORT=$(jq -r '.projects[] | select(.path == "'$(pwd)'") | .devPort' ~/.config/opencode/projects.json)
+   export TEST_BASE_URL
+   # Also set DEV_PORT for backward compatibility if localhost
+   if [[ "$TEST_BASE_URL" == http://localhost:* ]]; then
+     export DEV_PORT=$(echo "$TEST_BASE_URL" | sed 's/.*://; s/\/.*//')
+   fi
    ```
 
-3. **Run all queued E2E tests:**
+4. **Run all queued E2E tests:**
    ```bash
    npx playwright test --reporter=list [list of test files]
    ```
@@ -1375,14 +1431,16 @@ Setup checklist should include at minimum:
 > This violates the Builder policy: "ALWAYS LEAVE THE DEV SERVER RUNNING."
 >
 > The dev server is managed externally by `check-dev-server.sh` or Builder's session startup.
+> For remote URLs (preview/staging), no local server management is needed.
 
 **Correct playwright.config.ts pattern:**
 
 ```typescript
 import { defineConfig, devices } from '@playwright/test';
 
-// Read port from environment (set by test-flow before running)
-const DEV_PORT = process.env.DEV_PORT || '3000';
+// Read base URL from environment (set by test-flow before running)
+// Supports localhost, preview URLs, and staging URLs
+const TEST_BASE_URL = process.env.TEST_BASE_URL || `http://localhost:${process.env.DEV_PORT || '3000'}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -1390,12 +1448,13 @@ export default defineConfig({
   reporter: 'list',
   
   use: {
-    baseURL: `http://localhost:${DEV_PORT}`,
+    baseURL: TEST_BASE_URL,
     trace: 'on-first-retry',
   },
 
   // NO webServer config — dev server is managed externally
   // This prevents Playwright from killing the server after tests
+  // For remote URLs (Vercel preview, staging), no server management needed
 
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
@@ -1410,6 +1469,7 @@ export default defineConfig({
 - `webServer` starts a server AND kills it when tests complete (default behavior)
 - `reuseExistingServer: true` only helps if server is already running
 - External management via `check-dev-server.sh` is more reliable and keeps the server running across test runs
+- For remote URLs (preview deployments, staging), no local server is needed at all
 
 ### Playwright Matrix Guidance
 
