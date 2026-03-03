@@ -18,7 +18,7 @@
 
     "environments": {
       "type": "object",
-      "description": "Environment hosting configuration. Used by agents for deployment, database access, and environment-specific config.",
+      "description": "Environment hosting configuration. Used by agents for deployment, database access, environment-specific config, and mapping desktop/mobile apps to their backend environments.",
       "properties": {
         "development": {
           "type": "object",
@@ -66,8 +66,12 @@
         },
         "staging": {
           "type": "object",
-          "description": "Staging/preview environment",
+          "description": "Staging/preview environment. Maps to a specific git branch, database, and deployment.",
           "properties": {
+            "branch": {
+              "type": "string",
+              "description": "Git branch that deploys to this environment (e.g., 'main' for staging)"
+            },
             "host": {
               "type": "string",
               "enum": ["vercel", "render", "fly", "railway", "aws", "gcp", "docker", "custom"],
@@ -97,13 +101,60 @@
             },
             "url": { "type": "string", "description": "Staging URL (fallback for single-service setups)" },
             "databaseUrl": { "type": "string", "description": "Database connection string (use 'envvar:NAME' for env var reference)" },
-            "apiUrl": { "type": "string", "description": "Base URL for API calls" }
+            "apiUrl": { "type": "string", "description": "Base URL for API calls" },
+            "database": {
+              "type": "object",
+              "description": "Database project configuration for this environment. Helps agents understand which database to target.",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "enum": ["supabase", "planetscale", "neon", "rds", "cloud-sql", "atlas", "local"],
+                  "description": "Database hosting provider"
+                },
+                "projectRef": {
+                  "type": "string",
+                  "description": "Provider-specific project reference (e.g., Supabase project ref like 'rvuylmblhafnryfdlnkj')"
+                },
+                "projectName": {
+                  "type": "string",
+                  "description": "Human-readable project name in the provider dashboard (e.g., 'MyApp Staging')"
+                },
+                "linkedLocally": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Whether this database is linked to the local CLI (e.g., 'supabase link'). If true, local migrations target this database."
+                }
+              }
+            },
+            "vercelEnvironment": {
+              "type": "string",
+              "enum": ["preview", "production", "development"],
+              "description": "Which Vercel environment variables to use for this environment. NOTE: Vercel defaults 'main' branch to Production environment, so staging may need 'preview' setting."
+            },
+            "desktop": {
+              "type": "object",
+              "description": "Desktop app configuration that targets this environment",
+              "properties": {
+                "appName": {
+                  "type": "string",
+                  "description": "Name of the desktop app that uses this environment (e.g., 'MyApp Dev' for staging)"
+                },
+                "bundleId": {
+                  "type": "string",
+                  "description": "macOS bundle identifier for this environment's app (e.g., 'com.company.myapp-dev')"
+                }
+              }
+            }
           }
         },
         "production": {
           "type": "object",
-          "description": "Production environment",
+          "description": "Production environment. Maps to a specific git branch, database, and deployment.",
           "properties": {
+            "branch": {
+              "type": "string",
+              "description": "Git branch that deploys to this environment (e.g., 'production' or 'main')"
+            },
             "host": {
               "type": "string",
               "enum": ["vercel", "render", "fly", "railway", "aws", "gcp", "docker", "custom"],
@@ -133,7 +184,50 @@
             },
             "url": { "type": "string", "description": "Production URL (fallback for single-service setups)" },
             "databaseUrl": { "type": "string", "description": "Database connection string (use 'envvar:NAME' for env var reference)" },
-            "apiUrl": { "type": "string", "description": "Base URL for API calls" }
+            "apiUrl": { "type": "string", "description": "Base URL for API calls" },
+            "database": {
+              "type": "object",
+              "description": "Database project configuration for this environment. Helps agents understand which database to target.",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "enum": ["supabase", "planetscale", "neon", "rds", "cloud-sql", "atlas", "local"],
+                  "description": "Database hosting provider"
+                },
+                "projectRef": {
+                  "type": "string",
+                  "description": "Provider-specific project reference (e.g., Supabase project ref like 'hiuhimcmmqdeeyhvdkrb')"
+                },
+                "projectName": {
+                  "type": "string",
+                  "description": "Human-readable project name in the provider dashboard (e.g., 'MyApp Production')"
+                },
+                "linkedLocally": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Whether this database is linked to the local CLI. Usually false for production."
+                }
+              }
+            },
+            "vercelEnvironment": {
+              "type": "string",
+              "enum": ["preview", "production", "development"],
+              "description": "Which Vercel environment variables to use for this environment."
+            },
+            "desktop": {
+              "type": "object",
+              "description": "Desktop app configuration that targets this environment",
+              "properties": {
+                "appName": {
+                  "type": "string",
+                  "description": "Name of the desktop app that uses this environment (e.g., 'MyApp' for production)"
+                },
+                "bundleId": {
+                  "type": "string",
+                  "description": "macOS bundle identifier for this environment's app (e.g., 'com.company.myapp')"
+                }
+              }
+            }
           }
         }
       }

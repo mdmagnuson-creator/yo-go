@@ -123,6 +123,7 @@ Builder workflows are defined in loadable skills. Load the appropriate skill bas
 | `adhoc-workflow` | Ad-hoc mode — direct requests without PRD |
 | `prd-workflow` | PRD mode — building features from PRDs |
 | `browser-debugging` | Visual debugging escalation — see triggers below |
+| `vercel-supabase-alignment` | Database errors with multi-environment Vercel + Supabase |
 
 ---
 
@@ -197,6 +198,58 @@ Compare logged values against code expectations. Look for:
 | Handler called but condition fails | Stale closure, wrong comparison |
 | Works in test, fails in dev | React StrictMode double-mount |
 | Works after HMR, fails on fresh load | Initialization timing |
+
+---
+
+## Environment Context & Database Error Diagnosis
+
+> ⚠️ **When debugging database errors, ALWAYS verify which environment you're investigating.**
+>
+> Many projects use multi-environment architectures where different git branches deploy to different databases.
+> Incorrect environment diagnosis leads to "fixing" the wrong database.
+
+### Multi-Environment Detection Triggers
+
+Load the `vercel-supabase-alignment` skill when **ANY** of these occur:
+
+1. **User reports database error** with environment context (e.g., "in Helm Dev", "on staging", "in production")
+2. **Database error mentions specific data** that may only exist in one environment
+3. **Project uses Vercel + Supabase** (check `project.json` → `hosting`, `database`)
+4. **Error involves environment-specific configuration** (API keys, URLs, connection strings)
+5. **User mentions branch-to-environment relationship** (e.g., "main branch", "production branch")
+
+### Quick Environment Verification
+
+Before investigating ANY database error:
+
+```
+1. Check project.json → environments.staging / environments.production
+2. Identify: branch, vercelEnvironment, database.projectRef
+3. Ask: "Which environment is the user reporting from?"
+4. Verify: "Am I looking at the correct database?"
+```
+
+### Common Multi-Environment Patterns
+
+| Pattern | Description |
+|---------|-------------|
+| Branch-based deployment | `main` → staging, `production` → production |
+| Vercel environment naming | Vercel's "Production" may actually be staging if `main` deploys there |
+| Separate Supabase projects | Each environment has its own Supabase project with different `projectRef` |
+| Desktop app environments | Electron/Tauri apps may have separate environment builds |
+
+### Environment Diagnosis Checklist
+
+Before touching a database:
+
+```
+□ Identified which environment the error occurred in
+□ Verified the branch → environment → database mapping
+□ Confirmed I'm investigating the correct Supabase project
+□ Noted any Vercel vs. branch naming confusion
+```
+
+**If unsure about environment mapping:** Ask the user to clarify before proceeding.
 
 ---
 
