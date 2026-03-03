@@ -924,7 +924,9 @@ Use the `relatedProjects` configuration to find the documentation website:
 1. Read `docs/project.json` from the toolkit repo
 2. Find the related project with `relationship: "documentation-site"`
 3. Resolve its `projectId` to a path via `projects.json`
-4. If `relatedProjects` is not configured, fall back to name-based search
+4. If `relatedProjects` is not configured: **BLOCK and prompt user to configure**
+
+> ⛔ **No name-based guessing.** If `relatedProjects` is not configured, do not fall back to searching by project name. This ensures explicit, reliable cross-project relationships.
 
 See `data/related-projects.md` for the helper pattern.
 
@@ -944,21 +946,45 @@ List all changes that affect documentation:
 
 1. **Look up the website project path:**
    ```bash
-   # Try relatedProjects first (preferred)
+   # Require relatedProjects — no name-based guessing
    PROJECT_ID=$(jq -r '.relatedProjects[] | select(.relationship == "documentation-site") | .projectId' docs/project.json 2>/dev/null)
    
-   if [ -n "$PROJECT_ID" ] && [ "$PROJECT_ID" != "null" ]; then
-     # Resolve via relatedProjects
-     WEBSITE_PATH=$(jq -r --arg id "$PROJECT_ID" '.projects[] | select(.id == $id) | .path' ~/.config/opencode/projects.json)
-   else
-     # Fallback: search by name pattern (legacy)
-     WEBSITE_PATH=$(jq -r '.projects[] | select(.id | contains("website")) | .path' ~/.config/opencode/projects.json | head -1)
-     if [ -n "$WEBSITE_PATH" ]; then
-       echo "Warning: Using fallback name match. Configure relatedProjects in docs/project.json."
-     fi
+   if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
+     echo "ERROR: relatedProjects not configured for documentation-site"
+     echo "BLOCKED: Cannot create website sync update"
+     exit 1
+   fi
+   
+   WEBSITE_PATH=$(jq -r --arg id "$PROJECT_ID" '.projects[] | select(.id == $id) | .path' ~/.config/opencode/projects.json)
+   
+   if [ -z "$WEBSITE_PATH" ] || [ "$WEBSITE_PATH" = "null" ]; then
+     echo "ERROR: Project ID '$PROJECT_ID' not found in projects.json"
+     echo "BLOCKED: Cannot create website sync update"
+     exit 1
    fi
    
    echo "Website project path: $WEBSITE_PATH"
+   ```
+   
+   **If BLOCKED, prompt user:**
+   ```
+   ⛔ RELATED PROJECTS NOT CONFIGURED
+   
+   Cannot create website sync update — no documentation-site relationship found.
+   
+   To configure, add to toolkit's docs/project.json:
+   
+   {
+     "relatedProjects": [
+       {
+         "projectId": "your-website-project-id",
+         "relationship": "documentation-site",
+         "description": "Documentation website for the toolkit"
+       }
+     ]
+   }
+   
+   Then run the post-change workflow again.
    ```
 
 2. **Create the directory if needed:**
@@ -1140,6 +1166,7 @@ feat: Add [agent-name] agent for [purpose]
 - ❌ Run implementation agents (@developer, @builder) — you maintain the toolkit, not projects
 - ❌ Make destructive changes without user confirmation
 - ❌ Perform actions you just enabled for another agent — let that agent do it in a new session
+- ❌ **Guess related projects by name** — use `relatedProjects` lookup only, BLOCK if not configured
 
 **Communication violations:**
 - ❌ Ask "Want me to run this on [project]?" — you can't, so don't offer
