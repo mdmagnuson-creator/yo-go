@@ -321,6 +321,245 @@ If no `verificationContract` exists in `builder-state.json`:
 
 ---
 
+## UI Verification (Playwright Required Mode)
+
+> 🎯 **For UI projects, Playwright browser verification is MANDATORY for UI changes.**
+>
+> When `project.json → agents.verification.mode` is `playwright-required`:
+> - All UI changes must be visually verified in a browser before task completion
+> - Verification generates reusable test scripts in `tests/ui-verify/`
+> - Screenshots are captured for visual confirmation
+>
+> This applies to BOTH ad-hoc mode AND PRD mode.
+
+### Configuration
+
+Read verification settings from `project.json`:
+
+```json
+{
+  "agents": {
+    "workingDir": "ai-tmp",
+    "verification": {
+      "mode": "playwright-required",  // or "no-ui" for backends/CLIs
+      "selectorStrategy": "strict",   // or "flexible"
+      "testDir": "tests/ui-verify",
+      "screenshotDir": "ai-tmp/verification/screenshots",
+      "reviewGeneratedTests": true
+    }
+  }
+}
+```
+
+| Setting | Values | Description |
+|---------|--------|-------------|
+| `mode` | `playwright-required` / `no-ui` | Whether UI verification is mandatory |
+| `selectorStrategy` | `strict` / `flexible` | `strict` requires data-testid attributes |
+| `testDir` | path | Where to save generated verification tests |
+| `screenshotDir` | path | Where to save verification screenshots (gitignored) |
+| `reviewGeneratedTests` | boolean | Whether @quality-critic reviews generated tests |
+
+### Verification Status Returns
+
+After running verification activities, return a structured status:
+
+```typescript
+interface VerificationResult {
+  status: "verified" | "unverified" | "skipped" | "not-required";
+  reason: string;
+  details: {
+    testsGenerated?: string[];     // paths to generated test files
+    screenshotsCaptured?: string[]; // paths to screenshots
+    testsPassed?: boolean;
+    attemptCount?: number;
+    errors?: string[];
+  };
+}
+```
+
+**Status meanings:**
+
+| Status | When | Task Can Complete? |
+|--------|------|-------------------|
+| `verified` | UI change verified via Playwright, tests pass | ✅ Yes |
+| `unverified` | UI change not yet verified | ❌ No (blocked) |
+| `skipped` | User explicitly skipped verification (with warning) | ⚠️ Yes (with debt) |
+| `not-required` | No UI changes, or mode is `no-ui` | ✅ Yes |
+
+### Verification Flow
+
+```
+Task complete (file changes detected)
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 1: Check if UI verification required                           │
+│                                                                     │
+│ Read project.json → agents.verification.mode                        │
+│   • "playwright-required" → Continue to Step 2                      │
+│   • "no-ui" → Return { status: "not-required" }                     │
+│                                                                     │
+│ Check changed files:                                                │
+│   • UI files (*.tsx, *.jsx, *.vue, etc.) → Continue to Step 2      │
+│   • Non-UI files only → Return { status: "not-required" }           │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 2: Generate verification test                                   │
+│                                                                     │
+│ Run @e2e-playwright with mode: "verification"                       │
+│   • Generates test in testDir (e.g., tests/ui-verify/[name].spec.ts)│
+│   • If selectorStrategy: "strict", adds data-testid to components  │
+│   • Test includes rich documentation header                         │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 3: Run verification test                                       │
+│                                                                     │
+│ Start dev server if needed                                          │
+│ Execute: npx playwright test <generated-test>                       │
+│ Capture screenshot to screenshotDir                                 │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ├─── PASS ──► Return { status: "verified", details: {...} }
+    │
+    └─── FAIL ──► Fix loop (max 3 attempts)
+                      │
+                      ├─── Eventually passes ──► Return { status: "verified" }
+                      │
+                      └─── Still failing ──► Return { status: "unverified" }
+                                              │
+                                              ▼
+                                    ┌─────────────────────────┐
+                                    │ User prompt:            │
+                                    │ [F] Fix manually       │
+                                    │ [S] Skip (adds debt)   │
+                                    │ [A] Abort              │
+                                    └─────────────────────────┘
+```
+
+### Verification Test Format
+
+Generated verification tests include rich documentation:
+
+```typescript
+/**
+ * @verification-test
+ * @component PaymentForm
+ * @location src/components/PaymentForm.tsx
+ * @reach /checkout → click "Proceed to Payment"
+ * @success-criteria
+ *   - Form renders with all required fields
+ *   - Card number field accepts valid input
+ *   - Submit button is disabled until form is valid
+ *   - Error states display correctly
+ * @generated-at 2026-03-03T10:30:00Z
+ */
+import { test, expect } from '@playwright/test';
+
+test.describe('PaymentForm verification', () => {
+  test('renders and accepts valid input', async ({ page }) => {
+    await page.goto('/checkout');
+    await page.click('text=Proceed to Payment');
+    
+    // Verify form renders
+    await expect(page.locator('[data-testid="payment-form"]')).toBeVisible();
+    
+    // Verify fields exist
+    await expect(page.locator('[data-testid="card-number"]')).toBeVisible();
+    await expect(page.locator('[data-testid="card-expiry"]')).toBeVisible();
+    
+    // Screenshot for visual confirmation
+    await page.screenshot({ path: 'ai-tmp/verification/screenshots/payment-form.png' });
+  });
+});
+```
+
+### Selector Strategy Enforcement
+
+When `selectorStrategy: "strict"`:
+
+1. **Before generating verification test**, @e2e-playwright checks for `data-testid` attributes
+2. **If missing**, @e2e-playwright:
+   - Identifies components that need test IDs
+   - Adds `data-testid` attributes to the source code
+   - Commits the changes: "chore: add data-testid attributes for e2e testing"
+3. **Then generates test** using the `data-testid` selectors
+
+When `selectorStrategy: "flexible"`:
+- Tests may use role-based selectors, text content, or test IDs
+- No requirement to add `data-testid` attributes
+
+### Integration with Workflows
+
+**Ad-hoc workflow** must check verification status before task completion:
+
+```
+if verificationResult.status == "unverified":
+    BLOCK task completion
+    Show verification required prompt
+    
+if verificationResult.status == "skipped":
+    WARN user
+    Log to test-debt.json
+    Allow completion with debt
+```
+
+**PRD workflow** must check verification status before story completion:
+
+```
+if verificationResult.status == "unverified":
+    BLOCK story completion
+    Show verification required prompt
+    Story remains in_progress
+```
+
+### Recording Verification Results
+
+After verification, update `builder-state.json`:
+
+```json
+{
+  "currentTask": {
+    "id": "task-123",
+    "verificationStatus": "verified",
+    "verificationDetails": {
+      "testsGenerated": ["tests/ui-verify/payment-form.spec.ts"],
+      "screenshotsCaptured": ["ai-tmp/verification/screenshots/payment-form.png"],
+      "testsPassed": true,
+      "attemptCount": 1,
+      "completedAt": "2026-03-03T10:35:00Z"
+    }
+  }
+}
+```
+
+### Skipping Verification (Escape Hatch)
+
+Users can explicitly skip verification with `skip verification` command:
+
+```
+User: "skip verification"
+
+⚠️ SKIPPING UI VERIFICATION
+
+This will:
+- Mark task as complete WITHOUT browser verification
+- Add this file to test-debt.json for escalated future testing
+- Log the skip reason
+
+Are you sure? [Y/N]
+```
+
+If user confirms:
+1. Return `{ status: "skipped", reason: "User requested skip" }`
+2. Add changed UI files to `test-debt.json` with `"skipReason": "verification skipped"`
+3. Allow task completion with warning banner
+
+---
+
 ## Per-Task Quality Checks (MANDATORY)
 
 > ⛔ **After EVERY task/story completes, run resolved activities automatically. No prompts, no skipping.**

@@ -411,6 +411,7 @@ After @developer completes each story, Builder automatically runs:
 | 2 | **Lint** | `npm run lint` (or project equivalent) | Yes, max 3 attempts |
 | 3 | **Unit tests** | `CI=true npm test` (MUST include CI=true) | Yes, max 3 attempts |
 | 4 | **Critic** | Run @critic for code review | Report findings, @developer fixes |
+| 5 | **UI Verification** | Playwright browser verification (if required) | Yes, max 3 attempts |
 
 > ⚠️ **CI=true is MANDATORY for test commands.**
 >
@@ -418,6 +419,84 @@ After @developer completes each story, Builder automatically runs:
 >
 > **Correct:** `CI=true npm test`
 > **Wrong:** `npm test` (may trigger watch mode)
+
+### UI Verification Enforcement
+
+> 🎯 **For UI projects with `playwright-required` mode, UI changes MUST be browser-verified.**
+>
+> **Trigger:** After steps 1-4 pass, check if UI verification is required.
+>
+> **Check:** Read `project.json` → `agents.verification.mode`
+>
+> **Failure behavior:** If verification status is `unverified`, BLOCK story completion.
+
+**Verification flow:**
+
+```
+Steps 1-4 pass
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Check if UI verification required:                                   │
+│                                                                     │
+│ Read project.json → agents.verification.mode                        │
+│   • "no-ui" → Skip verification, proceed to completion              │
+│   • "playwright-required" → Check changed files                     │
+│                                                                     │
+│ Check changed files:                                                │
+│   • No UI files (*.tsx, *.jsx, *.vue) → Skip verification           │
+│   • Has UI files → REQUIRE verification                             │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼ (verification required)
+┌─────────────────────────────────────────────────────────────────────┐
+│ Run UI verification:                                                 │
+│                                                                     │
+│ 1. Invoke @e2e-playwright with mode: "verification"                 │
+│ 2. Generate test in tests/ui-verify/                                │
+│ 3. Run test, capture screenshot                                     │
+│ 4. Return verification status                                       │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ├─── status: "verified" ──► Proceed to completion prompt
+    │
+    ├─── status: "unverified" ──► BLOCK story completion
+    │                              │
+    │                              ▼
+    │                    ┌─────────────────────────┐
+    │                    │ Verification Required   │
+    │                    │                         │
+    │                    │ [R] Retry verification  │
+    │                    │ [S] Skip (adds debt)    │
+    │                    │ [M] Fix manually        │
+    │                    └─────────────────────────┘
+    │
+    └─── status: "skipped" ──► WARN, add to test-debt.json, proceed
+```
+
+**Verification required prompt (when blocked):**
+
+```
+═══════════════════════════════════════════════════════════════════════
+                  ⚠️ UI VERIFICATION REQUIRED
+═══════════════════════════════════════════════════════════════════════
+
+This story modified UI components that require browser verification:
+  • src/components/SubmitButton.tsx
+
+Verification status: UNVERIFIED
+
+The verification test failed after 3 attempts:
+  ❌ Element [data-testid="submit-spinner"] not found
+
+Options:
+  [R] Retry verification (after manual fix)
+  [S] Skip verification (adds to test-debt.json)
+  [M] Debug with @developer
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
 
 **After all checks pass**, show the story completion prompt (see Step 1.4 below).
 
@@ -525,6 +604,7 @@ Quality checks:
   ✅ Typecheck: passed
   ✅ Lint: passed
   ✅ Unit tests: passed
+  ✅ UI Verification: verified (screenshot captured)
 
 Progress: 1/4 stories (25%)
 
@@ -536,6 +616,14 @@ Progress: 1/4 stories (25%)
 > _
 ═══════════════════════════════════════════════════════════════════════
 ```
+
+**Verification status indicators:**
+
+| Status | Display | Meaning |
+|--------|---------|---------|
+| `verified` | `✅ UI Verification: verified (screenshot captured)` | Browser test passed |
+| `not-required` | `➖ UI Verification: not required (no UI changes)` | No UI files changed |
+| `skipped` | `⚠️ UI Verification: SKIPPED (added to test debt)` | User chose to skip |
 
 ---
 
@@ -596,11 +684,22 @@ Task: Add Loading Spinner to Submit Button
 Stories: 4/4 complete
 Time: 15 minutes
 
+Quality Summary:
+  ✅ All typechecks passed
+  ✅ All lint checks passed
+  ✅ All unit tests passed
+  ✅ UI Verification: 3 stories verified, 1 not required
+
 Files changed:
   • src/components/SubmitButton.tsx
   • src/components/SubmitButton.test.tsx
 
-Tests added: 3 unit tests
+Tests generated:
+  • 3 unit tests
+  • 1 verification test (tests/ui-verify/submit-button.spec.ts)
+
+Screenshots:
+  • ai-tmp/verification/screenshots/submit-button-loading.png
 
 Commits:
   • abc1234: feat: Add loading state to SubmitButton
@@ -608,7 +707,7 @@ Commits:
   • ghi9012: test: Add unit tests for loading behavior
 
 [C] Commit and ship
-[E] Write E2E tests first
+[E] Write additional E2E tests
 
 > _
 ═══════════════════════════════════════════════════════════════════════

@@ -729,6 +729,61 @@ After each story completes (in PRD mode):
 
 See `prd-workflow` skill → "Post-Story Status Update" for full details.
 
+### Verification-Incomplete Handling
+
+> ⛔ **When UI verification is required but incomplete, tasks/stories are BLOCKED.**
+>
+> **Trigger:** After quality checks (typecheck, lint, tests, critic) pass, test-flow returns verification status.
+>
+> **Failure behavior:** If verification returns `unverified`, do NOT mark the task/story as complete. It remains `in_progress` until verified or explicitly skipped.
+
+**Verification status handling:**
+
+| Status | Task/Story Can Complete? | Action |
+|--------|--------------------------|--------|
+| `verified` | ✅ Yes | Proceed to completion prompt |
+| `not-required` | ✅ Yes | No UI changes, proceed normally |
+| `unverified` | ❌ No | BLOCK — show verification required prompt |
+| `skipped` | ⚠️ Yes (with warning) | Log to `test-debt.json`, show skip warning |
+
+**When blocked by unverified status:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+                  ⚠️ VERIFICATION INCOMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+Task/Story: [description]
+Status: BLOCKED (UI verification required)
+
+This work includes UI changes that must be browser-verified:
+  • src/components/PaymentForm.tsx
+  • src/components/Checkout.tsx
+
+Verification test failed:
+  ❌ Element [data-testid="payment-submit"] not found
+
+Options:
+  [R] Retry verification (after fixing issue)
+  [S] Skip verification (adds to test-debt.json)
+  [D] Debug with @developer
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+**Skip handling:**
+- Record in `test-debt.json` with `verificationSkipped: true`
+- Add to story completion notes: `"verification skipped by user"`
+- Allow task/story to complete with warning banner
+
+**State updates when blocked:**
+- Task/story remains `in_progress` (NOT completed)
+- `builder-state.json` → `verificationStatus: "unverified"`
+- User must resolve before committing
+
+See `test-flow` skill → "UI Verification" for full verification flow.
+
 ---
 
 ## Deferred E2E Test Flow

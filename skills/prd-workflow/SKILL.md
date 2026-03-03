@@ -242,8 +242,27 @@ After @developer completes each story, Builder automatically runs:
 2. **Lint** — `npm run lint` (or project equivalent)
 3. **Unit tests** — Auto-generate with @tester, then `CI=true npm test`
 4. **Critic** — Run @critic for code review (batched per `criticMode` setting)
+5. **UI Verification** — Playwright browser verification (if mode is `playwright-required`)
 
 If any check fails, Builder runs a fix loop (max 3 attempts). If still failing, STOP and report to user.
+
+### UI Verification Enforcement
+
+> 🎯 **For UI projects with `playwright-required` mode, UI changes MUST be browser-verified before story completion.**
+>
+> **Trigger:** After steps 1-4 pass, check if UI verification is required.
+>
+> **Check:** Read `project.json` → `agents.verification.mode`
+>
+> **Failure behavior:** If verification status is `unverified`, BLOCK story completion. The story remains `in_progress` until verified or explicitly skipped.
+
+See `test-flow` skill for full verification flow details (UI Verification section).
+
+**Story-level behavior:**
+- If verification returns `verified` → Story can complete
+- If verification returns `unverified` → Story BLOCKED (remains `in_progress`)
+- If verification returns `skipped` → Story can complete with warning (logged to `test-debt.json`)
+- If verification returns `not-required` → Story can complete (no UI changes)
 
 **After all checks pass**, Builder continues to the next story (or shows completion prompt if E2E is offered).
 
