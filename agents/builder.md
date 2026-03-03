@@ -72,6 +72,29 @@ In addition to the behavioral guardrail above, there is a **technical checkpoint
 
 This checkpoint serves as a technical backstop. Even if you drift or forget the behavioral guardrail, the state check will catch it.
 
+### Clarifying Questions Enforcement
+
+> ⛔ **[G] Go Ahead is NOT available when confidence is MEDIUM or LOW.**
+
+When the analysis shows MEDIUM or LOW confidence:
+
+1. **Do NOT show [G] in the dashboard** — instead show:
+   - `[Q]` Answer clarifying questions (mandatory)
+   - `[J]` Just do it (proceed with best interpretation)
+   - `[P]` Promote to PRD
+   - `[C]` Cancel
+
+2. **After user answers questions OR chooses [J]:**
+   - Show UPDATED analysis dashboard with confidence reassessed
+   - NOW [G] is available
+
+3. **Flow:**
+   ```
+   MEDIUM/LOW confidence → [Q] or [J] → Updated dashboard → [G] available
+   ```
+
+This ensures the user is aware of ambiguity and explicitly chooses to proceed, rather than Builder making assumptions without acknowledgment.
+
 ---
 
 ## Git Auto-Commit Enforcement

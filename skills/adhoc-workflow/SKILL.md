@@ -186,7 +186,56 @@ TSK-004: Add unit tests
 - **Consequences:** Collapsed if none; expanded if any exist
 - **Alternatives:** Collapsed to recommendation if only one sensible approach
 
-### Step 0.3: Clarifying Questions (If Needed)
+**Dashboard options by confidence level:**
+
+| Confidence | Available Options |
+|------------|-------------------|
+| HIGH | `[G]` Go ahead, `[E]` Edit/Clarify, `[P]` Promote, `[C]` Cancel |
+| MEDIUM | `[Q]` Answer questions (mandatory), `[J]` Just do it, `[P]` Promote, `[C]` Cancel |
+| LOW | `[Q]` Answer questions (mandatory), `[J]` Just do it, `[P]` Promote, `[C]` Cancel |
+
+> ⛔ **CRITICAL: [G] is NOT shown for MEDIUM/LOW confidence.**
+>
+> The user MUST either answer clarifying questions `[Q]` or explicitly choose `[J]` to proceed with best interpretation.
+> After either action, show an UPDATED dashboard with `[G]` available.
+
+**MEDIUM/LOW dashboard example:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+                         ANALYSIS COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+📋 REQUEST: "Fix the caching issue"
+
+📊 UNDERSTANDING                                    Confidence: MEDIUM
+───────────────────────────────────────────────────────────────────────
+There appears to be a caching issue but I need clarification:
+- Could be browser cache, API cache, or database query cache
+- Multiple components involve caching
+
+🎯 SCOPE: Unknown (depends on root cause)
+
+...
+
+═══════════════════════════════════════════════════════════════════════
+
+[Q] Answer clarifying questions — I'll ask about the specific issue
+[J] Just do it — proceed with my best interpretation
+[P] Promote to PRD — hand off to Planner
+[C] Cancel — abort this request
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Step 0.3: Clarifying Questions (MANDATORY for MEDIUM/LOW)
+
+> ⛔ **This step is MANDATORY when confidence is MEDIUM or LOW.**
+>
+> Do NOT proceed to Step 0.5 (Task Spec) without either:
+> 1. User answers questions → Re-run analysis → Show updated dashboard with [G]
+> 2. User chooses [J] → Show updated dashboard with [G] and note "proceeding with best interpretation"
 
 For MEDIUM or LOW confidence, show questions in series format:
 
@@ -220,7 +269,49 @@ Type "just do it" to proceed with my best interpretation.
 **Question rules:**
 - Single round of questions — ask all at once
 - User can reply with letter codes for speed
-- "just do it" skips questions and proceeds with stated interpretation
+- User can type "just do it" or choose `[J]` to proceed with best interpretation
+
+**After questions answered or [J] chosen:**
+
+1. Re-analyze with new information (if questions were answered)
+2. Update confidence level (typically becomes HIGH after clarification)
+3. Show UPDATED analysis dashboard with `[G]` now available:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                    ANALYSIS COMPLETE (UPDATED)
+═══════════════════════════════════════════════════════════════════════
+
+📋 REQUEST: "Fix the caching issue"
+
+📊 UNDERSTANDING                                    Confidence: HIGH
+───────────────────────────────────────────────────────────────────────
+Fix browser cache issue in ProductList component:
+- Clear stale cache on navigation
+- Add cache invalidation on data updates
+(Based on your clarification: "It's the browser cache for product data")
+
+...
+
+═══════════════════════════════════════════════════════════════════════
+
+[G] Go ahead — create Task Spec and start
+[E] Edit/Clarify — refine understanding  
+[P] Promote to PRD — hand off to Planner
+[C] Cancel — abort this request
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+If user chose `[J]` instead of answering questions, show dashboard with note:
+
+```
+📊 UNDERSTANDING                       Confidence: MEDIUM → proceeding
+───────────────────────────────────────────────────────────────────────
+Proceeding with best interpretation: [state what you're assuming]
+User chose to proceed without clarification.
+```
 
 ### Step 0.4: PRD Recommendation (For Medium/Large Scope)
 
