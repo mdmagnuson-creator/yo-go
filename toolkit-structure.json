@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-03-03T18:00:00Z",
+  "generatedAt": "2026-03-03T20:00:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -936,6 +936,54 @@
       {
         "date": "2026-03-03",
         "changes": [
+          {
+            "type": "feat",
+            "scope": "verification",
+            "description": "add prerequisite failure detection with @prerequisites/@feature-assertions markers",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "verification",
+            "description": "add automated fix loop with classification (prerequisite vs feature vs environment)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "verification",
+            "description": "add 3-pass stability verification (requiredPasses config, pass counter, reset on fix)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "verification",
+            "description": "add environment prerequisite handling with skill-based recovery",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "verification",
+            "description": "add skill creation request flow for missing environment skills",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "verification",
+            "description": "add failure logging (verification-failures.json) and manual fallback options",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "verification",
+            "description": "add blocker tracking (test-debt.json) and bulk re-verification command",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "schema",
+            "description": "add verification config: requiredPasses, autoFixLoop, fixAttemptTimeoutMinutes, runBroaderTestsAfterFix",
+            "hash": "pending"
+          },
           {
             "type": "feat",
             "scope": "testing",

@@ -1339,6 +1339,30 @@
               "type": "boolean",
               "default": true,
               "description": "Whether @quality-critic reviews generated verification tests."
+            },
+            "requiredPasses": {
+              "type": "integer",
+              "default": 3,
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Number of consecutive test passes required before declaring a feature verified. Ensures stability by catching transient/flaky issues."
+            },
+            "autoFixLoop": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether to automatically attempt to fix verification failures. When true, Builder classifies failures (prerequisite vs feature) and delegates fixes to @developer."
+            },
+            "fixAttemptTimeoutMinutes": {
+              "type": "integer",
+              "default": 5,
+              "minimum": 1,
+              "maximum": 30,
+              "description": "Maximum time in minutes to allow for each fix attempt during automated fix loop."
+            },
+            "runBroaderTestsAfterFix": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether to run related tests after fixing a verification failure. Helps catch regression in adjacent functionality."
             }
           }
         },

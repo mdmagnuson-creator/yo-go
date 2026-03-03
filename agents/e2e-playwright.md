@@ -214,7 +214,7 @@ Read from `project.json → agents.verification`:
 
 ### Verification Test Format
 
-Generated tests include rich documentation headers:
+Generated tests include rich documentation headers that enable **prerequisite failure detection**:
 
 ```typescript
 /**
@@ -222,6 +222,18 @@ Generated tests include rich documentation headers:
  * @component PaymentForm
  * @location src/components/PaymentForm.tsx
  * @reach /checkout → click "Proceed to Payment"
+ * 
+ * @prerequisites
+ *   - User must be logged in
+ *   - Checkout page must load successfully
+ *   - Payment option must be available
+ * 
+ * @feature-assertions
+ *   - Form renders with all required fields
+ *   - Card number field accepts valid input
+ *   - Submit button is disabled until form is valid
+ *   - Error states display correctly
+ * 
  * @success-criteria
  *   - Form renders with all required fields
  *   - Card number field accepts valid input
@@ -234,14 +246,24 @@ import { test, expect } from '@playwright/test';
 
 test.describe('PaymentForm verification', () => {
   test('renders and accepts valid input', async ({ page }) => {
-    // Navigate to the component
+    // ═══════════════════════════════════════════════════════════════
+    // PREREQUISITES — Failures here indicate a separate blocking issue
+    // ═══════════════════════════════════════════════════════════════
+    
+    // Navigate to checkout (prerequisite: page must load)
     await page.goto('/checkout');
+    
+    // Navigate to payment (prerequisite: checkout flow must work)
     await page.click('text=Proceed to Payment');
     
-    // Verify form renders
+    // ═══════════════════════════════════════════════════════════════
+    // FEATURE ASSERTIONS — Failures here indicate feature issues
+    // ═══════════════════════════════════════════════════════════════
+    
+    // Verify form renders (feature: PaymentForm component)
     await expect(page.locator('[data-testid="payment-form"]')).toBeVisible();
     
-    // Verify required fields exist
+    // Verify required fields exist (feature: form fields)
     await expect(page.locator('[data-testid="card-number"]')).toBeVisible();
     await expect(page.locator('[data-testid="card-expiry"]')).toBeVisible();
     await expect(page.locator('[data-testid="card-cvc"]')).toBeVisible();
@@ -254,9 +276,11 @@ test.describe('PaymentForm verification', () => {
   });
   
   test('validates input and enables submit', async ({ page }) => {
+    // PREREQUISITES
     await page.goto('/checkout');
     await page.click('text=Proceed to Payment');
     
+    // FEATURE ASSERTIONS
     // Submit should be disabled initially
     await expect(page.locator('[data-testid="payment-submit"]')).toBeDisabled();
     
@@ -269,6 +293,61 @@ test.describe('PaymentForm verification', () => {
     await expect(page.locator('[data-testid="payment-submit"]')).toBeEnabled();
   });
 });
+```
+
+### Prerequisite Markers for Failure Classification
+
+The `@prerequisites` and `@feature-assertions` markers enable **automated failure classification**. When a test fails, Builder analyzes WHERE the failure occurred:
+
+**Marker definitions:**
+
+| Marker | Purpose | Example |
+|--------|---------|---------|
+| `@prerequisites` | Steps that must succeed BEFORE testing the feature | Login, page navigation, data setup |
+| `@feature-assertions` | The actual feature under test | Form renders, button works, data saves |
+
+**How failure classification works:**
+
+1. **Parse the test file** — Extract `@prerequisites` and `@feature-assertions` from JSDoc
+2. **Analyze failure location** — Did the test fail during a prerequisite step or a feature assertion?
+3. **Classify the failure:**
+   - Failed during prerequisite → **PREREQUISITE FAILURE** (e.g., login broken)
+   - Failed during feature assertion → **FEATURE FAILURE** (e.g., button missing)
+
+**Why this matters:**
+
+- **Prerequisite failures** indicate a separate issue blocking the feature test
+- **Feature failures** indicate a problem with the feature itself
+- Builder's automated fix loop uses this classification to fix the right thing
+
+**Common prerequisites to document:**
+
+| Prerequisite | Detection Pattern |
+|--------------|-------------------|
+| User login | Page navigates to login, auth cookie required |
+| Page load | `page.goto()` before feature assertions |
+| Navigation steps | `page.click()` to reach the feature |
+| Data setup | API calls or fixtures that create test data |
+
+**Generating tests with proper markers:**
+
+When writing verification tests, ALWAYS include:
+
+1. `@prerequisites` — List all setup steps that must pass first
+2. `@feature-assertions` — List the actual feature behaviors being tested
+
+```typescript
+/**
+ * @prerequisites
+ *   - User must be logged in (auth.spec.ts covers this)
+ *   - Dashboard page must load (/dashboard)
+ *   - Settings menu must be accessible
+ * 
+ * @feature-assertions
+ *   - "Dark Mode" toggle is visible
+ *   - Clicking toggle changes theme
+ *   - Preference persists after reload
+ */
 ```
 
 ### Verification Mode Execution

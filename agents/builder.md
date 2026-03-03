@@ -823,6 +823,584 @@ Users can override verification requirements by typing "mark complete without ve
 
 See `test-flow` skill → "UI Verification" for full verification flow.
 
+### Prerequisite Failure Detection
+
+> 🎯 **When verification fails, classify the failure as PREREQUISITE vs FEATURE.**
+>
+> **Trigger:** Verification test fails — analyze WHERE it failed.
+>
+> **Why:** A login failure blocking a menu test is a different problem than a missing menu item. The fix strategy differs.
+
+**Failure classification:**
+
+| Classification | Meaning | Fix Strategy |
+|----------------|---------|--------------|
+| `PREREQUISITE` | Test failed before reaching the feature | Fix the prerequisite first |
+| `FEATURE` | Test failed on the feature assertion | Fix the feature |
+| `TEST_INVALID` | Test file has syntax/import error | @e2e-playwright fixes test |
+| `ENVIRONMENT` | Infrastructure issue (see below) | Skill-based recovery |
+
+**Detection method:**
+
+1. Parse test file for `@prerequisites` and `@feature-assertions` markers
+2. Analyze failure location against markers
+3. If markers missing, use heuristic detection (see test-flow skill)
+
+**Prerequisite failure handling:**
+
+```
+Verification test fails
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ CLASSIFY FAILURE                                                     │
+│                                                                     │
+│ ├─── PREREQUISITE ──► Find existing test, confirm issue, fix       │
+│ │                                                                   │
+│ ├─── FEATURE ──► Normal fix loop with @developer                   │
+│ │                                                                   │
+│ ├─── TEST_INVALID ──► @e2e-playwright fixes test file              │
+│ │                                                                   │
+│ └─── ENVIRONMENT ──► Skill-based recovery (see below)              │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**When prerequisite failure detected:**
+
+1. Search for existing test covering the prerequisite (e.g., `tests/e2e/auth.spec.ts`)
+2. Run that test to confirm the issue
+3. If confirmed, delegate fix to @developer
+4. After fix, re-run prerequisite test
+5. If prerequisite passes, retry original feature verification
+
+See `test-flow` skill → "Prerequisite Failure Detection" for full algorithm.
+
+### Environment Prerequisite Handling
+
+> 🔧 **Environment failures require skill-based recovery, not code changes.**
+>
+> **Trigger:** Failure matches environment patterns (port conflict, process conflict, etc.)
+>
+> **Why:** These issues can't be fixed by @developer — they need infrastructure recovery.
+
+**Environment categories:**
+
+| Category | Example Errors | Recovery |
+|----------|----------------|----------|
+| Process conflict | `EADDRINUSE`, `already running` | Kill process, restart |
+| Port conflict | `ECONNREFUSED`, `port in use` | Check/start dev server |
+| Native app | `Electron launch failed` | Load platform-specific skill |
+| External service | `503 Service Unavailable` | Wait or use mock |
+
+**When environment failure detected:**
+
+1. **Categorize the issue** using error patterns
+2. **Search for matching skill:**
+   - `electron-testing` for Electron issues
+   - `start-dev-server` for port/server issues
+   - `docker-testing` for container issues
+3. **If skill found:** Load skill, run recovery, retry test
+4. **If no skill:** Offer skill creation request (see below)
+
+**Environment failure prompt:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔧 ENVIRONMENT ISSUE DETECTED
+═══════════════════════════════════════════════════════════════════════
+
+Feature under test: Add "Settings" option to profile dropdown
+Status: BLOCKED (environment issue)
+
+Issue detected:
+  ❌ Electron: "Error: another instance is already running"
+  Category: Process conflict
+
+Matching skill found: electron-testing
+Loading skill and attempting recovery...
+═══════════════════════════════════════════════════════════════════════
+```
+
+See `test-flow` skill → "Environment Prerequisite Detection" for full detection patterns.
+
+### Skill Creation Request Flow
+
+> 📝 **When no skill exists for an environment issue, queue a creation request for @toolkit.**
+>
+> **Trigger:** Environment failure detected but no matching skill found.
+>
+> **Why:** @toolkit creates skills — Builder just queues the request with context.
+
+**When no skill exists:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+              ❌ NO MATCHING SKILL FOUND
+═══════════════════════════════════════════════════════════════════════
+
+Environment issue requires a skill that doesn't exist yet.
+
+Detected pattern: "Electron single-instance conflict"
+Suggested skill: electron-testing
+
+Options:
+  [T] Queue skill creation for @toolkit (creates pending-update)
+  [M] Fix manually, then type "retry"
+  [S] Skip verification
+═══════════════════════════════════════════════════════════════════════
+```
+
+**When user selects [T]:**
+
+1. **Create pending-update file:**
+   ```
+   ~/.config/opencode/pending-updates/YYYY-MM-DD-new-skill-{name}.md
+   ```
+
+2. **Request file format:**
+   ```markdown
+   ---
+   requestedBy: builder
+   date: YYYY-MM-DD
+   priority: high
+   type: new-skill
+   ---
+   
+   # New Skill Request: {skill-name}
+   
+   ## Detected Pattern
+   
+   Environment prerequisite failure during verification test.
+   
+   **Error:** "{error message}"
+   **Context:** {what Builder was trying to do}
+   **Project:** {project name}
+   
+   ## Suggested Skill
+   
+   **Name:** {skill-name}
+   **Purpose:** {brief description}
+   
+   **Recovery steps needed:**
+   1. {step 1}
+   2. {step 2}
+   3. {step 3}
+   
+   ## Screenshots
+   
+   - ai-tmp/verification/screenshots/{screenshot}.png
+   
+   ## Source Test
+   
+   - {test file path}
+   - Failed at: {failure point}
+   ```
+
+3. **Track pending request in builder-state.json:**
+   ```json
+   {
+     "verificationLoop": {
+       "pendingSkillRequest": {
+         "skillName": "electron-testing",
+         "requestedAt": "2026-03-03T10:45:00Z",
+         "requestFile": "~/.config/opencode/pending-updates/2026-03-03-new-skill-electron-testing.md"
+       }
+     }
+   }
+   ```
+
+4. **Tell user:**
+   ```
+   ✅ Skill creation request queued.
+   
+   File: ~/.config/opencode/pending-updates/2026-03-03-new-skill-electron-testing.md
+   
+   Next steps:
+   1. Switch to @toolkit to create the skill
+   2. Come back here and type "retry" to use the new skill
+   
+   Options:
+     [M] Fix manually now
+     [S] Skip verification
+   ```
+
+**On retry — skill hot-reload:**
+
+When user types "retry" after requesting a skill:
+
+1. Check if the requested skill now exists:
+   ```bash
+   ls ~/.config/opencode/skills/{skill-name}/SKILL.md 2>/dev/null
+   ```
+
+2. **If skill exists:**
+   - Load the skill via skill tool
+   - Execute recovery steps
+   - Retry the original verification test
+   - Clear `pendingSkillRequest` from state
+
+3. **If skill doesn't exist:**
+   - Show same options again
+   - Remind user: "Skill not yet created. Switch to @toolkit to create it."
+
+### 3-Pass Stability Verification
+
+> 🔄 **A single passing test run is not enough. Require 3 consecutive passes to declare verified.**
+>
+> **Trigger:** After a verification test passes for the first time (or after any fix is applied).
+>
+> **Why:** Transient issues, timing problems, and flaky behavior are only caught with multiple passes.
+
+**Configuration** in `project.json` → `agents.verification`:
+
+```json
+{
+  "agents": {
+    "verification": {
+      "requiredPasses": 3,        // Default: 3 consecutive passes required
+      "runBroaderTestsAfterFix": true  // Run related tests after fixing
+    }
+  }
+}
+```
+
+**Stability verification flow:**
+
+```
+Verification test PASSES
+    │
+    ▼
+Increment pass counter → { passCount: 1, requiredPasses: 3 }
+    │
+    ▼
+passCount >= requiredPasses?
+    │
+    ├─── NO ──► Run test again, loop
+    │
+    └─── YES ──► ✅ VERIFIED (stable)
+```
+
+**Pass counter reset rules:**
+
+| Event | Pass Counter Action |
+|-------|---------------------|
+| Test passes | Increment by 1 |
+| Test fails | Reset to 0, enter fix loop |
+| Fix applied by @developer | Reset to 0 (require fresh 3 passes) |
+| Environment recovery completed | Reset to 0 (require fresh 3 passes) |
+| Manual intervention | Reset to 0 (require fresh 3 passes) |
+
+**State tracking** in `builder-state.json`:
+
+```json
+{
+  "verificationLoop": {
+    "stabilityCheck": {
+      "testPath": "tests/ui-verify/profile-dropdown.spec.ts",
+      "feature": "Add Settings option to profile dropdown",
+      "requiredPasses": 3,
+      "currentPasses": 2,
+      "lastPassAt": "2026-03-03T10:45:00Z",
+      "resetReason": null
+    }
+  }
+}
+```
+
+**Stability progress display:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔄 STABILITY VERIFICATION IN PROGRESS
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Test: tests/ui-verify/profile-dropdown.spec.ts
+
+Stability check: 2/3 passes ██████████████░░░░░░░ 67%
+
+Pass 1: ✅ 10:42:15 (2.3s)
+Pass 2: ✅ 10:42:18 (2.1s)
+Pass 3: ⏳ Running...
+═══════════════════════════════════════════════════════════════════════
+```
+
+**After fix — fresh passes required:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔄 FIX APPLIED — RESTARTING STABILITY CHECK
+═══════════════════════════════════════════════════════════════════════
+
+Fix: Updated selector timing in ProfileDropdown component
+Applied by: @developer
+
+Stability check reset: 0/3 passes (fresh verification required)
+Running pass 1...
+═══════════════════════════════════════════════════════════════════════
+```
+
+See `test-flow` skill → "3-Pass Stability Verification" for full state tracking and display patterns.
+
+### Automated Fix Loop
+
+> 🔄 **When verification tests fail, automatically classify and fix the issue.**
+>
+> **Trigger:** Verification test fails (during initial run or stability check).
+>
+> **Why:** Automated fixing reduces manual intervention and ensures systematic issue resolution.
+
+**Configuration** in `project.json` → `agents.verification`:
+
+```json
+{
+  "agents": {
+    "verification": {
+      "autoFixLoop": true,              // Default: true
+      "fixAttemptTimeoutMinutes": 5,    // Timeout per fix attempt
+      "runBroaderTestsAfterFix": true   // Run related tests after fixing
+    }
+  }
+}
+```
+
+**Fix loop algorithm:**
+
+```
+Verification test FAILS
+    │
+    ▼
+1. CLASSIFY: PREREQUISITE | FEATURE | ENVIRONMENT | TEST_INVALID
+    │
+    ▼
+2. CHECK STOP CONDITIONS:
+   • Component has 3 failed fix attempts → STOP
+   • Same exact error twice in a row → STOP
+   • Total iterations > 10 → STOP
+    │
+    ▼
+3. FIND EXISTING TEST (for prerequisites):
+   • Check tests/e2e/ for matching component name
+   • Run that test to confirm issue
+    │
+    ▼
+4. DELEGATE FIX:
+   • PREREQUISITE/FEATURE (code) → @developer
+   • ENVIRONMENT → Load skill-based recovery
+   • TEST_INVALID → @e2e-playwright
+    │
+    ▼
+5. VERIFY FIX:
+   • Re-run component test
+   • If pass → Retry verification test → 3-pass stability
+   • If fail → Record attempt, loop
+```
+
+**Stop conditions:**
+
+| Condition | Description | Action |
+|-----------|-------------|--------|
+| **3 attempts per component** | Component has failed 3 fix attempts | Stop fixing this component |
+| **Same error twice** | Exact same error message twice in a row | Stop (no progress being made) |
+| **10 total iterations** | Runaway prevention (entire loop) | Stop entire verification |
+
+**State tracking** in `builder-state.json`:
+
+```json
+{
+  "verificationLoop": {
+    "originalFeature": "tests/ui-verify/profile-dropdown-settings.spec.ts",
+    "startedAt": "2026-03-03T10:30:00Z",
+    "totalIterations": 3,
+    "lastError": null,
+    "lastErrorCount": 0,
+    "components": {
+      "auth-login": {
+        "type": "prerequisite",
+        "testFile": "tests/e2e/auth.spec.ts",
+        "attempts": [
+          {
+            "attemptNumber": 1,
+            "error": "Timeout waiting for '[data-testid=\"login-submit\"]'",
+            "fixAgent": "@developer",
+            "fixDescription": "Fixed missing data-testid on login button",
+            "result": "pass",
+            "duration": "45s"
+          }
+        ],
+        "status": "fixed"
+      }
+    }
+  }
+}
+```
+
+**Fix loop progress display:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔧 AUTOMATED FIX LOOP IN PROGRESS
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Status: Fixing prerequisite failure
+
+Component: auth-login (PREREQUISITE)
+Attempt: 2/3
+Agent: @developer
+
+Error: Timeout waiting for '[data-testid="login-submit"]'
+
+Previous attempt:
+  Fix: Added explicit wait for login form
+  Result: ❌ Still failing
+
+Current fix in progress...
+═══════════════════════════════════════════════════════════════════════
+```
+
+**Fix loop stopped display:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+              ❌ FIX LOOP STOPPED
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Stop reason: Component reached 3 failed attempts
+
+Component: auth-login (PREREQUISITE)
+Attempts: 3/3 (max reached)
+
+Options:
+  [M] Fix manually, then type "retry"
+  [S] Skip verification (marks feature as unverified)
+  [A] Abandon feature (reverts story changes)
+═══════════════════════════════════════════════════════════════════════
+```
+
+See `test-flow` skill → "Automated Fix Loop" for full algorithm and state tracking details.
+
+### Failure Logging and Manual Fallback
+
+> 📝 **Log all verification failures for debugging and pattern analysis.**
+>
+> **Trigger:** Fix loop stopped (any stop condition), or manual skip/abandon.
+>
+> **Why:** Enables debugging of recurring issues and identification of systemic problems.
+
+**Failure log location:** `<project>/ai-tmp/verification-failures.json`
+
+**Stop reasons logged:**
+
+| Value | Description |
+|-------|-------------|
+| `max_attempts_reached` | Component had 3 failed fix attempts |
+| `same_error_twice` | Exact same error occurred twice in a row |
+| `max_iterations` | Total loop iterations exceeded 10 |
+| `environment_no_skill` | Environment issue with no matching skill |
+| `external_service_unavailable` | External service failure (503, 429) |
+| `user_skip` | User selected [S] Skip |
+| `user_abandon` | User selected [A] Abandon |
+
+**Manual fallback options:**
+
+| Option | Action |
+|--------|--------|
+| **[M] Fix manually** | Display context, wait for "retry", then restart verification |
+| **[S] Skip** | Require reason, log skip, add to test-debt.json, continue |
+| **[A] Abandon** | Confirm, revert changes, mark story abandoned |
+
+**When user selects [S] Skip:**
+
+1. Require skip reason
+2. Log to `verification-failures.json` with `"resolution": "skipped"`
+3. Add entry to `test-debt.json` (see Blocker Tracking section)
+4. Mark feature as unverified, continue to next story
+
+**When user selects [A] Abandon:**
+
+1. Confirm abandonment
+2. Revert all story changes (`git checkout`)
+3. Log to `verification-failures.json` with `"resolution": "abandoned"`
+4. Move to next story
+
+See `test-flow` skill → "Failure Logging" and "Manual Fallback Options" for full structure and flows.
+
+### Blocker Tracking and Bulk Re-verification
+
+> 🚧 **Track prerequisite blockers that affect multiple features.**
+>
+> **Trigger:** User selects [S] Skip or [B] Mark as verification blocked.
+>
+> **Why:** Enables bulk re-verification when blockers are fixed.
+
+**Blocker tracking location:** `<project>/ai-tmp/test-debt.json`
+
+**When same prerequisite blocks multiple features:**
+
+1. Match on prerequisite name and error pattern
+2. Add to existing blocker's `affectedFeatures` array
+3. Display correlation to user:
+   ```
+   ⚠️ KNOWN BLOCKER DETECTED
+   
+   This feature is blocked by a known issue:
+     Blocker: auth-login-timeout
+     First seen: 2026-03-03T10:30:00Z
+     Other affected features: 1
+   
+   Options:
+     [B] Mark as verification blocked (tracks for bulk re-verify)
+     [M] Attempt manual fix
+     [S] Skip verification
+   ```
+
+**"Verification Blocked" status:**
+
+When user chooses [B]:
+- Story marked complete with `"verificationBlocked": "blocker-id"`
+- Blocker entry updated in `test-debt.json`
+- Completion message includes: "When fixed, run: verify-blocked [story]"
+
+**Bulk re-verification:**
+
+When user indicates a blocker is fixed ("auth is fixed", "verify-blocked auth-login-timeout"):
+
+1. **Verify blocker is fixed:**
+   - Run prerequisite test first
+   - If fails, abort bulk verification
+
+2. **Verify each affected feature:**
+   - Run verification test with 3-pass stability check
+   - Record results
+
+3. **Update blocker status:**
+   - Mark resolved if all pass
+   - Keep open for any failures
+   - Clear `verificationBlocked` from passed stories
+
+**Bulk verification display:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔄 BULK RE-VERIFICATION
+═══════════════════════════════════════════════════════════════════════
+
+Found blocker that may be resolved: auth-login-timeout
+
+Affected features (3):
+  1. US-005: Add Settings menu option
+  2. US-007: Add Logout confirmation
+  3. US-012: Add Profile edit link
+
+Run verification for all? [Y/N]
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+See `test-flow` skill → "Blocker Tracking" and "Bulk Re-verification" for full structure and flows.
+
 ### Flaky Test Handling
 
 > 🔄 **When tests pass intermittently, they are FLAKY and must be fixed.**

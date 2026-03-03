@@ -442,7 +442,7 @@ Task complete (file changes detected)
 
 ### Verification Test Format
 
-Generated verification tests include rich documentation:
+Generated verification tests include rich documentation headers that enable **prerequisite failure detection**:
 
 ```typescript
 /**
@@ -450,6 +450,18 @@ Generated verification tests include rich documentation:
  * @component PaymentForm
  * @location src/components/PaymentForm.tsx
  * @reach /checkout → click "Proceed to Payment"
+ * 
+ * @prerequisites
+ *   - User must be logged in
+ *   - Checkout page must load successfully
+ *   - Payment option must be available
+ * 
+ * @feature-assertions
+ *   - Form renders with all required fields
+ *   - Card number field accepts valid input
+ *   - Submit button is disabled until form is valid
+ *   - Error states display correctly
+ * 
  * @success-criteria
  *   - Form renders with all required fields
  *   - Card number field accepts valid input
@@ -461,8 +473,15 @@ import { test, expect } from '@playwright/test';
 
 test.describe('PaymentForm verification', () => {
   test('renders and accepts valid input', async ({ page }) => {
+    // ═══════════════════════════════════════════════════════════════
+    // PREREQUISITES — Failures here indicate a separate blocking issue
+    // ═══════════════════════════════════════════════════════════════
     await page.goto('/checkout');
     await page.click('text=Proceed to Payment');
+    
+    // ═══════════════════════════════════════════════════════════════
+    // FEATURE ASSERTIONS — Failures here indicate feature issues
+    // ═══════════════════════════════════════════════════════════════
     
     // Verify form renders
     await expect(page.locator('[data-testid="payment-form"]')).toBeVisible();
@@ -633,7 +652,7 @@ Required fix:
 - Add explicit wait for async operation
 - Or use auto-retrying assertion with appropriate timeout
 
-After fix, test MUST pass 3/3 runs consistently.
+After fix, verify stability with 3 consecutive passes (see "Verification After Fix" below).
 ```
 
 #### Verification After Fix
@@ -698,6 +717,1338 @@ Track flakiness in `builder-state.json`:
     }
   }
 }
+```
+
+---
+
+## Prerequisite Failure Detection
+
+> 🎯 **Distinguish prerequisite failures from feature failures.**
+>
+> When a test fails, analyze WHERE it failed to determine the appropriate fix action.
+> A login failure blocking a menu test is a different problem than a missing menu item.
+
+### Failure Classification Algorithm
+
+```
+Test failure occurs
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 1: Parse test file for markers                                  │
+│                                                                     │
+│ Extract from JSDoc header:                                          │
+│   • @prerequisites — Steps that must succeed before feature test    │
+│   • @feature-assertions — The actual feature under test             │
+│                                                                     │
+│ If markers missing, use heuristic detection (Step 1b)               │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 2: Analyze failure location                                     │
+│                                                                     │
+│ Parse Playwright error output:                                       │
+│   • Extract line number of failure                                   │
+│   • Extract selector or assertion that failed                        │
+│   • Compare against @prerequisites vs @feature-assertions            │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 3: Classify failure                                             │
+│                                                                     │
+│ ├─── Failure in prerequisite step ──► PREREQUISITE FAILURE          │
+│ │    (e.g., login failed, page didn't load)                         │
+│ │                                                                   │
+│ ├─── Failure in feature assertion ──► FEATURE FAILURE               │
+│ │    (e.g., button not found, wrong text)                           │
+│ │                                                                   │
+│ ├─── Test syntax error or import ──► TEST_INVALID                   │
+│ │    (e.g., SyntaxError, Module not found)                          │
+│ │                                                                   │
+│ └─── Environment/infrastructure ──► ENVIRONMENT (see next section) │
+│      (e.g., port conflict, process conflict)                        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Heuristic Detection (Fallback)
+
+When test files lack `@prerequisites`/`@feature-assertions` markers, use these heuristics:
+
+| Failure Pattern | Classification | Confidence |
+|-----------------|----------------|------------|
+| Login/auth error before feature test | Prerequisite | High |
+| `page.goto()` fails with 404/500 | Prerequisite | High |
+| `page.goto()` times out | Prerequisite | High |
+| Navigation click fails before reaching feature | Prerequisite | Medium |
+| Timeout waiting for element in feature component | Feature | High |
+| Assertion failed on feature behavior | Feature | High |
+| Element not found for feature under test | Feature | High |
+| `SyntaxError` in test file | Test Invalid | High |
+| `Cannot find module` / `Module not found` | Test Invalid | High |
+| Test-specific variable `is not defined` | Test Invalid | High |
+
+**Detection regex patterns:**
+
+```javascript
+const PREREQUISITE_PATTERNS = [
+  /Error: page\.goto.*(?:404|500|timeout)/i,
+  /Error: .*login.*(?:failed|timeout)/i,
+  /Error: .*auth.*(?:failed|unauthorized)/i,
+  /Timeout.*waiting for.*navigation/i,
+  /net::ERR_CONNECTION_REFUSED/i,
+  /ECONNREFUSED/i,
+];
+
+const TEST_INVALID_PATTERNS = [
+  /SyntaxError:/,
+  /Cannot find module/,
+  /Module not found/,
+  /is not defined/,
+  /Unexpected token/,
+];
+
+const ENVIRONMENT_PATTERNS = [
+  /EADDRINUSE/,
+  /already running/i,
+  /single instance/i,
+  /port.*in use/i,
+  /EACCES|EPERM|EBUSY/,
+];
+```
+
+### Prerequisite Failure Detection Output
+
+When a prerequisite failure is detected:
+
+```typescript
+interface FailureClassification {
+  type: "PREREQUISITE" | "FEATURE" | "TEST_INVALID" | "ENVIRONMENT";
+  component: string;           // e.g., "auth-login" or "payment-form"
+  error: string;              // Full error message
+  failedAt: string;           // Line/selector that failed
+  confidence: "high" | "medium" | "low";
+  existingTest?: string;      // If a dedicated test exists for this component
+  suggestedFix?: {
+    agent: "@developer" | "@e2e-playwright";
+    description: string;
+  };
+}
+```
+
+**Example classifications:**
+
+```json
+// Prerequisite failure
+{
+  "type": "PREREQUISITE",
+  "component": "auth-login",
+  "error": "Timeout waiting for '[data-testid=\"login-submit\"]'",
+  "failedAt": "page.click('[data-testid=\"login-submit\"]')",
+  "confidence": "high",
+  "existingTest": "tests/e2e/auth.spec.ts",
+  "suggestedFix": {
+    "agent": "@developer",
+    "description": "Fix login form timeout issue"
+  }
+}
+
+// Feature failure  
+{
+  "type": "FEATURE",
+  "component": "payment-form",
+  "error": "Expected element to be visible",
+  "failedAt": "expect(page.locator('[data-testid=\"card-number\"]')).toBeVisible()",
+  "confidence": "high",
+  "existingTest": null,
+  "suggestedFix": {
+    "agent": "@developer",
+    "description": "Add missing card-number field to PaymentForm"
+  }
+}
+
+// Test invalid
+{
+  "type": "TEST_INVALID",
+  "component": "payment-form",
+  "error": "SyntaxError: Unexpected token '=>'",
+  "failedAt": "tests/ui-verify/payment-form.spec.ts:15",
+  "confidence": "high",
+  "existingTest": null,
+  "suggestedFix": {
+    "agent": "@e2e-playwright",
+    "description": "Fix syntax error in test file"
+  }
+}
+```
+
+### Finding Existing Tests for Prerequisites
+
+When a prerequisite fails, search for existing tests that cover it:
+
+```bash
+# Search for tests matching the prerequisite component
+PREREQ="auth"  # or "login", "navigation", etc.
+
+# Check common test locations
+find tests/ apps/*/e2e/ -name "*.spec.ts" -exec grep -l "@component.*$PREREQ\\|describe.*$PREREQ" {} \;
+
+# Check if there's a dedicated prerequisite test
+ls tests/e2e/${PREREQ}*.spec.ts 2>/dev/null
+ls apps/web/e2e/${PREREQ}*.spec.ts 2>/dev/null
+```
+
+**Test search priority:**
+
+1. Direct match: `tests/e2e/auth.spec.ts` for auth prerequisite
+2. Component match: Files containing `@component auth` or `describe('auth'`
+3. Keyword match: Files containing the prerequisite keyword in test names
+
+### Integration with Fix Loop
+
+When a prerequisite failure is detected, modify the fix loop behavior:
+
+```
+PREREQUISITE FAILURE detected
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 1: Find existing test for prerequisite                          │
+│                                                                     │
+│ Search tests/e2e/ for: auth.spec.ts, login.spec.ts, etc.            │
+│                                                                     │
+│ ├─── FOUND ──► Run that test to confirm issue                       │
+│ │                                                                   │
+│ └─── NOT FOUND ──► Use error message to guide fix                   │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 2: Confirm the issue                                            │
+│                                                                     │
+│ Run the prerequisite test (if found):                                │
+│   npx playwright test tests/e2e/auth.spec.ts                        │
+│                                                                     │
+│ ├─── PASS ──► Prerequisite actually works! Retry original test      │
+│ │             (May have been transient)                             │
+│ │                                                                   │
+│ └─── FAIL ──► Confirmed: prerequisite is broken                     │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 3: Fix the prerequisite (see Automated Fix Loop section)        │
+│                                                                     │
+│ Delegate fix to appropriate agent                                    │
+│ After fix, re-run prerequisite test                                  │
+│ If pass, retry original feature verification                         │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Prerequisite Failure Report Format
+
+Show this to the user when a prerequisite failure blocks verification:
+
+```
+═══════════════════════════════════════════════════════════════════════
+              ⚠️ PREREQUISITE FAILURE DETECTED
+═══════════════════════════════════════════════════════════════════════
+
+Feature under test: Add "Settings" option to profile dropdown
+Status: NOT TESTED (blocked by prerequisite)
+
+Prerequisite that failed:
+  ❌ Login: "Timeout waiting for '[data-testid="login-submit"]'"
+  
+  This appears to be an auth/login issue, not a problem with your feature.
+  Your menu option change was NOT tested.
+
+Classification confidence: HIGH
+Existing test found: tests/e2e/auth.spec.ts
+
+Screenshot: ai-tmp/verification/screenshots/login-failure.png
+
+Entering automated fix loop...
+═══════════════════════════════════════════════════════════════════════
+```
+
+---
+
+## Environment Prerequisite Detection
+
+> 🔧 **Environment prerequisites are infrastructure issues that cannot be fixed by code changes.**
+>
+> These require running commands, scripts, or using specialized skills — not @developer.
+
+### Environment vs Application Prerequisites
+
+| Type | Examples | Fix Method |
+|------|----------|------------|
+| **Application** | Login bug, missing element, API error | Code change via @developer |
+| **Environment** | Process conflict, port in use, native app bootstrap | Skill-based recovery |
+
+### Environment Prerequisite Categories
+
+| Category | Detection Patterns | Example Skills |
+|----------|-------------------|----------------|
+| **Process management** | `EADDRINUSE`, `already running`, `single instance` | `electron-testing` |
+| **Port/service availability** | `ECONNREFUSED`, `port in use`, connection timeout | `start-dev-server` |
+| **Native app bootstrap** | Platform-specific launch errors | `electron-testing`, `tauri-testing` |
+| **External services** | HTTP 503, 429, `service unavailable` | N/A (wait or mock) |
+| **File system** | `EACCES`, `EBUSY`, `EPERM` | Manual intervention |
+
+### Environment Detection Patterns
+
+```javascript
+const ENVIRONMENT_PATTERNS = {
+  processConflict: [
+    /EADDRINUSE/,
+    /already running/i,
+    /single instance/i,
+    /another instance/i,
+    /lock file exists/i,
+  ],
+  portConflict: [
+    /port.*in use/i,
+    /ECONNREFUSED/,
+    /connection refused/i,
+    /net::ERR_CONNECTION_REFUSED/,
+  ],
+  nativeAppBootstrap: [
+    /electron.*failed/i,
+    /app launch.*failed/i,
+    /cannot connect to.*app/i,
+    /BrowserContext.*launch/,
+  ],
+  externalService: [
+    /503 Service Unavailable/,
+    /429 Too Many Requests/,
+    /rate limit/i,
+    /service unavailable/i,
+  ],
+  fileSystem: [
+    /EACCES/,
+    /EPERM/,
+    /EBUSY/,
+    /permission denied/i,
+    /file is locked/i,
+  ],
+};
+```
+
+### Environment Fix Flow
+
+```
+ENVIRONMENT prerequisite detected
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 1: Categorize the environment issue                            │
+│                                                                     │
+│ Match error against ENVIRONMENT_PATTERNS                            │
+│ → processConflict, portConflict, nativeAppBootstrap, etc.           │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 2: Search for matching skill                                    │
+│                                                                     │
+│ Skill naming convention: {category}-testing                         │
+│ Examples: electron-testing, docker-testing, tauri-testing           │
+│                                                                     │
+│ Search skills/ for:                                                  │
+│   • Exact match by category                                         │
+│   • Pattern match by detected technology                            │
+│                                                                     │
+│ ├─── SKILL FOUND ──► Load skill, run recovery procedure (Step 3)    │
+│ │                                                                   │
+│ └─── NO SKILL ──► Offer skill creation request (see Phase 4)       │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼ (SKILL FOUND)
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 3: Execute skill recovery                                       │
+│                                                                     │
+│ 1. Load skill via skill tool: skill("electron-testing")             │
+│ 2. Execute skill's environment recovery steps                       │
+│ 3. Retry the original test                                          │
+│    ├─── PASS ──► Continue to stability check (3 passes)             │
+│    └─── FAIL ──► Classify new failure, continue fix loop            │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Skill Search Logic
+
+```bash
+# Search for skill matching environment category
+CATEGORY="electron"  # Detected from error message
+
+# Check if skill exists
+ls ~/.config/opencode/skills/${CATEGORY}-testing/SKILL.md 2>/dev/null
+
+# Fallback: Search by keyword
+find ~/.config/opencode/skills -name "SKILL.md" -exec grep -l "$CATEGORY" {} \;
+```
+
+**Skill mapping examples:**
+
+| Error Pattern | Category | Skill to Load |
+|---------------|----------|---------------|
+| `EADDRINUSE` + Electron | processConflict | `electron-testing` |
+| `ECONNREFUSED` on port 3000 | portConflict | `start-dev-server` |
+| Docker container issue | nativeAppBootstrap | `docker-testing` |
+| Tauri app launch failed | nativeAppBootstrap | `tauri-testing` |
+
+### External Service Handling
+
+External service failures (503, 429) **cannot be automatically fixed**:
+
+```
+═══════════════════════════════════════════════════════════════════════
+              ⚠️ EXTERNAL SERVICE UNAVAILABLE
+═══════════════════════════════════════════════════════════════════════
+
+The test failed due to an external service issue:
+  Service: api.stripe.com
+  Error: 503 Service Unavailable
+
+This cannot be automatically fixed. Options:
+  [W] Wait and retry in 5 minutes
+  [M] Use mock/stub for this service (creates fixture)
+  [S] Skip verification
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Environment Failure Report
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔧 ENVIRONMENT PREREQUISITE DETECTED
+═══════════════════════════════════════════════════════════════════════
+
+Feature under test: Add "Settings" option to profile dropdown
+Status: BLOCKED (environment issue)
+
+Environment issue:
+  ❌ Electron: "Error: another instance is already running"
+  
+  Category: Process conflict
+  This is an infrastructure issue, not a code problem.
+
+Matching skill found: electron-testing
+Action: Loading skill and attempting recovery...
+═══════════════════════════════════════════════════════════════════════
+```
+
+---
+
+## 3-Pass Stability Verification
+
+> 🔄 **A single passing test run is not enough. Require 3 consecutive passes to declare verified.**
+>
+> **Trigger:** After a verification test passes for the first time (or after any fix is applied).
+>
+> **Why:** Transient issues, timing problems, and flaky behavior are only caught with multiple passes.
+
+### Configuration
+
+In `project.json` → `agents.verification`:
+
+```json
+{
+  "agents": {
+    "verification": {
+      "requiredPasses": 3,        // Default: 3 consecutive passes required
+      "runBroaderTestsAfterFix": true  // Run related tests after fixing
+    }
+  }
+}
+```
+
+### Stability Verification Flow
+
+```
+Verification test PASSES
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ INCREMENT PASS COUNTER                                               │
+│                                                                     │
+│ State: { passCount: 1, requiredPasses: 3 }                           │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ CHECK: passCount >= requiredPasses?                                  │
+│                                                                     │
+│ ├─── NO ──► Run test again, increment counter, loop                 │
+│ │                                                                   │
+│ └─── YES ──► ✅ VERIFIED — declare feature stable                   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Pass Counter Reset Rules
+
+| Event | Pass Counter Action |
+|-------|---------------------|
+| Test passes | Increment by 1 |
+| Test fails | Reset to 0, enter fix loop |
+| Fix applied by @developer | Reset to 0 (require fresh 3 passes) |
+| Environment recovery completed | Reset to 0 (require fresh 3 passes) |
+| Manual intervention | Reset to 0 (require fresh 3 passes) |
+
+### State Tracking
+
+Track stability verification state in `builder-state.json`:
+
+```json
+{
+  "verificationLoop": {
+    "stabilityCheck": {
+      "testPath": "tests/ui-verify/profile-dropdown.spec.ts",
+      "feature": "Add Settings option to profile dropdown",
+      "requiredPasses": 3,
+      "currentPasses": 2,
+      "lastPassAt": "2026-03-03T10:45:00Z",
+      "resetReason": null
+    }
+  }
+}
+```
+
+### Stability Progress Display
+
+Show progress during stability verification:
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔄 STABILITY VERIFICATION IN PROGRESS
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Test: tests/ui-verify/profile-dropdown.spec.ts
+
+Stability check: 2/3 passes ██████████████░░░░░░░ 67%
+
+Pass 1: ✅ 10:42:15 (2.3s)
+Pass 2: ✅ 10:42:18 (2.1s)
+Pass 3: ⏳ Running...
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Stability Failure (Mid-Stability Fail)
+
+When a test fails during stability verification:
+
+```
+═══════════════════════════════════════════════════════════════════════
+              ❌ STABILITY CHECK FAILED
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Test: tests/ui-verify/profile-dropdown.spec.ts
+
+Progress: 2/3 passes, then FAILED on pass 3
+
+Error: Timeout waiting for '[data-testid="settings-option"]'
+
+This indicates a flaky test or intermittent issue.
+Pass counter reset to 0. Entering fix loop...
+
+───────────────────────────────────────────────────────────────────────
+Analyzing failure pattern...
+Classification: FEATURE (element timeout in feature assertion section)
+═══════════════════════════════════════════════════════════════════════
+```
+
+### After Fix — Fresh Passes Required
+
+After any fix is applied (code change, environment recovery, etc.):
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔄 FIX APPLIED — RESTARTING STABILITY CHECK
+═══════════════════════════════════════════════════════════════════════
+
+Fix: Updated selector timing in ProfileDropdown component
+Applied by: @developer
+
+Stability check reset: 0/3 passes (fresh verification required)
+Running pass 1...
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Stability Verified
+
+When all passes complete:
+
+```
+═══════════════════════════════════════════════════════════════════════
+              ✅ FEATURE VERIFIED (STABLE)
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Test: tests/ui-verify/profile-dropdown.spec.ts
+
+Stability check: 3/3 passes ████████████████████ 100%
+
+Pass 1: ✅ 10:42:15 (2.3s)
+Pass 2: ✅ 10:42:18 (2.1s)
+Pass 3: ✅ 10:42:21 (2.2s)
+
+Feature is stable and verified.
+═══════════════════════════════════════════════════════════════════════
+```
+
+---
+
+## Automated Fix Loop
+
+> 🔄 **When verification tests fail, automatically classify and fix the issue.**
+>
+> **Trigger:** Verification test fails (during initial run or stability check).
+>
+> **Why:** Automated fixing reduces manual intervention and ensures systematic issue resolution.
+
+### Configuration
+
+In `project.json` → `agents.verification`:
+
+```json
+{
+  "agents": {
+    "verification": {
+      "autoFixLoop": true,              // Default: true
+      "fixAttemptTimeoutMinutes": 5,    // Timeout per fix attempt
+      "runBroaderTestsAfterFix": true   // Run related tests after fixing
+    }
+  }
+}
+```
+
+### Fix Loop Algorithm
+
+```
+Verification test FAILS
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 1: CLASSIFY FAILURE                                             │
+│                                                                     │
+│ Use failure classification algorithm (see "Prerequisite Failure     │
+│ Detection" section above)                                           │
+│                                                                     │
+│ Result: PREREQUISITE | FEATURE | ENVIRONMENT | TEST_INVALID         │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 2: CHECK STOP CONDITIONS                                        │
+│                                                                     │
+│ STOP if ANY of these are true:                                       │
+│ • Component has 3 failed fix attempts                               │
+│ • Same exact error occurred twice in a row (no progress)            │
+│ • Total loop iterations > 10 (runaway prevention)                   │
+│                                                                     │
+│ ├─── STOP TRIGGERED ──► Log failure, offer manual options           │
+│ │                                                                   │
+│ └─── CONTINUE ──► Proceed to fix                                    │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 3: FIND EXISTING TEST (for prerequisites)                       │
+│                                                                     │
+│ Search for existing test matching the failed component:              │
+│ 1. Check tests/e2e/ for files matching component name               │
+│ 2. Check test manifests/indexes if they exist                       │
+│ 3. If no dedicated test exists, use error context to guide fix      │
+│                                                                     │
+│ ├─── TEST FOUND ──► Run that test to confirm issue                  │
+│ └─── NO TEST ──► Use error message directly                         │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 4: DELEGATE FIX                                                 │
+│                                                                     │
+│ Based on classification:                                             │
+│ • PREREQUISITE (code issue) ──► @developer                          │
+│ • FEATURE (code issue) ──► @developer                               │
+│ • ENVIRONMENT ──► Load skill-based recovery (see above)             │
+│ • TEST_INVALID ──► @e2e-playwright for test fix                     │
+│                                                                     │
+│ Pass to delegate:                                                    │
+│ • Error message and stack trace                                      │
+│ • Component name and test file                                       │
+│ • Number of previous attempts                                        │
+│ • Previous fix attempts (to avoid repeating)                         │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 5: VERIFY FIX                                                   │
+│                                                                     │
+│ After fix is applied:                                                │
+│ 1. Re-run the component's test (if separate from verification test) │
+│ 2. If pass → Retry original verification test                       │
+│ 3. If fail → Record attempt, check stop conditions, loop            │
+│                                                                     │
+│ On verification test pass → Enter 3-pass stability check            │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### State Tracking
+
+Track fix loop state in `builder-state.json`:
+
+```json
+{
+  "verificationLoop": {
+    "originalFeature": "tests/ui-verify/profile-dropdown-settings.spec.ts",
+    "startedAt": "2026-03-03T10:30:00Z",
+    "totalIterations": 3,
+    "lastError": null,
+    "lastErrorCount": 0,
+    "components": {
+      "auth-login": {
+        "type": "prerequisite",
+        "testFile": "tests/e2e/auth.spec.ts",
+        "attempts": [
+          {
+            "attemptNumber": 1,
+            "error": "Timeout waiting for '[data-testid=\"login-submit\"]'",
+            "fixAgent": "@developer",
+            "fixDescription": "Fixed missing data-testid on login button",
+            "result": "pass",
+            "duration": "45s"
+          }
+        ],
+        "status": "fixed"
+      },
+      "profile-dropdown-settings": {
+        "type": "feature",
+        "testFile": "tests/ui-verify/profile-dropdown-settings.spec.ts",
+        "attempts": [],
+        "status": "pending"
+      }
+    }
+  }
+}
+```
+
+### Stop Conditions
+
+| Condition | Description | Action |
+|-----------|-------------|--------|
+| **3 attempts per component** | Component has failed 3 fix attempts | Stop fixing this component |
+| **Same error twice** | Exact same error message twice in a row | Stop (no progress being made) |
+| **10 total iterations** | Runaway prevention (entire loop) | Stop entire verification |
+
+### Fix Delegation Format
+
+When delegating to @developer:
+
+```
+Fix verification failure: [component name]
+
+Classification: [PREREQUISITE | FEATURE]
+Test file: [test file path]
+Attempt: [N]/3
+
+Error:
+[error message]
+
+Stack trace:
+[relevant stack trace]
+
+Previous attempts:
+- Attempt 1: [fix description] → [result]
+- Attempt 2: [fix description] → [result]
+
+Context:
+This is [a prerequisite / the feature under test].
+[Additional context about what the test is trying to do]
+```
+
+### Fix Loop Progress Display
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔧 AUTOMATED FIX LOOP IN PROGRESS
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Status: Fixing prerequisite failure
+
+Component: auth-login (PREREQUISITE)
+Attempt: 2/3
+Agent: @developer
+
+Error: Timeout waiting for '[data-testid="login-submit"]'
+
+Previous attempt:
+  Fix: Added explicit wait for login form
+  Result: ❌ Still failing
+
+Current fix in progress...
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Fix Loop Success
+
+```
+═══════════════════════════════════════════════════════════════════════
+              ✅ FIX LOOP COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Duration: 3m 45s
+Iterations: 4
+
+Components fixed:
+  ✅ auth-login (prerequisite) — 1 attempt
+  ✅ profile-dropdown-settings (feature) — 2 attempts
+
+Entering stability verification (3 passes required)...
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Fix Loop Stopped
+
+```
+═══════════════════════════════════════════════════════════════════════
+              ❌ FIX LOOP STOPPED
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Stop reason: Component reached 3 failed attempts
+
+Component: auth-login (PREREQUISITE)
+Attempts: 3/3 (max reached)
+
+Last error:
+  Timeout waiting for '[data-testid="login-submit"]'
+
+Attempts log:
+  1. Fixed missing data-testid → Still failing
+  2. Added explicit wait → Still failing
+  3. Updated selector to use role → Still failing
+
+This failure has been logged to verification-failures.json.
+
+Options:
+  [M] Fix manually, then type "retry"
+  [S] Skip verification (marks feature as unverified)
+  [A] Abandon feature (reverts story changes)
+═══════════════════════════════════════════════════════════════════════
+```
+
+---
+
+## Failure Logging (verification-failures.json)
+
+> 📝 **Log all verification failures for debugging and pattern analysis.**
+>
+> **Trigger:** Fix loop stopped (any stop condition), or manual skip/abandon.
+>
+> **Why:** Enables debugging of recurring issues and identification of systemic problems.
+
+### File Location
+
+```
+<project>/ai-tmp/verification-failures.json
+```
+
+### Structure
+
+```json
+{
+  "schemaVersion": 1,
+  "failures": [
+    {
+      "id": "2026-03-03T10:30:00Z-profile-dropdown-settings",
+      "feature": "Add Settings option to profile dropdown",
+      "testFile": "tests/ui-verify/profile-dropdown-settings.spec.ts",
+      "prd": "print-templates",
+      "story": "US-005",
+      "startedAt": "2026-03-03T10:30:00Z",
+      "stoppedAt": "2026-03-03T10:45:00Z",
+      "stopReason": "max_attempts_reached",
+      "totalIterations": 4,
+      "failedComponent": {
+        "name": "auth-login",
+        "type": "prerequisite",
+        "testFile": "tests/e2e/auth.spec.ts"
+      },
+      "attempts": [
+        {
+          "attemptNumber": 1,
+          "error": "Timeout waiting for '[data-testid=\"login-submit\"]'",
+          "fixAgent": "@developer",
+          "fixDescription": "Fixed missing data-testid on login button",
+          "result": "fail",
+          "duration": "45s",
+          "screenshot": "ai-tmp/verification/screenshots/auth-attempt-1.png"
+        },
+        {
+          "attemptNumber": 2,
+          "error": "Timeout waiting for '[data-testid=\"login-submit\"]'",
+          "fixAgent": "@developer",
+          "fixDescription": "Added explicit wait for login form",
+          "result": "fail",
+          "duration": "60s",
+          "screenshot": "ai-tmp/verification/screenshots/auth-attempt-2.png"
+        },
+        {
+          "attemptNumber": 3,
+          "error": "Timeout waiting for '[data-testid=\"login-submit\"]'",
+          "fixAgent": "@developer",
+          "fixDescription": "Updated selector to use role",
+          "result": "fail",
+          "duration": "55s",
+          "screenshot": "ai-tmp/verification/screenshots/auth-attempt-3.png"
+        }
+      ],
+      "resolution": "manual",
+      "resolutionDetails": "User chose [M] to fix manually"
+    }
+  ],
+  "stats": {
+    "totalFailures": 5,
+    "autoFixed": 3,
+    "manuallyFixed": 1,
+    "skipped": 1,
+    "abandoned": 0,
+    "autoFixRate": 0.6,
+    "lastUpdated": "2026-03-03T10:45:00Z"
+  }
+}
+```
+
+### Stop Reason Values
+
+| Value | Description |
+|-------|-------------|
+| `max_attempts_reached` | Component had 3 failed fix attempts |
+| `same_error_twice` | Exact same error occurred twice in a row |
+| `max_iterations` | Total loop iterations exceeded 10 |
+| `environment_no_skill` | Environment issue with no matching skill |
+| `external_service_unavailable` | External service failure (503, 429) |
+| `user_skip` | User selected [S] Skip |
+| `user_abandon` | User selected [A] Abandon |
+
+### Resolution Values
+
+| Value | Description |
+|-------|-------------|
+| `auto_fixed` | Automated fix loop successfully resolved |
+| `manual` | User fixed manually and retried |
+| `skipped` | User skipped verification |
+| `abandoned` | User abandoned the feature |
+| `pending` | Not yet resolved |
+
+### Writing to Failure Log
+
+When a failure occurs:
+
+1. Read existing `ai-tmp/verification-failures.json` (or create if missing)
+2. Append new failure entry to `failures` array
+3. Update `stats` counters
+4. Write file atomically
+
+```bash
+# Ensure directory exists
+mkdir -p ai-tmp
+
+# Write failure log (pseudo-code, actual implementation in agents)
+```
+
+---
+
+## Manual Fallback Options
+
+> 🛑 **When automated fix fails, provide clear manual options.**
+>
+> **Trigger:** Fix loop stopped (any stop condition).
+>
+> **Why:** User must be able to proceed even when automation fails.
+
+### Option: [M] Fix Manually
+
+When user selects [M]:
+
+1. **Display full context:**
+   ```
+   MANUAL FIX MODE
+   
+   Feature: Add "Settings" option to profile dropdown
+   Blocked by: auth-login (prerequisite)
+   
+   Last error:
+     Timeout waiting for '[data-testid="login-submit"]'
+   
+   Relevant files:
+     - src/components/LoginForm.tsx
+     - tests/e2e/auth.spec.ts
+   
+   Screenshots:
+     - ai-tmp/verification/screenshots/auth-attempt-3.png
+   
+   Type "retry" when you've fixed the issue.
+   Type "skip" to skip verification.
+   Type "abandon" to abandon this feature.
+   ```
+
+2. **Wait for user input**
+3. **On "retry":**
+   - Reset fix loop state (clear component attempts)
+   - Restart verification from the beginning
+   - Enter 3-pass stability check on success
+
+4. **Update failure log with resolution:** `"resolution": "manual"`
+
+### Option: [S] Skip Verification
+
+When user selects [S]:
+
+1. **Require skip reason:**
+   ```
+   Skip reason (required):
+   > _
+   ```
+
+2. **Log the skip:**
+   ```json
+   {
+     "resolution": "skipped",
+     "resolutionDetails": "User skip: [reason provided]"
+   }
+   ```
+
+3. **Mark feature as unverified:**
+   - PRD story continues but is flagged
+   - Adds entry to `test-debt.json` (see Blocker Tracking section)
+
+4. **Display warning:**
+   ```
+   ⚠️ FEATURE MARKED UNVERIFIED
+   
+   Feature: Add "Settings" option to profile dropdown
+   Skip reason: [user's reason]
+   
+   This is logged in test-debt.json for follow-up.
+   Continuing to next story...
+   ```
+
+### Option: [A] Abandon
+
+When user selects [A]:
+
+1. **Confirm abandonment:**
+   ```
+   ⚠️ ABANDON FEATURE?
+   
+   This will revert all changes made for this story.
+   The story will be marked as "abandoned" in builder-state.json.
+   
+   Type "confirm" to proceed or "cancel" to go back.
+   > _
+   ```
+
+2. **On confirm:**
+   - Revert story changes (git checkout)
+   - Update builder-state.json with abandoned status
+   - Log to verification-failures.json with `"resolution": "abandoned"`
+
+3. **Display result:**
+   ```
+   ❌ FEATURE ABANDONED
+   
+   Story: US-005 - Add "Settings" option to profile dropdown
+   Changes have been reverted.
+   
+   Moving to next story...
+   ```
+
+---
+
+## Blocker Tracking (test-debt.json)
+
+> 🚧 **Track prerequisite blockers that affect multiple features.**
+>
+> **Trigger:** User selects [S] Skip or [B] Mark as verification blocked.
+>
+> **Why:** Enables bulk re-verification when blockers are fixed.
+
+### File Location
+
+```
+<project>/ai-tmp/test-debt.json
+```
+
+### Structure
+
+```json
+{
+  "schemaVersion": 1,
+  "prerequisiteBlockers": [
+    {
+      "id": "auth-login-timeout",
+      "prerequisite": "login",
+      "type": "application",
+      "error": "Timeout waiting for '[data-testid=\"login-submit\"]'",
+      "firstSeen": "2026-03-03T10:30:00Z",
+      "lastSeen": "2026-03-03T11:15:00Z",
+      "affectedFeatures": [
+        {
+          "story": "US-005",
+          "feature": "Add Settings menu option",
+          "testFile": "tests/ui-verify/profile-dropdown-settings.spec.ts",
+          "blockedAt": "2026-03-03T10:30:00Z"
+        },
+        {
+          "story": "US-007",
+          "feature": "Add Logout confirmation",
+          "testFile": "tests/ui-verify/logout-confirmation.spec.ts",
+          "blockedAt": "2026-03-03T11:15:00Z"
+        }
+      ],
+      "status": "open",
+      "fixAttempts": 3,
+      "lastFixAttempt": "2026-03-03T10:45:00Z"
+    }
+  ],
+  "skippedVerifications": [
+    {
+      "story": "US-012",
+      "feature": "Add Profile edit link",
+      "testFile": "tests/ui-verify/profile-edit-link.spec.ts",
+      "skippedAt": "2026-03-03T14:00:00Z",
+      "reason": "Manual testing confirmed working, CI will catch regressions",
+      "blockerId": null
+    }
+  ],
+  "stats": {
+    "totalBlockers": 1,
+    "openBlockers": 1,
+    "resolvedBlockers": 0,
+    "totalSkipped": 1,
+    "lastUpdated": "2026-03-03T14:00:00Z"
+  }
+}
+```
+
+### Blocker Status Values
+
+| Status | Description |
+|--------|-------------|
+| `open` | Blocker is active, features waiting for fix |
+| `resolved` | Blocker has been fixed |
+| `wont_fix` | Blocker marked as won't fix (legacy/known issue) |
+
+### "Verification Blocked" Status
+
+When user chooses [B] Mark as verification blocked:
+
+1. **Story completion with special status:**
+   ```
+   ✅ STORY US-005 COMPLETE (verification blocked)
+   
+   Summary: Added Settings menu option to profile dropdown
+   
+   Verification: ⚠️ BLOCKED
+     Reason: Login prerequisite failed (auth issue)
+     Blocker ID: auth-login-timeout
+     
+   When auth is fixed, run: verify-blocked US-005
+   ```
+
+2. **Add to blocker tracking:**
+   - Create or update blocker entry in `test-debt.json`
+   - Add this feature to `affectedFeatures` array
+   - Update `lastSeen` timestamp
+
+3. **Builder-state story completion:**
+   ```json
+   {
+     "stories": {
+       "US-005": {
+         "status": "complete",
+         "verificationBlocked": "auth-login-timeout",
+         "completedAt": "2026-03-03T10:45:00Z"
+       }
+     }
+   }
+   ```
+
+### Blocker Detection (Same Prerequisite Multiple Times)
+
+When the same prerequisite fails for a different feature:
+
+1. **Check if blocker already exists:**
+   - Match on `prerequisite` name and `error` pattern
+   - If exact match found, add to existing blocker
+
+2. **Update existing blocker:**
+   ```json
+   {
+     "id": "auth-login-timeout",
+     "affectedFeatures": [
+       // ... existing features
+       {
+         "story": "US-007",
+         "feature": "Add Logout confirmation",
+         "blockedAt": "2026-03-03T11:15:00Z"
+       }
+     ],
+     "lastSeen": "2026-03-03T11:15:00Z"
+   }
+   ```
+
+3. **Display correlation:**
+   ```
+   ⚠️ KNOWN BLOCKER DETECTED
+   
+   This feature is blocked by a known issue:
+     Blocker: auth-login-timeout
+     First seen: 2026-03-03T10:30:00Z
+     Other affected features: 1
+   
+   Options:
+     [B] Mark as verification blocked (tracks for bulk re-verify)
+     [M] Attempt manual fix
+     [S] Skip verification
+   ```
+
+---
+
+## Bulk Re-verification
+
+> 🔄 **Re-verify all features blocked by a resolved prerequisite.**
+>
+> **Trigger:** User indicates a blocker has been fixed.
+>
+> **Why:** Efficiently verify multiple features waiting on the same fix.
+
+### Triggering Bulk Re-verification
+
+**User input patterns:**
+
+- "auth is fixed"
+- "login is working now"
+- "verify-blocked auth-login-timeout"
+- "re-verify blocked features"
+
+**Detection and prompt:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔄 BULK RE-VERIFICATION
+═══════════════════════════════════════════════════════════════════════
+
+Found blocker that may be resolved: auth-login-timeout
+
+Affected features (3):
+  1. US-005: Add Settings menu option
+  2. US-007: Add Logout confirmation
+  3. US-012: Add Profile edit link
+
+Run verification for all? [Y/N]
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Bulk Verification Flow
+
+```
+User confirms bulk re-verification
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 1: Verify blocker is fixed                                      │
+│                                                                     │
+│ Run prerequisite test first:                                         │
+│   tests/e2e/auth.spec.ts                                            │
+│                                                                     │
+│ ├─── PASS ──► Blocker is fixed, proceed to verify features          │
+│ └─── FAIL ──► Blocker still exists, abort bulk verification        │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼ (BLOCKER FIXED)
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 2: Verify each affected feature                                 │
+│                                                                     │
+│ For each feature in affectedFeatures:                                │
+│   1. Run verification test                                           │
+│   2. Apply 3-pass stability check                                    │
+│   3. Record result                                                   │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ STEP 3: Update blocker status                                        │
+│                                                                     │
+│ If all features pass:                                                │
+│   • Set blocker status to "resolved"                                │
+│   • Clear verificationBlocked from story completions                │
+│                                                                     │
+│ If some features fail:                                               │
+│   • Keep blocker open for failed features                           │
+│   • Remove passed features from affectedFeatures                    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Bulk Verification Progress
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔄 BULK RE-VERIFICATION IN PROGRESS
+═══════════════════════════════════════════════════════════════════════
+
+Blocker: auth-login-timeout
+Status: Verifying blocker fix...
+
+Prerequisite test: tests/e2e/auth.spec.ts
+  ✅ PASSED (auth is now working)
+
+Verifying affected features:
+  1. US-005: Add Settings menu option
+     ✅ Pass 1/3
+     ✅ Pass 2/3
+     ⏳ Pass 3/3 running...
+  2. US-007: Add Logout confirmation
+     ⏳ Pending
+  3. US-012: Add Profile edit link
+     ⏳ Pending
+
+Progress: 1/3 features (0.67/3 stability passes)
+═══════════════════════════════════════════════════════════════════════
+```
+
+### Bulk Verification Complete
+
+```
+═══════════════════════════════════════════════════════════════════════
+              ✅ BULK RE-VERIFICATION COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+Blocker: auth-login-timeout
+Status: RESOLVED
+
+Results:
+  ✅ US-005: Add Settings menu option — VERIFIED (3/3 passes)
+  ✅ US-007: Add Logout confirmation — VERIFIED (3/3 passes)
+  ❌ US-012: Add Profile edit link — FAILED (new issue)
+
+Blocker resolved for 2/3 features.
+US-012 has a new issue (feature-level failure, not prerequisite).
+
+Updated:
+  • test-debt.json — blocker marked resolved
+  • builder-state.json — verificationBlocked cleared for US-005, US-007
+═══════════════════════════════════════════════════════════════════════
 ```
 
 ---
