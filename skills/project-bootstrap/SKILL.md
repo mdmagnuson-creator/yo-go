@@ -1990,6 +1990,153 @@ How many sample rows per table?
 
 ---
 
+## Step 10j: Configure Related Projects
+
+Ask about relationships to other registered projects. This enables agents to find companion projects (e.g., documentation sites, marketing sites, API backends) without guessing based on names.
+
+```
+═══════════════════════════════════════════════════════════════════════
+                       RELATED PROJECTS
+═══════════════════════════════════════════════════════════════════════
+
+Does this project have related companion projects?
+
+Related projects help agents automatically find:
+  • Documentation sites (for syncing docs updates)
+  • Marketing sites (for feature announcements)
+  • API backends (for contract alignment)
+  • Admin dashboards (for operational features)
+
+Registered projects:
+  1. yo-go (AI toolkit)
+  2. helm-ade (SaaS application)
+  3. helm-api (Go API backend)
+  4. opencode-toolkit-website (documentation)
+
+Select related projects (comma-separated numbers, or 'skip'):
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+### For Each Selected Project
+
+Ask about the relationship type:
+
+```
+Selected: yo-go
+
+What is the relationship of THIS project to yo-go?
+(How does this project relate to yo-go?)
+
+  Common types:
+    • documentation-site    This documents yo-go
+    • documented-project    This is documented by yo-go
+    • marketing-site        This markets yo-go
+    • marketed-product      This is marketed by yo-go
+    • api-backend           This is the API for yo-go
+    • frontend-client       This is a frontend for yo-go
+    • admin-dashboard       This manages yo-go
+    • managed-service       This is managed by yo-go
+    • shared-library        This is shared code for yo-go
+    • dependent-project     This depends on yo-go
+    • monorepo-sibling      This is in the same monorepo as yo-go
+    • test-harness          This tests yo-go
+    • tested-system         This is tested by yo-go
+
+Or type a custom relationship name.
+
+> documented-project
+
+Add a label? (for multiple same-type relationships, e.g., 'user-docs' vs 'api-docs')
+Press Enter to skip.
+> _
+
+Optional description:
+> The AI toolkit this site documents
+```
+
+### Inverse Relationship Offer
+
+After configuring a relationship, offer to add the inverse:
+
+```
+───────────────────────────────────────────────────────────────────────
+
+Add inverse relationship to yo-go?
+
+This will add to yo-go/docs/project.json:
+  {
+    "projectId": "<this-project-id>",
+    "relationship": "documentation-site",
+    "description": "Public documentation website for the AI toolkit"
+  }
+
+Add inverse? (y/n)
+> y
+
+✅ Updated yo-go/docs/project.json
+───────────────────────────────────────────────────────────────────────
+
+Add more related projects? (y/n)
+> n
+```
+
+### Inverse Relationship Mapping
+
+Use this mapping to determine the inverse relationship type:
+
+| Relationship | Inverse |
+|--------------|---------|
+| `documentation-site` | `documented-project` |
+| `documented-project` | `documentation-site` |
+| `marketing-site` | `marketed-product` |
+| `marketed-product` | `marketing-site` |
+| `api-backend` | `frontend-client` |
+| `frontend-client` | `api-backend` |
+| `admin-dashboard` | `managed-service` |
+| `managed-service` | `admin-dashboard` |
+| `shared-library` | `dependent-project` |
+| `dependent-project` | `shared-library` |
+| `monorepo-sibling` | `monorepo-sibling` |
+| `test-harness` | `tested-system` |
+| `tested-system` | `test-harness` |
+
+For custom relationship types, ask the user what the inverse should be called.
+
+### Label Disambiguation
+
+If the user tries to add a relationship type that already exists for this project (e.g., a second `documentation-site`), require a label:
+
+```
+⚠️  This project already has a documentation-site relationship.
+
+To add another, you must provide a label for disambiguation.
+
+Label for the existing relationship (opencode-toolkit-website):
+> user-docs
+
+Label for this new relationship (api-docs-site):
+> api-docs
+```
+
+### Add to project.json
+
+After configuring related projects, add to the project's `docs/project.json`:
+
+```json
+{
+  "relatedProjects": [
+    {
+      "projectId": "yo-go",
+      "relationship": "documented-project",
+      "description": "The AI toolkit this site documents"
+    }
+  ]
+}
+```
+
+---
+
 ## Step 11: Update Global Registry
 
 Add the project to `~/.config/opencode/projects.json`:
