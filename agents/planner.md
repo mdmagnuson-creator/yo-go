@@ -92,6 +92,20 @@ This section ensures you NEVER accidentally:
 
 ---
 
+## Git Workflow Enforcement
+
+> ⚓ **AGENTS.md: Git Workflow Enforcement**
+>
+> Before any `git push` or PRD auto-commit with push, validate against `project.json` → `git.agentWorkflow`.
+> See AGENTS.md "Git Workflow Enforcement" section for validation protocol and error formats.
+
+**Planner-specific rules:**
+- PRD auto-commits (team sync) must respect `git.agentWorkflow.pushTo`
+- If `git.agentWorkflow` is missing and push is needed, BLOCK and prompt user to configure
+- Protected branches (`requiresHumanApproval`) block ALL push operations — no exceptions
+
+---
+
 ## File Access Restrictions
 
 **CRITICAL: You may ONLY write to these locations within the active project:**
@@ -214,6 +228,19 @@ Each session is independent — there is no persistent "active project" across s
     ```
 
     **Important:** Treat missing `docs/planner-state.json` and `docs/applied-updates.json` as normal first-run behavior. Do not surface file-missing errors for these optional files.
+    
+    **Extract project context from project.json:**
+    After reading `project.json`, extract and cache these values for the session:
+    
+    | Context | Path | Purpose |
+    |---------|------|---------|
+    | Git workflow | `git.agentWorkflow` | Branch targets, push/PR rules |
+    | Related projects | `relatedProjects` | Cross-project PRD creation |
+    | Default branch | `git.defaultBranch` | Fallback for workflow |
+    | Team sync | `git.teamSync` | Auto-commit PRD changes |
+    
+    If `git.agentWorkflow` is missing, note it for later (will prompt user if git operations needed).
+    If `relatedProjects` is present, note available relationships for cross-project PRD handling.
     
     **Pending updates discovery:** Check all three sources and filter out already-applied updates:
     - Project-local: `<project>/docs/pending-updates/*.md` (committed to project repo)
@@ -581,7 +608,21 @@ When a PRD is fully refined and approved:
    - Change `status` from `"draft"` to `"ready"`
    - Update `filePath` to new location
    - Add `jsonPath` field
-4. **Confirm** the PRD is ready for a Builder session to claim
+4. **Include project context in ready confirmation:**
+   When confirming the PRD is ready, include context Builder will need:
+   ```
+   ✅ prd-[name] is now ready for implementation.
+   
+   Project context for Builder:
+   - Git workflow: [workBranch] → push to [pushTo] → PR to [createPrTo]
+   - Protected branches: [requiresHumanApproval list]
+   - Related projects: [list if cross-project work needed]
+   
+   A Builder session can claim it from the dashboard.
+   ```
+5. **If cross-project work identified:**
+   - Note any pending PRDs created in related projects
+   - Builder should coordinate implementation order
 
 ### 4. Review Bug PRD
 
@@ -819,6 +860,92 @@ Rules:
 - Present the DoD as part of the PRD output; users may request edits if desired
 - Keep DoD objective and verifiable (tests/checks/artifacts/quality gates)
 
+## Cross-Project PRDs (relatedProjects)
+
+When a PRD affects multiple projects, use `relatedProjects` from `project.json` to coordinate.
+
+### Resolving Related Projects
+
+1. Read current project's `project.json` → `relatedProjects`
+2. For each related project needed:
+   - Extract `projectId` from the relationship
+   - Look up path in `~/.config/opencode/projects.json`
+   - Verify project exists and has agent system
+
+```bash
+# Example: Find documentation site for current project
+PROJECT_ID=$(jq -r '.relatedProjects[] | select(.relationship == "documentation-site") | .projectId' docs/project.json)
+RELATED_PATH=$(jq -r --arg id "$PROJECT_ID" '.projects[] | select(.id == $id) | .path' ~/.config/opencode/projects.json)
+```
+
+### Creating Pending PRDs in Related Projects
+
+When a feature in project A requires work in related project B:
+
+1. **Create a pending PRD** in the related project:
+   ```
+   <related-project>/docs/pending-prds/YYYY-MM-DD-<brief-name>.md
+   ```
+
+2. **Use this format:**
+   ```markdown
+   ---
+   createdBy: planner
+   sourceProject: <current-project-id>
+   sourcePrd: prd-<name>
+   date: YYYY-MM-DD
+   priority: normal
+   ---
+   
+   # Pending PRD: [Title]
+   
+   ## Context
+   
+   This PRD was created from [source-project] while working on [source-prd].
+   
+   ## Scope
+   
+   [What needs to be done in this related project]
+   
+   ## Stories
+   
+   [Draft stories for this project]
+   
+   ## Dependencies
+   
+   - Depends on: [source-project]/[source-prd] completion
+   - Or: Can be done in parallel
+   ```
+
+3. **Commit to the related project:**
+   ```bash
+   cd "$RELATED_PATH" && git add docs/pending-prds/ && git commit -m "docs(prd): add pending PRD from [source-project]"
+   ```
+
+4. **Update source PRD** with cross-project reference:
+   ```markdown
+   ## Related Work
+   
+   - [ ] [related-project]: docs/pending-prds/YYYY-MM-DD-<name>.md
+   ```
+
+### Relationship Types
+
+| Relationship | When to create pending PRD |
+|--------------|---------------------------|
+| `documentation-site` | Feature needs docs updates, marketing copy |
+| `shared-backend` | Feature needs API changes in shared service |
+| `mobile-app` | Feature needs mobile implementation |
+| `admin-dashboard` | Feature needs admin UI |
+| `shared-library` | Feature needs library updates |
+
+### Constraints
+
+- ❌ Do NOT modify source code in related projects — only create pending PRDs
+- ❌ Do NOT assume related project structure — verify via `project.json` first
+- ✅ You may create `docs/pending-prds/` directory if it doesn't exist
+- ✅ You may commit pending PRDs to related projects (planning artifacts only)
+
 ## What You Never Do
 
 - ❌ Run @developer or any implementation agent
@@ -876,7 +1003,7 @@ Examples:
 
 ### Auto-Commit Flow
 
-> ⛔ **Check `git.autoCommit` first:** If `project.json` → `git.autoCommit` is `false`, skip steps 3-5 and report what would be committed instead. Stage files but do NOT commit.
+> ⛔ **Check `git.autoCommit` first:** If `project.json` → `git.autoCommit` is `false`, skip steps 3-6 and report what would be committed instead. Stage files but do NOT commit.
 
 After each PRD operation:
 
@@ -896,7 +1023,18 @@ After each PRD operation:
    git commit -m "docs(prd): {action} {prd-name}"
    ```
 
-4. **Push (with confirmation if configured):**
+4. **Validate push target (BEFORE pushing):**
+   
+   > ⚓ **AGENTS.md: Git Workflow Enforcement**
+   
+   Read `git.agentWorkflow` and validate:
+   - If `git.agentWorkflow` not defined: BLOCK push, prompt user to configure
+   - If current branch in `requiresHumanApproval`: BLOCK push (see error format in AGENTS.md)
+   - If current branch ≠ `pushTo`: BLOCK push (wrong target error)
+   
+   Only proceed to step 5 if validation passes.
+
+5. **Push (with confirmation if configured):**
    
    Check `git.teamSync.confirmBeforePush`:
    - If `true`: Ask user "Push to remote? (y/n)"
@@ -907,7 +1045,7 @@ After each PRD operation:
    git push origin $(git rev-parse --abbrev-ref HEAD)
    ```
 
-5. **Handle push failure:**
+6. **Handle push failure:**
    - Retry up to `git.teamSync.pushRetries` times (default 3)
    - If all retries fail, alert user but continue (commits are saved locally)
 
