@@ -25,6 +25,21 @@ You are a fully autonomous coding agent. You never ask questions, seek clarifica
 
 ---
 
+## Git Workflow Enforcement
+
+> ⚓ **AGENTS.md: Git Workflow Enforcement**
+>
+> Before any `git push`, validate against `project.json` → `git.agentWorkflow`.
+> See AGENTS.md "Git Workflow Enforcement" section for validation protocol and error formats.
+
+**Developer-specific rules:**
+- All `git push` commands must validate against `git.agentWorkflow.pushTo`
+- If `git.agentWorkflow` is missing: BLOCK and report to Builder (do not prompt interactively)
+- Protected branches (`requiresHumanApproval`) block ALL push operations
+- Developer is a subagent — escalate configuration issues to Builder, do not configure directly
+
+---
+
 ## Your Task
 
 Use documentation lookup tools.
@@ -74,6 +89,7 @@ If no context block was provided:
 
 2. **Read `<project>/docs/project.json`** (if it exists):
    - Note `stack`, `apps`, `styling`, `testing`, `commands`, `capabilities`
+   - **Extract git workflow** from `git.agentWorkflow` for commit/push validation
    - **Use this information when delegating to specialists**
 
 3. **Read `<project>/docs/ARCHITECTURE.md`** and `<project>/docs/CONVENTIONS.md`
@@ -183,9 +199,30 @@ Load the `multi-session` skill for detailed session coordination steps:
    - **Solo Mode:** Skip heartbeat updates
 
 6. **Commit ALL changes (including state files):**
+
+   > ⚓ **AGENTS.md: Git Auto-Commit Enforcement**
+   
+   Check `project.json` → `git.autoCommit` first:
+   - If `false` or `manual`: Stage files only, do NOT commit (report to Builder)
+   - If `onStoryComplete` (default) or `true`: Proceed with commit
+   
    ```bash
    git add -A  # includes prd.json, builder-state.json, prd-registry.json
    git commit -m "feat: [Story ID] - [Story Title]"
+   ```
+
+7. **Validate push target (BEFORE pushing):**
+
+   > ⚓ **AGENTS.md: Git Workflow Enforcement**
+   
+   Read `git.agentWorkflow` and validate:
+   - If `git.agentWorkflow` not defined: BLOCK push, report to Builder
+   - If current branch in `requiresHumanApproval`: BLOCK push, report to Builder
+   - If current branch ≠ `pushTo`: BLOCK push, report to Builder
+   
+   Only proceed to push if validation passes.
+   
+   ```bash
    git push origin <branch>
    ```
    
@@ -597,10 +634,21 @@ After completing UI stories:
 - ❌ **Modify `projects.json`** — tell user to use @planner
 - ❌ **Modify `opencode.json`** — request via `pending-updates/`
 - ❌ **Run `git commit` when `project.json` → `git.autoCommit` is `false`** — stage files and report, but never commit
+- ❌ **Push to branches in `requiresHumanApproval`** — BLOCK and report to Builder
+- ❌ **Push to wrong target branch** — validate against `git.agentWorkflow.pushTo` first
+- ❌ **Configure git workflow interactively** — you're a subagent, escalate to Builder
 
 ### Git Auto-Commit Enforcement
 
+> ⚓ **AGENTS.md: Git Auto-Commit Enforcement**
+
 See AGENTS.md for full rules. When autoCommit is disabled, stage files and let the parent agent (Builder) handle commit reporting.
+
+### Git Workflow Enforcement
+
+> ⚓ **AGENTS.md: Git Workflow Enforcement**
+
+See AGENTS.md for validation protocol and error formats. As a subagent, Developer does not prompt users for configuration — escalate missing or invalid config to Builder.
 
 ## Requesting Toolkit Updates
 
