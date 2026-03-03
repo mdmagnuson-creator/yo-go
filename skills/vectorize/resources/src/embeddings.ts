@@ -41,6 +41,7 @@ export interface EmbeddingConfig {
   apiKey?: string;
   ollamaBaseUrl?: string;
   targetDimension?: number; // For dimension normalization
+  verbosity?: 'default' | 'verbose' | 'quiet'; // Output mode
 }
 
 export interface EmbeddingResult {
@@ -177,21 +178,23 @@ export async function generateEmbeddingsAuto(
   
   // Generate embeddings based on provider
   let results: EmbeddingResult[];
+  const verbosity = config.verbosity || 'default';
   
   switch (provider) {
     case 'voyage':
       if (!apiKey) throw new Error('VOYAGE_API_KEY is required for Voyage provider');
-      results = await generateVoyageEmbeddings(chunks, apiKey, model);
+      results = await generateVoyageEmbeddings(chunks, apiKey, model, verbosity);
       break;
     case 'openai':
       if (!apiKey) throw new Error('OPENAI_API_KEY is required for OpenAI provider');
-      results = await generateEmbeddings(chunks, apiKey, model);
+      results = await generateEmbeddings(chunks, apiKey, model, verbosity);
       break;
     case 'ollama':
       results = await generateOllamaEmbeddings(
         chunks,
         model,
-        config.ollamaBaseUrl || 'http://localhost:11434'
+        config.ollamaBaseUrl || 'http://localhost:11434',
+        verbosity
       );
       break;
     default:
@@ -214,14 +217,17 @@ export async function generateEmbeddingsAuto(
 export async function generateEmbeddings(
   chunks: Chunk[],
   apiKey: string,
-  model: string = 'text-embedding-3-small'
+  model: string = 'text-embedding-3-small',
+  verbosity: 'default' | 'verbose' | 'quiet' = 'default'
 ): Promise<EmbeddingResult[]> {
   const client = new OpenAI({ apiKey });
   const results: EmbeddingResult[] = [];
+  let batchCount = 0;
   
   // Process in batches
   for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
     const batch = chunks.slice(i, i + BATCH_SIZE);
+    batchCount++;
     const texts = batch.map(chunk => {
       // Include context if available (from contextual retrieval)
       const content = chunk.context 
@@ -231,6 +237,12 @@ export async function generateEmbeddings(
       // Truncate if too long (OpenAI limit is 8191 tokens)
       return content.substring(0, 30000);
     });
+    
+    // Verbose mode: show per-batch details
+    if (verbosity === 'verbose') {
+      const isFinal = i + BATCH_SIZE >= chunks.length;
+      console.log(`  Batch ${batchCount}: ${batch.length} chunks${isFinal ? ' (final)' : ''}`);
+    }
     
     let retries = 0;
     while (retries < MAX_RETRIES) {
@@ -263,10 +275,15 @@ export async function generateEmbeddings(
       }
     }
     
-    // Progress indicator
-    if (i % (BATCH_SIZE * 10) === 0 && i > 0) {
+    // Progress indicator (default and verbose modes)
+    if (verbosity !== 'quiet' && i % (BATCH_SIZE * 10) === 0 && i > 0) {
       console.log(`  Embedded ${i}/${chunks.length} chunks...`);
     }
+  }
+  
+  // Summary output (default and verbose modes)
+  if (verbosity !== 'quiet') {
+    console.log(`\nTotal: ${chunks.length.toLocaleString()} chunks in ${batchCount} batches, ${batchCount} API calls`);
   }
   
   return results;
@@ -364,9 +381,11 @@ export async function generateQueryEmbeddingAuto(
 export async function generateVoyageEmbeddings(
   chunks: Chunk[],
   apiKey: string,
-  model: string = 'voyage-code-3'
+  model: string = 'voyage-code-3',
+  verbosity: 'default' | 'verbose' | 'quiet' = 'default'
 ): Promise<EmbeddingResult[]> {
   const results: EmbeddingResult[] = [];
+  const batchStats: { chunks: number; tokens: number }[] = [];
   
   // Prepare texts with token estimates
   const preparedChunks = chunks.map(chunk => {
@@ -380,9 +399,11 @@ export async function generateVoyageEmbeddings(
   
   // Process in token-aware batches
   let i = 0;
+  let batchNumber = 0;
   while (i < preparedChunks.length) {
     const batch: typeof preparedChunks = [];
     let batchTokens = 0;
+    batchNumber++;
     
     // Build batch until we hit token limit or chunk limit
     while (i < preparedChunks.length && batch.length < BATCH_SIZE) {
@@ -394,6 +415,15 @@ export async function generateVoyageEmbeddings(
       batch.push(item);
       batchTokens += item.estimatedTokens;
       i++;
+    }
+    
+    // Track batch stats
+    batchStats.push({ chunks: batch.length, tokens: batchTokens });
+    
+    // Verbose mode: show per-batch details
+    if (verbosity === 'verbose') {
+      const isFinal = i >= preparedChunks.length;
+      console.log(`  Batch ${batchNumber}: ${batch.length} chunks, ~${batchTokens.toLocaleString()} tokens${isFinal ? ' (final)' : ''}`);
     }
     
     const texts = batch.map(item => item.text);
@@ -447,10 +477,15 @@ export async function generateVoyageEmbeddings(
       }
     }
     
-    // Progress indicator
-    if (results.length % 100 === 0 && results.length > 0) {
+    // Progress indicator (default and verbose modes)
+    if (verbosity !== 'quiet' && results.length % 100 === 0 && results.length > 0) {
       console.log(`  Embedded ${results.length}/${chunks.length} chunks...`);
     }
+  }
+  
+  // Summary output (default and verbose modes)
+  if (verbosity !== 'quiet') {
+    console.log(`\nTotal: ${chunks.length.toLocaleString()} chunks in ${batchStats.length} batches, ${batchStats.length} API calls`);
   }
   
   return results;
@@ -492,7 +527,8 @@ export async function generateVoyageQueryEmbedding(
 export async function generateOllamaEmbeddings(
   chunks: Chunk[],
   model: string = 'nomic-embed-text',
-  baseUrl: string = 'http://localhost:11434'
+  baseUrl: string = 'http://localhost:11434',
+  verbosity: 'default' | 'verbose' | 'quiet' = 'default'
 ): Promise<EmbeddingResult[]> {
   const results: EmbeddingResult[] = [];
   
@@ -538,10 +574,16 @@ export async function generateOllamaEmbeddings(
       }
     }
     
-    // Progress indicator
-    if (i % 100 === 0 && i > 0) {
+    // Progress indicator (default and verbose modes)
+    if (verbosity !== 'quiet' && i % 100 === 0 && i > 0) {
       console.log(`  Embedded ${i}/${chunks.length} chunks...`);
     }
+  }
+  
+  // Summary output (default and verbose modes)
+  // Note: Ollama processes one at a time, so chunks = API calls
+  if (verbosity !== 'quiet') {
+    console.log(`\nTotal: ${chunks.length.toLocaleString()} chunks, ${chunks.length.toLocaleString()} API calls (Ollama: no batching)`);
   }
   
   return results;

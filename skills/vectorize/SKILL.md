@@ -240,6 +240,57 @@ vectorize config
 
 **Recommendation:** Use `voyage-code-3` for code search. It's specifically optimized for code retrieval and is [recommended by Anthropic](https://docs.anthropic.com/en/docs/build-with-claude/embeddings).
 
+### Token-Aware Batching
+
+When using Voyage AI embeddings, the system automatically batches chunks to stay within API token limits:
+
+| Limit | Value | Purpose |
+|-------|-------|---------|
+| Token limit | 50,000 per batch | Stay under Voyage 120k API limit (conservative) |
+| Chunk limit | 100 per batch | API batch size limit |
+
+**How it works:**
+
+1. Each chunk's token count is estimated (~2 chars per token for code)
+2. Chunks are added to a batch until token limit would be exceeded
+3. Batch is sent to API, next batch starts
+4. Process repeats until all chunks embedded
+
+**Benefits:**
+- Large codebases handled efficiently
+- Optimal API usage (fewer calls, larger batches)
+- Automatic — no configuration required
+
+**Output modes:**
+
+| Mode | Command | Output |
+|------|---------|--------|
+| Default | `vectorize refresh` | Progress bar + summary ("100 chunks in 3 batches") |
+| Verbose | `vectorize refresh --verbose` | Per-batch breakdown |
+| Quiet | `vectorize refresh --quiet` | Errors only (for CI/scripts) |
+
+**Default output:**
+
+```
+Building index...
+  [████████████████████] 100%
+  
+Total: 8,453 chunks in 85 batches, 85 API calls
+```
+
+**Verbose output:**
+
+```
+Building index...
+  Batch 1: 98 chunks, ~49,500 tokens
+  Batch 2: 97 chunks, ~48,200 tokens
+  ...
+  Batch 85: 12 chunks, ~5,100 tokens (final)
+  [████████████████████] 100%
+  
+Total: 8,453 chunks in 85 batches, 85 API calls
+```
+
 ### Configuration in project.json
 
 ```json

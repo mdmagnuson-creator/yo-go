@@ -483,7 +483,7 @@ After the user selects a project number, show a **fast inline dashboard** — no
 4.6 **Check for vectorization setup (one-time per session) (US-017):**
    - Check `project.json` → `vectorization.enabled`
    - If `vectorization` section is missing OR `enabled: false`:
-     - Check if `OPENAI_API_KEY` is in environment
+     - Check if `OPENAI_API_KEY` or `VOYAGE_API_KEY` is in environment
      - If key is present, show **one-time prompt**:
        ```
        💡 SEMANTIC SEARCH AVAILABLE
@@ -502,18 +502,41 @@ After the user selects a project number, show a **fast inline dashboard** — no
        3. Continue to dashboard
      - If user responds "skip" or anything else → continue without prompt
      - **Only prompt once per session** — store in session memory, don't re-prompt
+     - **Non-blocking** — this is informational, user can skip
    - If `vectorization.enabled: true`:
      - Check if `.vectorindex/metadata.json` exists
+     - If index missing but config exists → show **non-blocking** error:
+       ```
+       🔴 Vector index configured but missing — run 'vectorize init' to create
+       ```
+       Continue to dashboard (non-blocking).
      - If exists, read `lastUpdated` timestamp
-     - If stale (older than `refresh.maxAge`, default 24h) AND `refresh.onSessionStart: true`:
+     - If stale (older than `refresh.maxAge`, default 24h) → show **BLOCKING** prompt:
        ```
-       💡 Vector index is stale (last updated: {date}). Refreshing...
+       ═══════════════════════════════════════════════════════════════════════
+                           ⚠️ STALE VECTOR INDEX
+       ═══════════════════════════════════════════════════════════════════════
+       
+       Your vector index is {age} old. Semantic search may miss recent changes.
+       
+         [R] Refresh now (takes ~2 min)
+         [S] Skip and continue with stale index
+         [D] Disable vectorization for this session
+       
+       > _
        ```
-       Run: `npx @opencode/vectorize refresh --quiet`
-     - If index missing but config exists → offer to rebuild:
-       ```
-       ⚠️ Vector index configured but missing. Rebuild? (v/skip)
-       ```
+       - If user responds "R" or "refresh":
+         1. Run: `npx @opencode/vectorize refresh`
+         2. Show progress and completion
+         3. Continue to dashboard
+       - If user responds "S" or "skip":
+         1. Store `vectorizationStaleAcknowledged: true` in session memory
+         2. Continue to dashboard
+       - If user responds "D" or "disable":
+         1. Store `vectorizationDisabledForSession: true` in session memory
+         2. Skip semantic search for this session
+         3. Continue to dashboard
+     - If index is fresh (within 24h) → continue silently
 
 4.7 **Detect available CLIs (one-time per session):**
    
@@ -1506,6 +1529,11 @@ If `builder-state.json` exists with work in progress, show options without auto-
 ═══════════════════════════════════════════════════════════════════════
 ⚠️  RESUMING PREVIOUS SESSION (last active: 15 min ago)
 
+VECTORIZATION
+───────────────────────────────────────────────────────────────────────
+  🟢 Enabled | 8,453 chunks | Updated 2 hours ago
+  [Or other status per Vectorization Status Logic]
+
 IN-PROGRESS PRD
 ───────────────────────────────────────────────────────────────────────
   PRD: print-templates (feature/print-templates)
@@ -1542,6 +1570,25 @@ If no WIP or user chose fresh start:
 ═══════════════════════════════════════════════════════════════════════
                     [PROJECT NAME] - BUILDER
 ═══════════════════════════════════════════════════════════════════════
+
+VECTORIZATION
+───────────────────────────────────────────────────────────────────────
+  [Show one of these based on state:]
+  
+  🟢 Enabled | 8,453 chunks | Updated 2 hours ago
+  
+  [Or if disabled:]
+  ⚪ Not enabled — run 'vectorize init' to enable semantic search
+  
+  [Or if stale (user chose Skip):]
+  🟡 Enabled | 8,453 chunks | ⚠️ Stale (updated 3 days ago)
+  
+  [Or if missing index:]
+  🔴 Enabled but index missing — run 'vectorize init'
+  
+  [Or if disabled for session:]
+  ⚫ Disabled for this session
+
 [If awaiting_e2e PRDs exist:]
 ⚠️  AWAITING E2E TESTS
 ───────────────────────────────────────────────────────────────────────
@@ -1573,10 +1620,33 @@ COMPLETED PRDs (recent)
 ```
 
 **Dashboard sections:**
+- **Vectorization** — Shows semantic search status: enabled/disabled, chunk count, index age
 - **Awaiting E2E tests** — PRDs with `status: "awaiting_e2e"` from `prd-registry.json`. Shows prominently at top with warning icon. These PRDs are merged but E2E tests haven't been run yet.
 - **Ready PRDs** — PRDs with `status: "ready"` from `prd-registry.json`
 - **Completed PRDs** — Recent PRDs with `status: "completed"` (for context)
 - **Pending updates** — If `project-updates/[project-id]/` has files
+
+### Vectorization Status Logic
+
+Read status from multiple sources and display appropriately:
+
+```
+1. Check session memory for `vectorizationDisabledForSession`
+   → If true: "⚫ Disabled for this session"
+
+2. Check `project.json` → `vectorization.enabled`
+   → If false/missing: "⚪ Not enabled — run 'vectorize init' to enable semantic search"
+
+3. Check `.vectorindex/metadata.json` exists
+   → If missing: "🔴 Enabled but index missing — run 'vectorize init'"
+
+4. Read metadata.json → lastUpdated, chunkCount
+   → Calculate age from lastUpdated
+   → If age > 24h AND session has `vectorizationStaleAcknowledged`:
+     "🟡 Enabled | {chunkCount} chunks | ⚠️ Stale (updated {age} ago)"
+   → If age <= 24h:
+     "🟢 Enabled | {chunkCount} chunks | Updated {age} ago"
+```
 
 **Key differences in Solo Mode:**
 - No session/lock status section
