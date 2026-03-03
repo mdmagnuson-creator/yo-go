@@ -836,9 +836,14 @@ Keep the README counts in sync:
 
 #### Step 3a: Get Website Project Path
 
-1. Read `~/.config/opencode/projects.json`
-2. Find the project with `id` containing "website" (e.g., `opencode-toolkit-website`)
-3. Get its `path` — this is where the pending update file will be created
+Use the `relatedProjects` configuration to find the documentation website:
+
+1. Read `docs/project.json` from the toolkit repo
+2. Find the related project with `relationship: "documentation-site"`
+3. Resolve its `projectId` to a path via `projects.json`
+4. If `relatedProjects` is not configured, fall back to name-based search
+
+See `data/related-projects.md` for the helper pattern.
 
 #### Step 3b: Summarize What Changed
 
@@ -856,8 +861,20 @@ List all changes that affect documentation:
 
 1. **Look up the website project path:**
    ```bash
-   # Read from projects.json — find project with "website" in id
-   WEBSITE_PATH=$(jq -r '.projects[] | select(.id | contains("website")) | .path' ~/.config/opencode/projects.json | head -1)
+   # Try relatedProjects first (preferred)
+   PROJECT_ID=$(jq -r '.relatedProjects[] | select(.relationship == "documentation-site") | .projectId' docs/project.json 2>/dev/null)
+   
+   if [ -n "$PROJECT_ID" ] && [ "$PROJECT_ID" != "null" ]; then
+     # Resolve via relatedProjects
+     WEBSITE_PATH=$(jq -r --arg id "$PROJECT_ID" '.projects[] | select(.id == $id) | .path' ~/.config/opencode/projects.json)
+   else
+     # Fallback: search by name pattern (legacy)
+     WEBSITE_PATH=$(jq -r '.projects[] | select(.id | contains("website")) | .path' ~/.config/opencode/projects.json | head -1)
+     if [ -n "$WEBSITE_PATH" ]; then
+       echo "Warning: Using fallback name match. Configure relatedProjects in docs/project.json."
+     fi
+   fi
+   
    echo "Website project path: $WEBSITE_PATH"
    ```
 
