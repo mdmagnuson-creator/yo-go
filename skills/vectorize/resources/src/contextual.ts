@@ -1,5 +1,10 @@
 /**
  * Contextual Retrieval preprocessing using Claude Haiku
+ * 
+ * Implements Anthropic's Contextual Retrieval approach:
+ * https://www.anthropic.com/news/contextual-retrieval
+ * 
+ * Uses prompt caching to reduce costs when processing multiple chunks from the same file.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -9,15 +14,124 @@ import fs from 'fs';
 const BATCH_SIZE = 10; // Process 10 chunks at a time for prompt caching
 const MAX_RETRIES = 3;
 
+// Pricing per 1M tokens (as of 2024)
+const HAIKU_INPUT_COST_PER_1M = 0.25;    // $0.25 per 1M input tokens
+const HAIKU_OUTPUT_COST_PER_1M = 1.25;   // $1.25 per 1M output tokens
+const HAIKU_CACHE_WRITE_COST_PER_1M = 0.30;  // $0.30 per 1M tokens to write cache
+const HAIKU_CACHE_READ_COST_PER_1M = 0.03;   // $0.03 per 1M tokens to read cache
+
+// Average tokens per context generation
+const AVG_INPUT_TOKENS_PER_CHUNK = 500;  // file context + chunk + prompt
+const AVG_OUTPUT_TOKENS_PER_CHUNK = 75;  // context description
+
+export interface ContextualCostEstimate {
+  totalChunks: number;
+  totalFiles: number;
+  estimatedInputTokens: number;
+  estimatedOutputTokens: number;
+  estimatedCacheWriteTokens: number;
+  estimatedCacheReadTokens: number;
+  estimatedCostUSD: number;
+  breakdown: {
+    inputCost: number;
+    outputCost: number;
+    cacheWriteCost: number;
+    cacheReadCost: number;
+  };
+}
+
+export interface ContextualOptions {
+  showProgress?: boolean;
+  onProgress?: (processed: number, total: number) => void;
+}
+
+/**
+ * Estimate the cost of contextual retrieval before running
+ */
+export function estimateContextualCost(chunks: Chunk[]): ContextualCostEstimate {
+  // Group chunks by file
+  const chunksByFile = new Map<string, Chunk[]>();
+  for (const chunk of chunks) {
+    const existing = chunksByFile.get(chunk.filePath) || [];
+    existing.push(chunk);
+    chunksByFile.set(chunk.filePath, existing);
+  }
+  
+  const totalFiles = chunksByFile.size;
+  const totalChunks = chunks.length;
+  
+  // Estimate tokens
+  // For each file: write to cache once, read from cache for subsequent chunks
+  let estimatedCacheWriteTokens = 0;
+  let estimatedCacheReadTokens = 0;
+  let estimatedInputTokens = 0;
+  
+  for (const [, fileChunks] of chunksByFile) {
+    // First chunk writes to cache
+    const avgFileTokens = 2000; // Average file size in tokens
+    estimatedCacheWriteTokens += avgFileTokens;
+    
+    // All chunks read from cache (including first, which gets cache miss but writes)
+    estimatedCacheReadTokens += avgFileTokens * (fileChunks.length - 1);
+    
+    // Each chunk also has the chunk content and prompt (not cached)
+    estimatedInputTokens += AVG_INPUT_TOKENS_PER_CHUNK * fileChunks.length;
+  }
+  
+  const estimatedOutputTokens = AVG_OUTPUT_TOKENS_PER_CHUNK * totalChunks;
+  
+  // Calculate costs
+  const inputCost = (estimatedInputTokens / 1_000_000) * HAIKU_INPUT_COST_PER_1M;
+  const outputCost = (estimatedOutputTokens / 1_000_000) * HAIKU_OUTPUT_COST_PER_1M;
+  const cacheWriteCost = (estimatedCacheWriteTokens / 1_000_000) * HAIKU_CACHE_WRITE_COST_PER_1M;
+  const cacheReadCost = (estimatedCacheReadTokens / 1_000_000) * HAIKU_CACHE_READ_COST_PER_1M;
+  
+  const estimatedCostUSD = inputCost + outputCost + cacheWriteCost + cacheReadCost;
+  
+  return {
+    totalChunks,
+    totalFiles,
+    estimatedInputTokens,
+    estimatedOutputTokens,
+    estimatedCacheWriteTokens,
+    estimatedCacheReadTokens,
+    estimatedCostUSD,
+    breakdown: {
+      inputCost,
+      outputCost,
+      cacheWriteCost,
+      cacheReadCost,
+    },
+  };
+}
+
+/**
+ * Format cost estimate for display
+ */
+export function formatCostEstimate(estimate: ContextualCostEstimate): string {
+  return [
+    `Contextual Retrieval Estimate:`,
+    `  Chunks: ${estimate.totalChunks} across ${estimate.totalFiles} files`,
+    `  Input tokens: ~${estimate.estimatedInputTokens.toLocaleString()}`,
+    `  Output tokens: ~${estimate.estimatedOutputTokens.toLocaleString()}`,
+    `  Cache write: ~${estimate.estimatedCacheWriteTokens.toLocaleString()} tokens`,
+    `  Cache read: ~${estimate.estimatedCacheReadTokens.toLocaleString()} tokens`,
+    `  Estimated cost: $${estimate.estimatedCostUSD.toFixed(2)}`,
+  ].join('\n');
+}
+
 /**
  * Add contextual descriptions to chunks using Claude Haiku
+ * Uses prompt caching to reduce costs for multiple chunks from the same file
  */
 export async function addContextualDescriptions(
   chunks: Chunk[],
-  apiKey: string
+  apiKey: string,
+  options: ContextualOptions = {}
 ): Promise<Chunk[]> {
   const client = new Anthropic({ apiKey });
   const enrichedChunks: Chunk[] = [];
+  const { showProgress = true, onProgress } = options;
   
   // Group chunks by file for prompt caching
   const chunksByFile = new Map<string, Chunk[]>();
@@ -30,17 +144,18 @@ export async function addContextualDescriptions(
   let processed = 0;
   
   for (const [filePath, fileChunks] of chunksByFile) {
-    // Read full file content for context (cached)
+    // Read full file content for context (will be cached)
     let fileContent: string;
     try {
       fileContent = fs.readFileSync(filePath, 'utf-8');
     } catch {
       // File might not exist at absolute path, skip context
       enrichedChunks.push(...fileChunks);
+      processed += fileChunks.length;
       continue;
     }
     
-    // Truncate file content if too large
+    // Truncate file content if too large (cache has limits)
     const maxFileContent = 50000; // ~12k tokens
     const truncatedFile = fileContent.length > maxFileContent
       ? fileContent.substring(0, maxFileContent) + '\n...[truncated]'
@@ -55,7 +170,7 @@ export async function addContextualDescriptions(
         
         while (retries < MAX_RETRIES) {
           try {
-            const context = await generateContext(client, truncatedFile, chunk);
+            const context = await generateContextWithCache(client, truncatedFile, chunk);
             enrichedChunks.push({
               ...chunk,
               context,
@@ -74,10 +189,15 @@ export async function addContextualDescriptions(
         }
         
         processed++;
+        
+        // Progress callback
+        if (onProgress) {
+          onProgress(processed, chunks.length);
+        }
       }
       
       // Progress indicator
-      if (processed % 100 === 0) {
+      if (showProgress && processed % 100 === 0) {
         console.log(`  Added context to ${processed}/${chunks.length} chunks...`);
       }
     }
@@ -87,32 +207,49 @@ export async function addContextualDescriptions(
 }
 
 /**
- * Generate contextual description for a single chunk
+ * Generate contextual description for a single chunk using prompt caching
+ * 
+ * The file content is marked as cacheable so subsequent chunks from the same file
+ * can reuse the cached prompt prefix, reducing costs significantly.
  */
-async function generateContext(
+async function generateContextWithCache(
   client: Anthropic,
   fileContent: string,
   chunk: Chunk
 ): Promise<string> {
-  const prompt = `<document>
-${fileContent}
-</document>
-
-Here is the chunk we want to situate within the whole document:
+  // Build the message with cache_control for the file content
+  // The file content will be cached and reused for subsequent chunks from the same file
+  const response = await client.messages.create({
+    model: 'claude-3-haiku-20240307',
+    max_tokens: 150,
+    system: [
+      {
+        type: 'text',
+        text: 'You are a code analysis assistant. Your task is to provide brief context that situates a code chunk within its file for improved search retrieval. Be concise (50-100 tokens).',
+      },
+    ],
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `<document>\n${fileContent}\n</document>`,
+            // Mark the document as cacheable - this is the expensive part
+            // that we want to reuse across chunks from the same file
+            cache_control: { type: 'ephemeral' },
+          },
+          {
+            type: 'text',
+            text: `Here is the chunk we want to situate within the whole document:
 
 <chunk>
 ${chunk.content}
 </chunk>
 
-Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else.`;
-
-  const response = await client.messages.create({
-    model: 'claude-3-haiku-20240307',
-    max_tokens: 150,
-    messages: [
-      {
-        role: 'user',
-        content: prompt,
+Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else.`,
+          },
+        ],
       },
     ],
   });
@@ -123,7 +260,7 @@ Please give a short succinct context to situate this chunk within the overall do
 }
 
 /**
- * Check if contextual retrieval should be enabled
+ * Check if contextual retrieval should be enabled based on setting and codebase size
  */
 export function shouldEnableContextual(
   setting: 'auto' | 'always' | 'never',
