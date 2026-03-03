@@ -70,13 +70,29 @@ You receive a list of UI areas from `docs/e2e-areas.json` that need E2E test cov
 
 ## Operating Modes
 
-This agent supports two operating modes:
+This agent supports three operating modes:
 
 ### Standard Mode (Default)
 - Invoked by `@tester` or `@e2e-reviewer`
 - Writes tests for specific UI areas from `docs/e2e-areas.json`
 - Single run-fix-commit cycle
 - 3 retry attempts on failure
+
+### Verification Mode
+- Invoked by `@builder` or `test-flow` with `mode: "verification"` in prompt
+- Generates **reusable verification tests** for UI changes
+- Tests are saved to `tests/ui-verify/` (configurable via `agents.verification.testDir`)
+- Captures screenshots to `ai-tmp/verification/screenshots/`
+- Enforces selector strategy from `project.json → agents.verification.selectorStrategy`
+- Returns structured verification status to caller
+
+**When `mode: "verification"` is specified:**
+- Read verification config from `project.json → agents.verification`
+- Generate test in `testDir` (default: `tests/ui-verify/`)
+- Use rich documentation header format (see below)
+- If `selectorStrategy: "strict"`, add `data-testid` attributes if missing
+- Capture screenshot on success
+- Return verification result to caller
 
 ### Audit Mode
 - Invoked by `@e2e-auditor` with `audit-mode: true` in prompt
@@ -92,6 +108,202 @@ When `audit-mode: true` is specified:
 - Use the test ID format `{category}-{number}` (e.g., `auth-001`)
 - Include the test ID in the test description for tracking
 - Report success/failure with attempt count back to `@e2e-auditor`
+
+---
+
+## Verification Mode (Mandatory UI Verification)
+
+When invoked with `mode: "verification"`:
+
+### Verification Mode Input
+
+You receive from `@builder` or `test-flow`:
+```
+mode: verification
+component: PaymentForm
+sourceFile: src/components/PaymentForm.tsx
+changedFiles: [src/components/PaymentForm.tsx, src/components/Checkout.tsx]
+context:
+  reach: /checkout → click "Proceed to Payment"
+  successCriteria:
+    - Form renders with all required fields
+    - Card number field accepts valid input
+    - Submit button disabled until form valid
+```
+
+### Verification Mode Configuration
+
+Read from `project.json → agents.verification`:
+
+```json
+{
+  "agents": {
+    "verification": {
+      "mode": "playwright-required",
+      "selectorStrategy": "strict",
+      "testDir": "tests/ui-verify",
+      "screenshotDir": "ai-tmp/verification/screenshots",
+      "reviewGeneratedTests": true
+    }
+  }
+}
+```
+
+### Selector Strategy Enforcement
+
+**When `selectorStrategy: "strict"`:**
+
+1. **Check for existing `data-testid` attributes** on key elements
+2. **If missing, add them to the source component:**
+   ```typescript
+   // Before
+   <button onClick={handleSubmit}>Submit</button>
+   
+   // After (add data-testid)
+   <button data-testid="payment-submit" onClick={handleSubmit}>Submit</button>
+   ```
+3. **Commit the testid additions** with message: `chore: add data-testid attributes for e2e testing`
+4. **Then generate the verification test** using those selectors
+
+**When `selectorStrategy: "flexible"`:**
+- Use role-based selectors, text content, or existing test IDs
+- No requirement to modify source files
+
+### Verification Test Format
+
+Generated tests include rich documentation headers:
+
+```typescript
+/**
+ * @verification-test
+ * @component PaymentForm
+ * @location src/components/PaymentForm.tsx
+ * @reach /checkout → click "Proceed to Payment"
+ * @success-criteria
+ *   - Form renders with all required fields
+ *   - Card number field accepts valid input
+ *   - Submit button is disabled until form is valid
+ *   - Error states display correctly
+ * @generated-at 2026-03-03T10:30:00Z
+ * @task-context TSK-001 or US-003
+ */
+import { test, expect } from '@playwright/test';
+
+test.describe('PaymentForm verification', () => {
+  test('renders and accepts valid input', async ({ page }) => {
+    // Navigate to the component
+    await page.goto('/checkout');
+    await page.click('text=Proceed to Payment');
+    
+    // Verify form renders
+    await expect(page.locator('[data-testid="payment-form"]')).toBeVisible();
+    
+    // Verify required fields exist
+    await expect(page.locator('[data-testid="card-number"]')).toBeVisible();
+    await expect(page.locator('[data-testid="card-expiry"]')).toBeVisible();
+    await expect(page.locator('[data-testid="card-cvc"]')).toBeVisible();
+    
+    // Screenshot for visual confirmation
+    await page.screenshot({ 
+      path: 'ai-tmp/verification/screenshots/payment-form.png',
+      fullPage: false 
+    });
+  });
+  
+  test('validates input and enables submit', async ({ page }) => {
+    await page.goto('/checkout');
+    await page.click('text=Proceed to Payment');
+    
+    // Submit should be disabled initially
+    await expect(page.locator('[data-testid="payment-submit"]')).toBeDisabled();
+    
+    // Fill valid card details
+    await page.fill('[data-testid="card-number"]', '4242424242424242');
+    await page.fill('[data-testid="card-expiry"]', '12/30');
+    await page.fill('[data-testid="card-cvc"]', '123');
+    
+    // Submit should now be enabled
+    await expect(page.locator('[data-testid="payment-submit"]')).toBeEnabled();
+  });
+});
+```
+
+### Verification Mode Execution
+
+1. **Read verification config** from `project.json`
+2. **Check selector strategy:**
+   - If `strict`, scan component for testid attributes
+   - Add missing testids to source file
+   - Commit testid changes if made
+3. **Generate verification test** with rich documentation header
+4. **Save test** to `testDir` (e.g., `tests/ui-verify/payment-form.spec.ts`)
+5. **Run the test:**
+   ```bash
+   npx playwright test tests/ui-verify/payment-form.spec.ts --reporter=list
+   ```
+6. **Capture screenshot** on success to `screenshotDir`
+7. **Return verification result:**
+
+### Verification Mode Output
+
+Return structured result to caller:
+
+```json
+{
+  "status": "verified",
+  "component": "PaymentForm",
+  "testFile": "tests/ui-verify/payment-form.spec.ts",
+  "screenshots": ["ai-tmp/verification/screenshots/payment-form.png"],
+  "testidChanges": [
+    "src/components/PaymentForm.tsx: added data-testid to 4 elements"
+  ],
+  "attempts": 1,
+  "duration": 2340
+}
+```
+
+**Status values:**
+
+| Status | Meaning |
+|--------|---------|
+| `verified` | Test passed, screenshot captured |
+| `failed` | Test failed after max retries |
+| `error` | Could not run test (config issue, server down) |
+
+### Verification Test Naming
+
+Test files are named based on the component:
+
+| Component | Test File |
+|-----------|-----------|
+| `PaymentForm.tsx` | `tests/ui-verify/payment-form.spec.ts` |
+| `UserProfile.tsx` | `tests/ui-verify/user-profile.spec.ts` |
+| `Dashboard/Settings.tsx` | `tests/ui-verify/dashboard-settings.spec.ts` |
+
+### Screenshot Locations
+
+Screenshots are saved to the gitignored `screenshotDir`:
+
+```
+ai-tmp/verification/screenshots/
+├── payment-form.png
+├── user-profile.png
+└── dashboard-settings.png
+```
+
+These are for visual confirmation during development, not committed to the repo.
+
+### Verification Mode vs E2E Tests
+
+| Aspect | Verification Mode | Standard E2E |
+|--------|-------------------|--------------|
+| **Purpose** | Mandatory UI validation | Optional coverage |
+| **When** | Every UI change | On request |
+| **Output dir** | `tests/ui-verify/` | `apps/web/e2e/` |
+| **Screenshots** | Always captured | Optional |
+| **Testid enforcement** | Configurable (strict/flexible) | Flexible |
+| **Doc header** | Required (rich format) | Optional |
+| **Reusable** | Yes, committed to repo | Yes |
 
 ## Input
 

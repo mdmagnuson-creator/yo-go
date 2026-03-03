@@ -226,6 +226,145 @@ Quality checks run:
 - After E2E tests pass, before commit prompt
 - Can be skipped if user chooses (but flagged in commit summary)
 
+## Verification Test Review
+
+When invoked with `mode: "review-verification-tests"`, you review generated UI verification tests for quality and reusability.
+
+### Review Input
+
+The parent agent passes:
+- **testFiles**: List of verification test files to review (typically in `tests/ui-verify/`)
+- **projectPath**: Path to the project
+- **selectorStrategy**: From `agents.verification.selectorStrategy` — either `strict` or `flexible`
+
+### Review Criteria
+
+For each test file, check:
+
+#### 1. Selector Quality
+
+| Criterion | Pass | Fail |
+|-----------|------|------|
+| Uses `data-testid` selectors | `getByTestId("submit-btn")` | `page.locator('.btn-primary')` |
+| Selectors are semantic | `getByRole("button", { name: "Submit" })` | `page.locator('div > div > button')` |
+| No brittle selectors | Stable identifiers | XPath, nth-child, class chains |
+| Selector matches actual DOM | Verified via page inspection | Selector doesn't exist |
+
+**Strict mode enforcement:** If `selectorStrategy: "strict"`, tests MUST use `data-testid` selectors. Report any test using class-based or structural selectors as a **blocking issue**.
+
+#### 2. Test Structure
+
+| Criterion | Pass | Fail |
+|-----------|------|------|
+| Has descriptive test name | `"should show error when login fails"` | `"test1"` |
+| Single assertion focus | Tests one behavior | Tests multiple unrelated things |
+| Proper setup/teardown | Uses `beforeEach`, handles state | Relies on test order |
+| Reasonable timeouts | Explicit waits with timeout | Magic `sleep(5000)` |
+
+#### 3. Documentation Header
+
+Verification tests should have a documentation header. Check for:
+
+```typescript
+/**
+ * UI Verification Test
+ * 
+ * Component: [component name]
+ * Location: [URL or route]
+ * Generated: [date]
+ * 
+ * How to reach this state:
+ * 1. [navigation step]
+ * 2. [interaction step]
+ * 
+ * Success criteria:
+ * - [visible assertion]
+ */
+```
+
+**Missing header:** Flag as warning (not blocking).
+
+#### 4. Assertions
+
+| Criterion | Pass | Fail |
+|-----------|------|------|
+| Has at least one assertion | `expect(element).toBeVisible()` | No assertions |
+| Assertions match success criteria | Tests what PRD specifies | Random assertions |
+| Uses appropriate matchers | `toBeVisible()`, `toHaveText()` | `toBeTruthy()` on elements |
+| Error states handled | Checks error messages | Only happy path |
+
+#### 5. Reusability
+
+| Criterion | Pass | Fail |
+|-----------|------|------|
+| No hardcoded test data | Uses fixtures or generators | `"test@example.com"` inline |
+| Page Objects for complex flows | Extracted navigation helpers | Repeated navigation code |
+| Configurable base URL | Uses `baseURL` from config | Hardcoded `localhost:3000` |
+
+### Review Output
+
+Return a structured report:
+
+```markdown
+## Verification Test Review
+
+**Files Reviewed:** [count]
+**Selector Strategy:** [strict/flexible]
+
+### Summary
+
+| Status | Count |
+|--------|-------|
+| ✅ Pass | X |
+| ⚠️ Warnings | Y |
+| ❌ Blocking | Z |
+
+### Blocking Issues
+
+[Issues that MUST be fixed before tests can be committed]
+
+#### [file-path]
+- **Issue:** [description]
+- **Location:** Line [N]
+- **Fix:** [specific suggestion]
+
+### Warnings
+
+[Issues that SHOULD be fixed but don't block]
+
+#### [file-path]
+- **Warning:** [description]
+- **Suggestion:** [improvement]
+
+### Passed Tests
+
+[List of test files that passed all criteria]
+
+- ✅ `tests/ui-verify/login-form.spec.ts`
+- ✅ `tests/ui-verify/dashboard-load.spec.ts`
+```
+
+### When `reviewGeneratedTests: false`
+
+If `agents.verification.reviewGeneratedTests` is `false` in `project.json`, skip review and return:
+
+```
+Verification test review skipped (reviewGeneratedTests: false)
+```
+
+### Stop Condition
+
+After completing review, reply with:
+
+```
+<promise>REVIEW_COMPLETE: [pass-count] passed, [warning-count] warnings, [blocking-count] blocking</promise>
+```
+
+If blocking issues found:
+```
+<promise>REVIEW_BLOCKED: [blocking-count] issues must be fixed</promise>
+```
+
 ## Autonomy Rules
 
 You are fully autonomous:
