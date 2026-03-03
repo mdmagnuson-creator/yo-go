@@ -170,6 +170,63 @@ Return your findings in this structure (do NOT write to files):
 [Briefly call out 1-3 ways the new code correctly follows existing conventions]
 ```
 
+## Examples
+
+### ❌ Bad: Different error handling pattern
+
+```typescript
+// Existing codebase uses Result type:
+function existingFn(): Result<User, Error> {
+  return { ok: true, value: user };
+}
+
+// New code throws instead:
+function newFn(): User {
+  if (error) throw new Error('Failed');  // Oddball!
+  return user;
+}
+```
+
+**Why it's bad:** Rest of codebase uses Result type for error handling. This function throws, forcing callers to mix try/catch with Result checking.
+
+### ❌ Bad: Different naming convention
+
+```typescript
+// Existing codebase uses camelCase:
+const getUserById = async (id) => { ... }
+const createOrder = async (data) => { ... }
+
+// New code uses different style:
+const get_user_preferences = async (id) => { ... }  // snake_case oddball
+const FetchDashboardData = async () => { ... }       // PascalCase oddball
+```
+
+**Why it's bad:** Developers must remember different naming rules for new functions. Inconsistency creates cognitive load.
+
+### ✅ Good: Following established error pattern
+
+```typescript
+// Matches existing codebase pattern:
+function newFn(): Result<User, Error> {
+  if (error) {
+    return { ok: false, error: new Error('Failed') };
+  }
+  return { ok: true, value: user };
+}
+```
+
+**Why it's good:** Same pattern as existing code. Callers handle errors consistently.
+
+### ✅ Good: Following established naming convention
+
+```typescript
+// Matches existing codebase:
+const getUserPreferences = async (id) => { ... }  // camelCase like existing
+const fetchDashboardData = async () => { ... }    // camelCase like existing
+```
+
+**Why it's good:** Consistent with existing patterns. No special cases to remember.
+
 ## Guidelines
 
 - **`docs/CONVENTIONS.md` is authoritative.** If conventions are documented there, code that follows them is correct — even if some existing code doesn't match. The documented conventions are the standard to enforce.

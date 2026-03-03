@@ -83,6 +83,110 @@ See AGENTS.md. Never truncate test failure output — show complete errors and s
 
 See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-go-tester-`
 
+## Examples
+
+### Example Test File Structure
+
+```go
+// user_test.go
+package user_test
+
+import (
+    "testing"
+    "net/http"
+    "net/http/httptest"
+    
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
+    "github.com/stretchr/testify/mock"
+)
+
+func TestGetUser_Success(t *testing.T) {
+    // Arrange
+    repo := new(MockUserRepository)
+    repo.On("FindByID", "123").Return(&User{ID: "123", Name: "Alice"}, nil)
+    
+    service := NewUserService(repo)
+    
+    // Act
+    user, err := service.GetUser("123")
+    
+    // Assert
+    require.NoError(t, err)
+    assert.Equal(t, "Alice", user.Name)
+    repo.AssertExpectations(t)
+}
+
+func TestGetUser_NotFound(t *testing.T) {
+    // Arrange
+    repo := new(MockUserRepository)
+    repo.On("FindByID", "999").Return(nil, ErrUserNotFound)
+    
+    service := NewUserService(repo)
+    
+    // Act
+    user, err := service.GetUser("999")
+    
+    // Assert
+    assert.Nil(t, user)
+    assert.ErrorIs(t, err, ErrUserNotFound)
+}
+```
+
+### Example HTTP Handler Test
+
+```go
+func TestCreateUserHandler(t *testing.T) {
+    // Arrange
+    handler := NewUserHandler(mockService)
+    
+    body := `{"name": "Alice", "email": "alice@example.com"}`
+    req := httptest.NewRequest("POST", "/users", strings.NewReader(body))
+    req.Header.Set("Content-Type", "application/json")
+    rec := httptest.NewRecorder()
+    
+    // Act
+    handler.ServeHTTP(rec, req)
+    
+    // Assert
+    assert.Equal(t, http.StatusCreated, rec.Code)
+    
+    var response User
+    err := json.Unmarshal(rec.Body.Bytes(), &response)
+    require.NoError(t, err)
+    assert.Equal(t, "Alice", response.Name)
+}
+```
+
+### Example Table-Driven Test
+
+```go
+func TestValidateEmail(t *testing.T) {
+    tests := []struct {
+        name    string
+        email   string
+        wantErr bool
+    }{
+        {"valid email", "user@example.com", false},
+        {"missing @", "userexample.com", true},
+        {"missing domain", "user@", true},
+        {"empty string", "", true},
+        {"unicode local part", "用户@example.com", false},
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            err := ValidateEmail(tt.email)
+            if tt.wantErr {
+                assert.Error(t, err)
+            } else {
+                assert.NoError(t, err)
+            }
+        })
+    }
+}
+```
+
 ## Go Testing Domain Expertise
 
 ### Testify Library

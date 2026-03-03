@@ -195,6 +195,69 @@ Write `docs/review.md` with this structure:
 [Briefly call out 1-3 things the code does right — good patterns worth preserving]
 ```
 
+## Examples
+
+### ❌ Bad: Ignoring returned error
+
+```go
+// handlers/user.go:34
+func CreateUser(w http.ResponseWriter, r *http.Request) {
+    user, _ := parseUserRequest(r)  // Error ignored!
+    db.Create(user)
+    json.NewEncoder(w).Encode(user)
+}
+```
+
+**Why it's bad:** If parsing fails, `user` is nil or zero-value. We try to create an invalid user and return garbage to the client.
+
+### ❌ Bad: Data race with shared state
+
+```go
+// server/stats.go:15
+var requestCount int  // Package-level mutable state
+
+func IncrementStats() {
+    requestCount++  // Not atomic, race condition!
+}
+```
+
+**Why it's bad:** Multiple goroutines incrementing `requestCount` concurrently. Some increments will be lost. Run with `-race` flag to detect.
+
+### ✅ Good: Explicit error handling
+
+```go
+// handlers/user.go:34
+func CreateUser(w http.ResponseWriter, r *http.Request) {
+    user, err := parseUserRequest(r)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    
+    if err := db.Create(user); err != nil {
+        http.Error(w, "Failed to create user", http.StatusInternalServerError)
+        return
+    }
+    
+    json.NewEncoder(w).Encode(user)
+}
+```
+
+**Why it's good:** Every error is checked. Client gets appropriate error responses. Invalid state is rejected early.
+
+### ✅ Good: Atomic operations or mutex for shared state
+
+```go
+// server/stats.go:15
+var requestCount atomic.Int64
+
+func IncrementStats() {
+    requestCount.Add(1)  // Atomic, safe for concurrent access
+}
+```
+
+**Why it's good:** `atomic.Int64` is safe for concurrent access. No mutex needed for simple counter.
+
 ## Guidelines
 
 - Be specific. Reference exact file paths and line numbers.

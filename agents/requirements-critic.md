@@ -166,6 +166,73 @@ Return your findings in this structure (do NOT write to files):
 [Briefly call out 1-3 decisions that set up nicely for upcoming work]
 ```
 
+## Examples
+
+### ❌ Bad: Hardcoded single-tenant assumption
+
+```typescript
+// models/user.ts
+export interface User {
+  id: string;
+  email: string;
+  // No tenantId - assumes single tenant
+}
+
+// queries/users.ts
+async function getUsers() {
+  return db.users.findMany();  // Gets ALL users, no tenant filter
+}
+```
+
+**Why it's problematic:** PRD-005 (Multi-tenancy) requires tenant isolation. This model and query will need significant changes. Add `tenantId` now even if single-tenant initially.
+
+### ❌ Bad: Synchronous job processing blocking future scale
+
+```typescript
+// routes/export.ts
+app.post('/api/export', async (req, res) => {
+  const result = await generateExport(req.body);  // Takes 30 seconds
+  res.json(result);
+});
+```
+
+**Why it's problematic:** PRD-012 (Background Jobs) plans for async processing. This endpoint will time out with large exports. Build for async now: return job ID immediately, poll for result.
+
+### ✅ Good: Tenant-aware from the start
+
+```typescript
+// models/user.ts
+export interface User {
+  id: string;
+  tenantId: string;  // Ready for multi-tenancy
+  email: string;
+}
+
+// queries/users.ts
+async function getUsers(tenantId: string) {
+  return db.users.findMany({ where: { tenantId } });
+}
+```
+
+**Why it's good:** When multi-tenancy PRD starts, the foundation is already there. No retrofitting required.
+
+### ✅ Good: Async-ready from the start
+
+```typescript
+// routes/export.ts
+app.post('/api/export', async (req, res) => {
+  const jobId = await queue.enqueue('generate-export', req.body);
+  res.json({ jobId, status: 'processing' });
+});
+
+app.get('/api/export/:jobId', async (req, res) => {
+  const job = await queue.getJob(req.params.jobId);
+  res.json({ status: job.status, result: job.result });
+});
+```
+
+**Why it's good:** Already async. Background jobs PRD can enhance the queue without changing the API contract.
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/CONVENTIONS.md` establishes patterns (API response format, database conventions), verify code follows them to ensure upcoming stories can build on consistent foundations.

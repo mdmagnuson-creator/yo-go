@@ -212,6 +212,65 @@ Return your findings in this structure (do NOT write to files):
 [Briefly call out 1-3 security practices the code does right]
 ```
 
+## Examples
+
+### ❌ Bad: CORS wildcard on authenticated endpoint
+
+```typescript
+// middleware/cors.ts:15
+app.use(cors({
+  origin: '*',
+  credentials: true
+}));
+```
+
+**Why it's bad:** Any website can make authenticated requests to this API. An attacker's site can steal user data by making requests with the user's cookies. Semgrep rule: `javascript.express.security.cors-wildcard`.
+
+### ❌ Bad: Missing CSRF protection on state-changing endpoint
+
+```typescript
+// routes/settings.ts:42
+app.post('/api/settings', async (req, res) => {
+  await updateSettings(req.user.id, req.body);
+  res.json({ success: true });
+});
+```
+
+**Why it's bad:** No CSRF token validation. An attacker can create a form on their site that submits to this endpoint, modifying the user's settings when they visit the malicious page. OWASP A01:2021.
+
+### ✅ Good: Strict CORS with allowlist
+
+```typescript
+// middleware/cors.ts
+const allowedOrigins = ['https://app.example.com', 'https://admin.example.com'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+```
+
+**Why it's good:** Only explicitly allowed origins can make credentialed requests. Unknown origins are rejected.
+
+### ✅ Good: CSRF token validation
+
+```typescript
+// routes/settings.ts
+app.post('/api/settings', csrfProtection, async (req, res) => {
+  // CSRF token verified by middleware
+  await updateSettings(req.user.id, req.body);
+  res.json({ success: true });
+});
+```
+
+**Why it's good:** CSRF middleware verifies the token before the handler runs. Requests without valid tokens are rejected.
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/CONVENTIONS.md` documents security middleware, CSRF protection, or CORS policies, respect those patterns.

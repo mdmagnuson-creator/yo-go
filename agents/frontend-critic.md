@@ -177,6 +177,79 @@ Return your findings in this structure (do NOT write to files):
 [Briefly call out 1-3 things the code does right — good patterns worth preserving]
 ```
 
+## Examples
+
+### ❌ Bad: Stale closure capturing ref value
+
+```tsx
+// Dropdown.tsx:25-35
+useEffect(() => {
+  const element = dropdownRef.current;  // ❌ Captured at effect time
+  
+  const handleClickOutside = (e: MouseEvent) => {
+    if (document.activeElement === element) {  // ❌ Stale reference
+      closeDropdown();
+    }
+  };
+  
+  document.addEventListener('click', handleClickOutside);
+  return () => document.removeEventListener('click', handleClickOutside);
+}, []);
+```
+
+**Why it's bad:** React StrictMode double-mounts components. First mount's DOM element is replaced, so `element` becomes stale. Works in tests (no StrictMode), fails in browser.
+
+### ❌ Bad: Props drilling through multiple layers
+
+```tsx
+// Page.tsx → Layout.tsx → Sidebar.tsx → MenuItem.tsx → Icon.tsx
+<Page user={user}>
+  <Layout user={user}>
+    <Sidebar user={user}>
+      <MenuItem user={user}>
+        <Icon user={user} />  // 5 layers deep just to show user avatar
+```
+
+**Why it's bad:** Every component in the chain must accept and pass the `user` prop, even if it doesn't use it. Changes to the prop shape require updates to all intermediate components.
+
+### ✅ Good: Read ref at event time
+
+```tsx
+// Dropdown.tsx:25-35
+useEffect(() => {
+  const handleClickOutside = (e: MouseEvent) => {
+    const element = dropdownRef.current;  // ✅ Read at event time
+    if (element && !element.contains(e.target as Node)) {
+      closeDropdown();
+    }
+  };
+  
+  document.addEventListener('click', handleClickOutside);
+  return () => document.removeEventListener('click', handleClickOutside);
+}, []);
+```
+
+**Why it's good:** Reading `ref.current` inside the handler gets the current DOM element, not a stale one from mount time.
+
+### ✅ Good: Context for cross-cutting data
+
+```tsx
+// UserContext.tsx
+const UserContext = createContext<User | null>(null);
+
+// Page.tsx
+<UserProvider user={user}>
+  <Layout>
+    <Sidebar>
+      <MenuItem />
+        <Icon />  // Can access user via useUser() hook
+
+// Icon.tsx
+const { user } = useUser();  // Direct access, no prop drilling
+```
+
+**Why it's good:** Components access user data directly via context. Intermediate components don't need to know about or pass the prop.
+
 ## Guidelines
 
 - Be specific. Reference exact file paths and line numbers.

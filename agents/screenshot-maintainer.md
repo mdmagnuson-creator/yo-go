@@ -31,6 +31,59 @@ Use documentation lookup tools.
       - Authentication patterns for capturing protected pages
       - Theme settings (light/dark mode defaults)
 
+## Examples
+
+### Example Screenshot Maintenance Report
+
+```markdown
+## Screenshot Audit: Marketing Pages
+
+### Outdated Screenshots (3)
+
+#### /public/images/dashboard-overview.png
+**Used in:** Homepage, Features page
+**Current state:** Shows old sidebar design
+**Action needed:** Recapture with new navigation
+
+#### /public/images/settings-panel.png  
+**Used in:** Settings documentation
+**Current state:** Missing new "Dark Mode" toggle
+**Action needed:** Recapture after enabling dark mode feature
+
+#### /public/images/mobile-view.png
+**Used in:** Mobile features section
+**Current state:** Shows deprecated mobile layout
+**Action needed:** Recapture with new responsive design
+
+### Up-to-date Screenshots (12)
+- pricing-table.png ✅
+- login-screen.png ✅
+- ...
+```
+
+### Example Capture Instructions
+
+```
+Screenshot: Dashboard Overview
+─────────────────────────────
+Page: /dashboard
+Viewport: 1440x900 (desktop)
+Auth: Required (test user: demo@example.com)
+Theme: Light mode
+
+Pre-capture setup:
+1. Ensure sample data loaded
+2. Collapse sidebar notification panel
+3. Set date range to "Last 30 days"
+
+Capture area: Full page
+Output: public/images/dashboard-overview.png
+
+Post-capture:
+- Optimize file size (target: <200KB)
+- Add alt text to usage locations
+```
+
 ### Mode 1: Check and Update (Default)
 
 When invoked after a UI change:

@@ -131,6 +131,81 @@ Return your findings in this structure (do NOT write to files):
 [Briefly call out 1-3 things the code does right — good patterns worth preserving]
 ```
 
+## Examples
+
+### ❌ Bad: Not handling DynamoDB conditional check failure
+
+```typescript
+// services/inventory.ts:34
+async function decrementStock(productId: string, quantity: number) {
+  await dynamodb.updateItem({
+    TableName: 'products',
+    Key: { productId },
+    UpdateExpression: 'SET stock = stock - :qty',
+    ConditionExpression: 'stock >= :qty',
+    ExpressionAttributeValues: { ':qty': quantity }
+  });
+}
+```
+
+**Why it's bad:** If stock < quantity, DynamoDB throws `ConditionalCheckFailedException`. This code doesn't handle it — the error bubbles up as a generic 500.
+
+### ❌ Bad: Assuming S3 getObject always succeeds
+
+```typescript
+// services/files.ts:56
+async function getFileContent(bucket: string, key: string): Promise<string> {
+  const response = await s3.getObject({ Bucket: bucket, Key: key });
+  return response.Body.transformToString();
+}
+```
+
+**Why it's bad:** S3 returns `NoSuchKey` if the object doesn't exist. This code treats it as an unexpected error instead of a valid "not found" case.
+
+### ✅ Good: Handle expected DynamoDB failures
+
+```typescript
+// services/inventory.ts:34
+async function decrementStock(productId: string, quantity: number): Promise<boolean> {
+  try {
+    await dynamodb.updateItem({
+      TableName: 'products',
+      Key: { productId },
+      UpdateExpression: 'SET stock = stock - :qty',
+      ConditionExpression: 'stock >= :qty',
+      ExpressionAttributeValues: { ':qty': quantity }
+    });
+    return true;
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') {
+      return false;  // Insufficient stock is a valid business case
+    }
+    throw error;  // Re-throw unexpected errors
+  }
+}
+```
+
+**Why it's good:** Conditional check failure is handled as a business case (return false), not an error. Unexpected errors still propagate.
+
+### ✅ Good: Handle S3 NoSuchKey explicitly
+
+```typescript
+// services/files.ts:56
+async function getFileContent(bucket: string, key: string): Promise<string | null> {
+  try {
+    const response = await s3.getObject({ Bucket: bucket, Key: key });
+    return response.Body.transformToString();
+  } catch (error) {
+    if (error.name === 'NoSuchKey') {
+      return null;  // File doesn't exist is valid
+    }
+    throw error;
+  }
+}
+```
+
+**Why it's good:** `NoSuchKey` returns null instead of throwing. Callers can distinguish "file doesn't exist" from "S3 error".
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/CONVENTIONS.md` describes standard AWS client wrappers, retry policies, or error handling patterns, verify code uses them rather than flagging missing retries.

@@ -28,6 +28,103 @@ You are an agent that writes and updates support articles for the project. Your 
       - CDN/storage URLs
       - Article schema and fields
 
+## Examples
+
+### Example Troubleshooting Article
+
+```markdown
+# Can't Log In to Your Account
+
+Having trouble accessing your account? Follow these steps to resolve common login issues.
+
+## Quick Fixes
+
+### 1. Check Your Email Address
+
+Make sure you're using the email address associated with your account. If you signed up with Google, use your Google email.
+
+### 2. Reset Your Password
+
+1. Go to [app.example.com/login](https://app.example.com/login)
+2. Click **Forgot Password**
+3. Enter your email and click **Send Reset Link**
+4. Check your inbox (and spam folder) for the reset email
+
+![Password Reset Screen](/support/images/password-reset.png)
+
+### 3. Clear Browser Cache
+
+Sometimes cached data causes login issues:
+
+**Chrome:** Settings → Privacy → Clear Browsing Data → Cookies and Cached Images
+
+**Safari:** Safari Menu → Clear History → All History
+
+### 4. Try Incognito Mode
+
+Open a private/incognito window and try logging in. If this works, a browser extension may be interfering.
+
+## Still Having Issues?
+
+If you've tried all the above and still can't log in:
+
+1. [Contact Support](/support/contact) with:
+   - Your account email
+   - Browser and version
+   - Screenshot of any error message
+
+We typically respond within 2 hours during business hours.
+```
+
+### Example Feature Guide
+
+```markdown
+# Setting Up Two-Factor Authentication
+
+Add an extra layer of security to your account with two-factor authentication (2FA).
+
+## What You'll Need
+
+- Your account credentials
+- A mobile phone with an authenticator app
+
+## Setup Steps
+
+### Step 1: Enable 2FA in Settings
+
+1. Go to **Settings** → **Security**
+2. Find **Two-Factor Authentication** 
+3. Click **Enable**
+
+![2FA Settings](/support/images/2fa-settings.png)
+
+### Step 2: Scan the QR Code
+
+1. Open your authenticator app
+2. Tap **+** or **Add Account**
+3. Scan the QR code shown on screen
+
+![QR Code Screen](/support/images/2fa-qr.png)
+
+### Step 3: Enter Verification Code
+
+1. Your authenticator app will show a 6-digit code
+2. Enter this code in the verification field
+3. Click **Verify**
+
+### Step 4: Save Backup Codes
+
+⚠️ **Important:** Save these backup codes somewhere safe. You'll need them if you lose access to your authenticator app.
+
+## Troubleshooting
+
+### Code Not Working?
+
+- Make sure your phone's time is set to automatic
+- Try the next code (they refresh every 30 seconds)
+- Check you're scanning the right account's code
+```
+
 ## Configuration
 
 Before writing articles, check for project-specific configuration:

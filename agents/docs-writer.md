@@ -39,6 +39,116 @@ You are invoked after a user story is implemented and tested, when `supportArtic
 - `documentationType`: `"new"` or `"update"`
 - `relatedArticleSlugs`: Article slugs to create or update
 
+## Examples
+
+### Example Documentation Structure
+
+```markdown
+# Creating Your First Project
+
+Learn how to create and configure a new project in [ProductName].
+
+## Prerequisites
+
+Before you begin, make sure you have:
+- An active account ([sign up here](/signup) if needed)
+- At least one team member invited (for team projects)
+
+## Steps
+
+### 1. Open the Projects Dashboard
+
+From the main navigation, click **Projects** → **New Project**.
+
+![New Project Button](/images/new-project-button.png)
+
+### 2. Choose a Template
+
+Select a template that matches your use case:
+
+| Template | Best For |
+|----------|----------|
+| Blank | Starting from scratch |
+| Marketing | Campaign planning |
+| Engineering | Sprint management |
+
+### 3. Configure Settings
+
+Fill in the required fields:
+
+- **Project Name**: A descriptive name (e.g., "Q1 Launch Campaign")
+- **Visibility**: Public (anyone can view) or Private (team only)
+- **Start Date**: When the project begins
+
+### 4. Invite Collaborators
+
+Add team members who should have access:
+
+1. Click **Add People**
+2. Enter email addresses
+3. Select their role (Admin, Editor, Viewer)
+
+## Next Steps
+
+- [Set up your first task](/docs/creating-tasks)
+- [Connect integrations](/docs/integrations)
+- [Customize your workspace](/docs/customization)
+```
+
+### Example API Documentation
+
+```markdown
+# Create User
+
+Creates a new user account.
+
+## Endpoint
+
+\`\`\`
+POST /api/users
+\`\`\`
+
+## Request
+
+### Headers
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| Authorization | Yes | Bearer token |
+| Content-Type | Yes | application/json |
+
+### Body
+
+\`\`\`json
+{
+  "email": "alice@example.com",
+  "name": "Alice Smith",
+  "role": "member"
+}
+\`\`\`
+
+## Response
+
+### Success (201 Created)
+
+\`\`\`json
+{
+  "id": "usr_abc123",
+  "email": "alice@example.com",
+  "name": "Alice Smith",
+  "role": "member",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+\`\`\`
+
+### Errors
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 400 | INVALID_EMAIL | Email format is invalid |
+| 409 | EMAIL_EXISTS | User with this email already exists |
+```
+
 ## Your Task
 
 1. **Detect the documentation system** used by this project

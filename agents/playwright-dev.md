@@ -484,6 +484,87 @@ Load the `e2e-quality` skill for the full helper library:
 
 Copy `~/.config/opencode/skills/e2e-quality/templates/e2e-quality-helpers.ts` to your project's `e2e/helpers/` directory.
 
+## Examples
+
+### ✅ Good: Test using project's page objects
+
+```typescript
+// Following project's POM pattern from tests/pages/
+import { LoginPage } from './pages/LoginPage';
+import { DashboardPage } from './pages/DashboardPage';
+
+test.describe('User Dashboard', () => {
+  let loginPage: LoginPage;
+  let dashboardPage: DashboardPage;
+
+  test.beforeEach(async ({ page }) => {
+    loginPage = new LoginPage(page);
+    dashboardPage = new DashboardPage(page);
+    
+    // Use project's test user from environment
+    await loginPage.goto();
+    await loginPage.login(
+      process.env.TEST_USER_EMAIL!,
+      process.env.TEST_USER_PASSWORD!
+    );
+  });
+
+  test('should display user stats correctly', async () => {
+    await dashboardPage.goto();
+    
+    // Use semantic selectors per project conventions
+    await expect(dashboardPage.statsCard).toBeVisible();
+    await expect(dashboardPage.welcomeMessage).toContainText('Welcome');
+  });
+});
+```
+
+**Why it's good:** Uses project's existing page object pattern. Test credentials from environment. Semantic selectors match project conventions.
+
+### ✅ Good: Resilient selectors following project patterns
+
+```typescript
+// CONVENTIONS.md says: "Prefer role > test-id > text > CSS"
+
+// Good: Role-based selector (most resilient)
+await page.getByRole('button', { name: 'Submit' }).click();
+
+// Good: Test ID when role doesn't work
+await page.getByTestId('user-menu').click();
+
+// Good: Label for form fields
+await page.getByLabel('Email address').fill('test@example.com');
+
+// Avoid: CSS selectors that break easily
+// await page.locator('.btn-primary').click();  // ❌
+```
+
+**Why it's good:** Role selectors survive UI refactors. Test IDs are explicit contracts. Matches project's selector hierarchy.
+
+### ✅ Good: Test with proper waiting and assertions
+
+```typescript
+test('should show success message after form submission', async ({ page }) => {
+  // Arrange
+  const settingsPage = new SettingsPage(page);
+  await settingsPage.goto();
+  
+  // Act
+  await settingsPage.updateDisplayName('New Name');
+  await settingsPage.clickSave();
+  
+  // Assert - wait for success state
+  await expect(settingsPage.successToast).toBeVisible({ timeout: 5000 });
+  await expect(settingsPage.successToast).toContainText('Settings saved');
+  
+  // Verify persistence
+  await page.reload();
+  await expect(settingsPage.displayNameInput).toHaveValue('New Name');
+});
+```
+
+**Why it's good:** Uses page object methods. Explicit waits with timeouts. Verifies persistence by reloading. Clean Arrange/Act/Assert structure.
+
 ---
 
 ## Key Testing Guidelines

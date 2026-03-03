@@ -493,6 +493,130 @@ func TestProcessData(t *testing.T) {
 }
 ```
 
+## Examples
+
+### ✅ Good: Error handling following project pattern
+
+```go
+// CONVENTIONS.md says: "Use custom error types with codes"
+// Following the project's established pattern:
+
+type AppError struct {
+    Code    string
+    Message string
+    Err     error
+}
+
+func (e *AppError) Error() string {
+    if e.Err != nil {
+        return fmt.Sprintf("%s: %s: %v", e.Code, e.Message, e.Err)
+    }
+    return fmt.Sprintf("%s: %s", e.Code, e.Message)
+}
+
+func GetUser(ctx context.Context, id string) (*User, error) {
+    user, err := db.FindUser(ctx, id)
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            return nil, &AppError{Code: "NOT_FOUND", Message: "user not found"}
+        }
+        return nil, &AppError{Code: "DB_ERROR", Message: "failed to fetch user", Err: err}
+    }
+    return user, nil
+}
+```
+
+**Why it's good:** Uses project's custom error type from CONVENTIONS.md. Wraps underlying errors with context. Returns typed errors for caller handling.
+
+### ✅ Good: Handler with proper request/response types
+
+```go
+// Following project's handler pattern from existing code
+type CreateUserRequest struct {
+    Email string `json:"email" validate:"required,email"`
+    Name  string `json:"name" validate:"required,min=1"`
+}
+
+type CreateUserResponse struct {
+    ID        string    `json:"id"`
+    Email     string    `json:"email"`
+    Name      string    `json:"name"`
+    CreatedAt time.Time `json:"createdAt"`
+}
+
+func (h *UserHandler) Create(c *gin.Context) {
+    var req CreateUserRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    
+    user, err := h.service.CreateUser(c.Request.Context(), req)
+    if err != nil {
+        // Use project's error handling pattern
+        h.handleError(c, err)
+        return
+    }
+    
+    c.JSON(http.StatusCreated, CreateUserResponse{
+        ID:        user.ID,
+        Email:     user.Email,
+        Name:      user.Name,
+        CreatedAt: user.CreatedAt,
+    })
+}
+```
+
+**Why it's good:** Uses typed request/response structs. Validates input with tags. Uses project's framework (Gin). Consistent error handling.
+
+### ✅ Good: Test with table-driven pattern
+
+```go
+// Following project's test conventions
+func TestUserService_CreateUser(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   CreateUserRequest
+        want    *User
+        wantErr string
+    }{
+        {
+            name:  "valid user",
+            input: CreateUserRequest{Email: "test@example.com", Name: "Test"},
+            want:  &User{Email: "test@example.com", Name: "Test"},
+        },
+        {
+            name:    "missing email",
+            input:   CreateUserRequest{Name: "Test"},
+            wantErr: "email is required",
+        },
+        {
+            name:    "invalid email",
+            input:   CreateUserRequest{Email: "notanemail", Name: "Test"},
+            wantErr: "invalid email format",
+        },
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            svc := NewUserService(mockRepo)
+            got, err := svc.CreateUser(context.Background(), tt.input)
+            
+            if tt.wantErr != "" {
+                require.Error(t, err)
+                assert.Contains(t, err.Error(), tt.wantErr)
+                return
+            }
+            
+            require.NoError(t, err)
+            assert.Equal(t, tt.want.Email, got.Email)
+        })
+    }
+}
+```
+
+**Why it's good:** Table-driven tests follow Go best practices. Tests both success and error cases. Uses testify assertions per project conventions.
+
 ## Go Coding Guidelines
 
 ### Formatting

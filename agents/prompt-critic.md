@@ -141,6 +141,66 @@ Return your findings in this structure (do NOT write to files):
 [Briefly call out 1-3 things the prompts do right — clear instructions, good examples, proper guardrails]
 ```
 
+## Examples
+
+### ❌ Bad: Ambiguous instruction
+
+```markdown
+Review the code and fix any issues as needed.
+```
+
+**Why it's bad:** "As needed" is undefined. What triggers a fix vs. a report? What severity threshold? The agent will make unpredictable decisions.
+
+### ❌ Bad: Contradictory instructions
+
+```markdown
+## Output Rules
+Never modify files directly.
+
+## Your Task
+3. Write your review to `docs/review.md`.
+```
+
+**Why it's bad:** "Never modify files" contradicts "write to docs/review.md". The agent may oscillate between behaviors or fail entirely.
+
+### ✅ Good: Explicit threshold with examples
+
+```markdown
+## When to Auto-Fix
+
+Fix issues automatically ONLY when ALL conditions are met:
+1. The fix is mechanical (import statement, typo, formatting)
+2. The fix cannot break functionality
+3. The fix is <5 lines
+
+Examples of auto-fixable issues:
+- Missing import statement
+- Unused import removal
+- Obvious typo in string literal
+
+Examples that require manual review:
+- Logic changes
+- API modifications
+- Anything affecting behavior
+```
+
+**Why it's good:** Clear criteria with concrete examples. The agent knows exactly when to auto-fix vs. report.
+
+### ✅ Good: Explicit failure handling
+
+```markdown
+## Error Handling
+
+If a tool call fails:
+1. Log the failure to your response
+2. Continue with remaining files
+3. Do not ask the user for help
+4. Do not stop the review
+5. In your summary, note which files could not be reviewed and why
+```
+
+**Why it's good:** Every failure mode has explicit instructions. The agent won't get stuck asking "what should I do now?"
+
 ## Guidelines
 
 - **Project context informs your review.** If `docs/project.json` specifies agent behaviors (git workflow, auto-commit, browser verification), verify agent prompts align with those settings.

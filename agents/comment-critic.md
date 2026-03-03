@@ -160,6 +160,59 @@ The comment:
 [Call out 1-3 good comments — ones that explain why, warn about consequences, or provide essential context that isn't in the code]
 ```
 
+## Examples
+
+### ❌ Bad: Comment restates the code
+
+```typescript
+// Set the user name
+user.name = name;
+```
+
+**Why it's bad:** The code is `user.name = name`. The comment says "set the user name." Zero information added.
+
+### ❌ Bad: Narrating obvious control flow
+
+```go
+// Check if the user is nil
+if user == nil {
+    return nil, ErrUserNotFound
+}
+```
+
+**Why it's bad:** Any developer can read `if user == nil`. The comment adds noise without explaining *why* we check this.
+
+### ❌ Bad: Redundant doc comment
+
+```typescript
+/**
+ * Gets a user by ID
+ */
+function getUserById(id: string): User {
+```
+
+**Why it's bad:** The function name already says "get user by ID". The doc comment just repeats it. Either add useful information (what errors it throws, side effects) or delete it.
+
+### ✅ Good: Comment explains why
+
+```typescript
+// DynamoDB limits batch writes to 25 items, so we chunk the input
+const chunks = chunkArray(items, 25);
+```
+
+**Why it's good:** The code shows *what* (chunking by 25). The comment explains *why* (DynamoDB limit). Future developers won't wonder about the magic number.
+
+### ✅ Good: Warning about consequences
+
+```go
+// Do not reorder these calls — the parser depends on this exact sequence
+initTokenizer()
+initGrammar()
+initParser()
+```
+
+**Why it's good:** Prevents future developers from "cleaning up" the code and breaking it. The order matters, but isn't obvious from the code alone.
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/CONVENTIONS.md` specifies comment requirements (e.g., "all exported functions must have doc comments"), respect that rule — only flag comments that are redundant noise like `// GetUser gets a user`.

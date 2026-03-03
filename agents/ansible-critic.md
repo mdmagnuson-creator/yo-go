@@ -149,6 +149,61 @@ Return your findings in this structure (do NOT write to files):
 [Briefly call out 1-3 things the code does right — good patterns worth preserving]
 ```
 
+## Examples
+
+### ❌ Bad: Non-idempotent command
+
+```yaml
+# playbook.yml
+- name: Create user
+  command: useradd -m {{ username }}
+```
+
+**Why it's bad:** Running twice fails because user already exists. Ansible's `command` module doesn't know if the user exists. Use the `user` module instead.
+
+### ❌ Bad: Secret in plain text
+
+```yaml
+# playbook.yml
+- name: Set database password
+  lineinfile:
+    path: /etc/app/config.yml
+    line: "db_password: SuperSecret123"
+```
+
+**Why it's bad:** Password visible in playbook, version control, and Ansible logs. Use `ansible-vault` or a secrets manager.
+
+### ✅ Good: Idempotent user creation
+
+```yaml
+# playbook.yml
+- name: Create user
+  user:
+    name: "{{ username }}"
+    state: present
+    create_home: yes
+```
+
+**Why it's good:** Ansible's `user` module checks if user exists. Running twice is safe — second run changes nothing.
+
+### ✅ Good: Secrets via vault
+
+```yaml
+# playbook.yml
+- name: Set database password
+  lineinfile:
+    path: /etc/app/config.yml
+    line: "db_password: {{ db_password }}"
+  no_log: true
+
+# vars/secrets.yml (encrypted with ansible-vault)
+db_password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  ...
+```
+
+**Why it's good:** Password stored encrypted. `no_log: true` prevents it from appearing in output.
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/CONVENTIONS.md` specifies Ansible conventions (variable prefixes, role structure, secret handling), use those as the standard.

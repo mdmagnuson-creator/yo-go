@@ -142,6 +142,67 @@ Return your findings in this structure (do NOT write to files):
 [Briefly call out 1-3 things the package does right — clean interfaces, testable design, consistent patterns]
 ```
 
+## Examples
+
+### ❌ Bad: Hard-coded dependencies prevent testing
+
+```typescript
+// lib/email.ts
+export async function sendWelcomeEmail(user: User) {
+  const ses = new AWS.SES();  // Hard-coded AWS client
+  await ses.sendEmail({
+    to: user.email,
+    subject: 'Welcome!',
+    body: '...'
+  });
+}
+```
+
+**Why it's bad:** Tests cannot mock the SES client. Every test will try to send real emails or require complex AWS credential mocking.
+
+### ❌ Bad: Inconsistent async patterns
+
+```typescript
+// lib/data.ts
+export function getUser(id: string): Promise<User> { ... }
+export function getUsers(): User[] { ... }  // Sync!
+export async function getOrders(): Promise<Order[]> { ... }
+export function getProduct(id: string, callback: (p: Product) => void) { ... }  // Callback!
+```
+
+**Why it's bad:** Four different patterns (Promise, sync, async, callback) for similar operations. Consumers must remember which pattern each function uses.
+
+### ✅ Good: Dependency injection for testability
+
+```typescript
+// lib/email.ts
+export interface EmailClient {
+  send(to: string, subject: string, body: string): Promise<void>;
+}
+
+export function createEmailService(client: EmailClient) {
+  return {
+    async sendWelcomeEmail(user: User) {
+      await client.send(user.email, 'Welcome!', '...');
+    }
+  };
+}
+```
+
+**Why it's good:** Tests can inject a mock email client. Production code injects the real SES client. Same API, different implementations.
+
+### ✅ Good: Consistent async pattern
+
+```typescript
+// lib/data.ts
+export async function getUser(id: string): Promise<User> { ... }
+export async function getUsers(): Promise<User[]> { ... }
+export async function getOrders(): Promise<Order[]> { ... }
+export async function getProduct(id: string): Promise<Product> { ... }
+```
+
+**Why it's good:** All functions use async/await. Consumers can use the same pattern everywhere.
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/CONVENTIONS.md` specifies parameter ordering, error handling patterns, or documentation requirements, use those as the standard.

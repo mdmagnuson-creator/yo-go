@@ -156,6 +156,77 @@ Return your findings in this structure (do NOT write to files):
 [Briefly call out 1-3 things the template does right — good patterns worth preserving]
 ```
 
+## Examples
+
+### ❌ Bad: S3 bucket without encryption
+
+```yaml
+# template.yaml
+Resources:
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my-data-bucket
+      # No encryption configuration!
+```
+
+**Why it's bad:** Data at rest is unencrypted. Security scans will flag this. Compliance (SOC2, HIPAA) requires encryption.
+
+### ❌ Bad: Lambda with wildcard permissions
+
+```yaml
+# template.yaml
+MyLambdaRole:
+  Type: AWS::IAM::Role
+  Properties:
+    Policies:
+      - PolicyName: FullAccess
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Action: '*'
+              Resource: '*'
+```
+
+**Why it's bad:** Lambda can do anything in the AWS account. If compromised, attacker has full access. Violates principle of least privilege.
+
+### ✅ Good: S3 with SSE-S3 encryption
+
+```yaml
+# template.yaml
+Resources:
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my-data-bucket
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+```
+
+**Why it's good:** All objects encrypted at rest with AWS-managed keys. Meets compliance requirements.
+
+### ✅ Good: Least-privilege Lambda permissions
+
+```yaml
+# template.yaml
+MyLambdaRole:
+  Type: AWS::IAM::Role
+  Properties:
+    Policies:
+      - PolicyName: MinimalAccess
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+              Resource: !GetAtt MyTable.Arn
+```
+
+**Why it's good:** Lambda can only read/write to one specific DynamoDB table. Compromise limits blast radius.
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/CONVENTIONS.md` specifies required tags, naming patterns, or stack organization, use those as the standard.

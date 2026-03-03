@@ -349,6 +349,74 @@ CMD ["pnpm", "start"]
 
 Build with: `DOCKER_BUILDKIT=1 docker build .`
 
+## Examples
+
+### ✅ Good: Multi-stage build matching project stack
+
+```dockerfile
+# project.json says: "runtime: node", "version: 18"
+# CONVENTIONS.md says: "Use slim images for production"
+
+# Build stage
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Runtime stage (matches project convention: slim images)
+FROM node:18-alpine AS runtime
+WORKDIR /app
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+USER nextjs
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+**Why it's good:** Uses project's Node version from project.json. Multi-stage keeps image small. Non-root user follows security best practices.
+
+### ✅ Good: .dockerignore matching project structure
+
+```dockerignore
+# Match project structure from project.json
+node_modules
+.next
+.git
+*.md
+docs/
+tests/
+coverage/
+.env*
+*.log
+```
+
+**Why it's good:** Ignores directories that match project.json structure. Prevents copying development files into build context.
+
+### ✅ Good: Compose file with proper health checks
+
+```yaml
+# docker-compose.yml
+services:
+  api:
+    build: .
+    ports:
+      - "${DEV_PORT:-3000}:3000"  # Uses project's devPort
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      db:
+        condition: service_healthy
+```
+
+**Why it's good:** Health check ensures container is actually serving. Depends_on with condition prevents startup race.
+
 ## Validation
 
 After creating or modifying Dockerfiles, validate them:

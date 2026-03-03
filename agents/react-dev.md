@@ -87,6 +87,169 @@ You'll receive a task description. Follow this workflow:
    - Summarize what was implemented
    - Note any important patterns or gotchas discovered
 
+## Examples
+
+### ✅ Good: Component following project structure
+
+```tsx
+// Following project's component pattern from CONVENTIONS.md
+// "Components have: types, component, exports in single file"
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+
+// Types at top
+interface SearchBarProps {
+  onSearch: (query: string) => void;
+  placeholder?: string;
+  className?: string;
+  isLoading?: boolean;
+}
+
+// Component
+export function SearchBar({ 
+  onSearch, 
+  placeholder = 'Search...', 
+  className,
+  isLoading = false 
+}: SearchBarProps) {
+  const [query, setQuery] = useState('');
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      onSearch(query.trim());
+    }
+  };
+  
+  return (
+    <form 
+      onSubmit={handleSubmit}
+      className={cn('flex gap-2', className)}
+    >
+      <Input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={placeholder}
+        disabled={isLoading}
+      />
+      <Button type="submit" disabled={isLoading || !query.trim()}>
+        {isLoading ? 'Searching...' : 'Search'}
+      </Button>
+    </form>
+  );
+}
+```
+
+**Why it's good:** Types defined in same file per CONVENTIONS.md. Uses project's UI components. Proper disabled states. cn() for className merging.
+
+### ✅ Good: Hook following project patterns
+
+```tsx
+// Following project's custom hook pattern
+import { useState, useCallback } from 'react';
+import { toast } from '@/components/ui/use-toast';
+
+interface UseAsyncActionOptions<T> {
+  onSuccess?: (data: T) => void;
+  onError?: (error: Error) => void;
+  successMessage?: string;
+}
+
+export function useAsyncAction<T>(
+  action: () => Promise<T>,
+  options: UseAsyncActionOptions<T> = {}
+) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [data, setData] = useState<T | null>(null);
+  
+  const execute = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const result = await action();
+      setData(result);
+      options.onSuccess?.(result);
+      
+      if (options.successMessage) {
+        toast({ description: options.successMessage });
+      }
+      
+      return result;
+    } catch (e) {
+      const error = e instanceof Error ? e : new Error('Unknown error');
+      setError(error);
+      options.onError?.(error);
+      toast({ 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [action, options]);
+  
+  return { execute, isLoading, error, data };
+}
+```
+
+**Why it's good:** Generic hook for reuse. Uses project's toast system. Proper TypeScript generics. Handles loading, error, and success states.
+
+### ✅ Good: Form with validation following project patterns
+
+```tsx
+// Using project's form library (react-hook-form + zod)
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Form, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+
+const profileSchema = z.object({
+  displayName: z.string().min(1, 'Display name is required').max(50),
+  email: z.string().email('Invalid email address'),
+  bio: z.string().max(200).optional(),
+});
+
+type ProfileFormData = z.infer<typeof profileSchema>;
+
+export function ProfileForm({ defaultValues, onSubmit }: ProfileFormProps) {
+  const form = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues,
+  });
+  
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="displayName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Display Name</FormLabel>
+              <Input {...field} />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* More fields... */}
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </form>
+    </Form>
+  );
+}
+```
+
+**Why it's good:** Uses project's form stack (react-hook-form + zod). Zod schema defines validation. FormMessage shows errors. Proper loading state.
+
 ## Domain Expertise
 
 ### UI Consistency

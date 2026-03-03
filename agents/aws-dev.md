@@ -319,6 +319,71 @@ Resources:
           CidrIp: 0.0.0.0/0
 ```
 
+## Examples
+
+### ✅ Good: Following project conventions for resource naming
+
+```yaml
+# CONVENTIONS.md says: "Use {Service}{Environment}{Purpose} naming"
+# project.json says: "environment: staging"
+
+Resources:
+  ApiStagingWebServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      Tags:
+        - Key: Name
+          Value: api-staging-webserver
+        - Key: Environment
+          Value: staging
+```
+
+**Why it's good:** Resource name follows the project's naming convention. Tags match the environment from project.json. Future developers can identify resources at a glance.
+
+### ✅ Good: Using !Sub for readable string interpolation
+
+```yaml
+# Good: !Sub with explicit variable references
+UserData:
+  Fn::Base64:
+    !Sub |
+      #!/bin/bash
+      aws s3 cp s3://${ArtifactsBucket}/app.zip /tmp/
+      unzip /tmp/app.zip -d /var/www/
+      systemctl start nginx
+
+# Instead of: !Join with nested !Ref calls
+```
+
+**Why it's good:** !Sub is more readable than !Join with multiple !Ref calls. Variable references are clear inline.
+
+### ✅ Good: Parameterized templates for reusability
+
+```yaml
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment
+  
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    MinLength: 12
+    Description: Database master password (not logged)
+
+Resources:
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub "${AWS::StackName}-db"
+      MasterUserPassword: !Ref DatabasePassword
+      # Environment-specific sizing
+      DBInstanceClass: !If [IsProd, db.r5.large, db.t3.medium]
+```
+
+**Why it's good:** Single template works across environments. Secrets use NoEcho. Conditional sizing reduces cost in non-prod.
+
 ## Validation Process
 
 After implementing changes:

@@ -29,6 +29,71 @@ You are a specialized agent that reviews code changes to identify all UI areas t
         - Component directory structure for identifying UI areas
         - Test credentials or fixture setup
 
+## Examples
+
+### Example Change Analysis
+
+```markdown
+## UI Changes Detected
+
+### PR #456: Add User Preferences Panel
+
+**Files Changed:**
+- src/components/PreferencesPanel.tsx (new)
+- src/pages/Settings.tsx (modified)
+- src/styles/settings.css (modified)
+
+**UI Areas Affected:**
+
+1. **Settings Page** — New preferences section added
+   - Route: /settings
+   - Test needed: Verify panel renders correctly
+   
+2. **Preferences Form** — New interactive component
+   - Contains: Toggle switches, dropdowns, save button
+   - Tests needed:
+     - Form submission
+     - Validation feedback
+     - Success/error states
+
+3. **Navigation** — Settings may have new sub-nav
+   - Test needed: Verify navigation to preferences section
+
+**Recommended E2E Tests:**
+
+\`\`\`typescript
+// preferences.spec.ts
+describe('User Preferences', () => {
+  it('should display preferences panel on settings page');
+  it('should save preferences successfully');
+  it('should show validation error for invalid input');
+  it('should persist changes after page reload');
+});
+\`\`\`
+```
+
+### Example No-Test-Needed Analysis
+
+```markdown
+## UI Changes Detected
+
+### PR #457: Update Footer Copyright Year
+
+**Files Changed:**
+- src/components/Footer.tsx (modified)
+
+**Change Summary:**
+Single line change: `© 2024` → `© 2025`
+
+**UI Areas Affected:**
+- Footer component (static text only)
+
+**E2E Testing:** ⚠️ Not recommended
+
+Justification: This is a static text change with no interactivity 
+or logic. Visual verification is sufficient.
+```
+
 After a set of user stories is implemented, you:
 
 1. **Identify UI areas modified** - Analyze git commits, changed files, and PRD to list all UI areas

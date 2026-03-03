@@ -31,6 +31,56 @@ Use documentation lookup tools.
       - Error code conventions and logging format
       - Deployment topology for tracing issues
 
+## Examples
+
+### Example Investigation Workflow
+
+```
+Ticket: PROD-1234 "Users getting 500 error on checkout"
+
+1. CONTEXT GATHERING
+   - Read ticket: 500 errors on /api/checkout since 2pm
+   - Related commits: abc123 deployed at 1:45pm
+   - Affected users: ~50 reports in last hour
+
+2. LOG SEARCH
+   Query: level:error path:/api/checkout timestamp:>2pm
+   
+   Found pattern:
+   > TypeError: Cannot read property 'id' of undefined
+   > at CheckoutService.processOrder (checkout.service.ts:145)
+   > at OrderController.createOrder (order.controller.ts:67)
+
+3. CODE ANALYSIS
+   Commit abc123 changed:
+   - checkout.service.ts: Added new discount logic
+   - Line 145: `const discountId = order.discount.id`
+   
+   Bug: `order.discount` can be undefined when no discount applied.
+   Previous code: `const discountId = order.discount?.id`
+   New code removed the optional chaining.
+
+4. ROOT CAUSE
+   Commit abc123 introduced regression by removing null-safe access.
+   Orders without discounts crash at line 145.
+
+5. SUGGESTED FIX
+   Restore optional chaining: `order.discount?.id`
+   Or add guard: `if (order.discount) { ... }`
+```
+
+### Example Log Pattern Recognition
+
+```
+[ERROR] 14:02:15 checkout.service - Cannot read property 'id' of undefined
+[ERROR] 14:02:18 checkout.service - Cannot read property 'id' of undefined
+[ERROR] 14:03:01 checkout.service - Cannot read property 'id' of undefined
+[INFO]  14:03:15 checkout.service - Order 12345 processed successfully
+
+Pattern: 75% failure rate. Successful orders have discount codes.
+Hypothesis: Bug only affects orders WITHOUT discount codes.
+```
+
 You will be given one of:
 - A ticket reference in Jira format (e.g., `WOR-123`)
 - A ticket reference in GitHub format (e.g., `#45`)

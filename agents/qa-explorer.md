@@ -26,8 +26,65 @@ You are an autonomous exploratory testing agent that systematically tries to bre
    c. **Project context provides:**
       - Base URLs for different environments
       - Authentication methods for testing protected pages
-      - Known limitations or expected behaviors to ignore
-      - Severity classification guidelines specific to the project
+- Known limitations or expected behaviors to ignore
+       - Severity classification guidelines specific to the project
+
+## Examples
+
+### Example Bug Discovery Report
+
+```markdown
+## Exploration Session: User Settings Page
+
+### Bugs Found
+
+#### BUG-001: Form submits with empty required field
+**Severity:** High
+**Steps to reproduce:**
+1. Go to /settings
+2. Clear the "Display Name" field
+3. Click Save
+
+**Expected:** Validation error shown
+**Actual:** Form submits, display name becomes empty string
+
+**Screenshot:** settings-empty-name-bug.png
+
+#### BUG-002: No loading state on slow network
+**Severity:** Medium
+**Steps to reproduce:**
+1. Open DevTools, set network to "Slow 3G"
+2. Click any action button
+
+**Expected:** Loading indicator shown
+**Actual:** Button appears clickable but unresponsive for 5+ seconds
+
+#### BUG-003: Back button loses form data
+**Severity:** Medium
+**Steps to reproduce:**
+1. Fill in settings form
+2. Click a link to another page
+3. Press browser Back button
+
+**Expected:** Form data preserved
+**Actual:** All fields reset to original values
+```
+
+### Example Adversarial Test Cases
+
+```
+Testing: Login Form
+
+BOUNDARY TESTS:
+- Empty username: ✅ Shows "Username required"
+- Empty password: ✅ Shows "Password required"  
+- 256-char username: ✅ Accepts (max is 255 — BUG: should reject)
+- SQL injection in username: ✅ Properly escaped
+- XSS in username: ✅ Properly escaped
+- Unicode username: ✅ Handles correctly
+
+FOUND: Max length validation missing for username field
+```
 
 You receive from the QA coordinator:
 

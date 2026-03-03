@@ -99,6 +99,108 @@ After completing the task and passing quality checks, reply with:
 - **Connection limits**: Use `ServerBootstrap.option(ChannelOption.SO_BACKLOG)`
 - **IP/Port binding**: Handle bind failures gracefully, support port reuse
 
+## Examples
+
+### ✅ Good: Non-blocking handler with proper offloading
+
+```java
+// CONVENTIONS.md says: "Never block event loop, use blockingTaskExecutor"
+private final EventExecutorGroup blockingExecutor;
+
+@Override
+public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    Request request = (Request) msg;
+    
+    // Offload blocking database work to separate executor
+    blockingExecutor.execute(() -> {
+        try {
+            User user = userRepository.findById(request.getUserId());
+            
+            // Write response back on event loop
+            ctx.channel().eventLoop().execute(() -> {
+                ctx.writeAndFlush(new Response(user));
+            });
+        } catch (Exception e) {
+            ctx.channel().eventLoop().execute(() -> {
+                ctx.writeAndFlush(new ErrorResponse(e.getMessage()));
+            });
+        }
+    });
+}
+```
+
+**Why it's good:** Database call happens off event loop. Response written back on event loop for thread safety. Follows project's blockingTaskExecutor pattern.
+
+### ✅ Good: Proper ByteBuf handling with release
+
+```java
+@Override
+public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    ByteBuf buf = (ByteBuf) msg;
+    try {
+        // Process the buffer
+        byte[] data = new byte[buf.readableBytes()];
+        buf.readBytes(data);
+        
+        Request request = deserialize(data);
+        processRequest(ctx, request);
+    } finally {
+        // Always release in finally block
+        buf.release();
+    }
+}
+
+// Or using ReferenceCountUtil for safety:
+@Override
+public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    try {
+        ByteBuf buf = (ByteBuf) msg;
+        // ... process
+    } finally {
+        ReferenceCountUtil.release(msg);
+    }
+}
+```
+
+**Why it's good:** ByteBuf is always released, even on exception. Uses try-finally for guaranteed cleanup. Prevents memory leaks.
+
+### ✅ Good: Lambda handler with try-with-resources
+
+```java
+// Following AWS Lambda best practices
+public class S3EventHandler implements RequestHandler<S3Event, String> {
+    
+    // Reuse client across invocations
+    private final S3Client s3Client = S3Client.create();
+    
+    @Override
+    public String handleRequest(S3Event event, Context context) {
+        for (S3EventNotification.S3EventNotificationRecord record : event.getRecords()) {
+            String bucket = record.getS3().getBucket().getName();
+            String key = record.getS3().getObject().getKey();
+            
+            // Try-with-resources ensures stream is closed
+            try (ResponseInputStream<GetObjectResponse> stream = 
+                    s3Client.getObject(GetObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(key)
+                        .build())) {
+                
+                String content = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+                processContent(content);
+                
+            } catch (NoSuchKeyException e) {
+                context.getLogger().log("Object not found: " + key);
+                // Return gracefully, don't fail the Lambda
+            }
+        }
+        return "Processed " + event.getRecords().size() + " records";
+    }
+}
+```
+
+**Why it's good:** S3 client reused across invocations (warm start). Try-with-resources closes streams. NoSuchKeyException handled gracefully.
+
 ## Java Coding Guidelines
 
 ### Modern Java Idioms

@@ -44,6 +44,90 @@ You receive:
 - Feature behavior description
 - Related API endpoints or data models
 
+## Examples
+
+### Example Tool Definition
+
+```json
+{
+  "name": "create_project",
+  "description": "Creates a new project with the specified name and settings. Use this when the user wants to start a new project or workspace.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "The project name. Must be 1-100 characters."
+      },
+      "template": {
+        "type": "string",
+        "enum": ["blank", "marketing", "engineering"],
+        "description": "The project template to use. Defaults to 'blank'."
+      },
+      "visibility": {
+        "type": "string",
+        "enum": ["public", "private"],
+        "description": "Who can see this project. Defaults to 'private'."
+      }
+    },
+    "required": ["name"]
+  }
+}
+```
+
+### Example Tool Update (Feature Change)
+
+```markdown
+## Tool Update: create_project
+
+### Change
+New "team" parameter added to allow creating team projects.
+
+### Before
+\`\`\`json
+{
+  "required": ["name"]
+}
+\`\`\`
+
+### After
+\`\`\`json
+{
+  "properties": {
+    "team_id": {
+      "type": "string",
+      "description": "The team to create the project under. If omitted, creates a personal project."
+    }
+  },
+  "required": ["name"]
+}
+\`\`\`
+
+### Description Update
+Old: "Creates a new project with the specified name and settings."
+New: "Creates a new project with the specified name and settings. Can create personal projects or team projects."
+```
+
+### Example Error Response Documentation
+
+```json
+{
+  "name": "get_user",
+  "errors": [
+    {
+      "code": "USER_NOT_FOUND",
+      "message": "No user found with the specified ID",
+      "action": "Verify the user ID is correct or ask the user to clarify"
+    },
+    {
+      "code": "UNAUTHORIZED",
+      "message": "User does not have access to this resource",
+      "action": "Check permissions or request access from an admin"
+    }
+  ]
+}
+```
+
 ## Your Task
 
 1. **Detect the tool system** used by this project

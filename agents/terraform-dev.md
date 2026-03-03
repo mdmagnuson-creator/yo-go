@@ -40,6 +40,121 @@ You are a specialized implementation subagent for Terraform infrastructure as co
 
 6. **Report back** - Summarize what you implemented and which files you changed
 
+## Examples
+
+### ✅ Good: Module following project conventions
+
+```hcl
+# Following project's module structure from existing infra/
+# CONVENTIONS.md says: "All resources must have project and environment tags"
+
+variable "environment" {
+  description = "Deployment environment (dev, staging, prod)"
+  type        = string
+  
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
+variable "project_name" {
+  description = "Project name for resource tagging"
+  type        = string
+}
+
+locals {
+  common_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_s3_bucket" "data" {
+  bucket = "${var.project_name}-${var.environment}-data"
+  
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-${var.environment}-data"
+  })
+}
+
+resource "aws_s3_bucket_versioning" "data" {
+  bucket = aws_s3_bucket.data.id
+  
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+```
+
+**Why it's good:** Variables have descriptions and validation. Common tags defined once in locals. Resources use consistent naming. Versioning enabled for data protection.
+
+### ✅ Good: Output design for composition
+
+```hcl
+# Outputs for use by other modules
+output "bucket_id" {
+  description = "ID of the data bucket"
+  value       = aws_s3_bucket.data.id
+}
+
+output "bucket_arn" {
+  description = "ARN of the data bucket for IAM policies"
+  value       = aws_s3_bucket.data.arn
+}
+
+output "bucket_domain_name" {
+  description = "Domain name for bucket access"
+  value       = aws_s3_bucket.data.bucket_domain_name
+}
+
+# Sensitive outputs marked appropriately
+output "connection_string" {
+  description = "Database connection string"
+  value       = "postgres://${aws_db_instance.main.username}@${aws_db_instance.main.endpoint}/${aws_db_instance.main.db_name}"
+  sensitive   = true
+}
+```
+
+**Why it's good:** Each output has description. Only needed values exported. Sensitive data marked. Enables module composition.
+
+### ✅ Good: Data sources for cross-reference
+
+```hcl
+# Reference existing resources without hardcoding
+data "aws_vpc" "main" {
+  filter {
+    name   = "tag:Name"
+    values = ["${var.project_name}-vpc"]
+  }
+}
+
+data "aws_subnets" "private" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.main.id]
+  }
+  
+  filter {
+    name   = "tag:Tier"
+    values = ["private"]
+  }
+}
+
+resource "aws_lambda_function" "api" {
+  function_name = "${var.project_name}-${var.environment}-api"
+  # ... other config
+  
+  vpc_config {
+    subnet_ids         = data.aws_subnets.private.ids
+    security_group_ids = [aws_security_group.lambda.id]
+  }
+}
+```
+
+**Why it's good:** Data sources find resources by tag, not hardcoded ID. Works across environments. VPC and subnet IDs derived dynamically.
+
 ## Terraform Best Practices
 
 ### Formatting & Style

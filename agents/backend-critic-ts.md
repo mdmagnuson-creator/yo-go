@@ -175,6 +175,66 @@ Write `docs/review.md` with this structure:
 [Briefly call out 1-3 things the code does right — good patterns worth preserving]
 ```
 
+## Examples
+
+### ❌ Bad: Swallowing errors silently
+
+```typescript
+// services/user.ts:45
+async function updateUser(id: string, data: UpdateUserDto) {
+  try {
+    await db.users.update(id, data);
+  } catch (error) {
+    console.log('Update failed');  // Logged and ignored!
+  }
+}
+```
+
+**Why it's bad:** The caller thinks the update succeeded. No error propagated, no return value indicating failure. Data inconsistency will follow.
+
+### ❌ Bad: Unhandled promise rejection
+
+```typescript
+// routes/webhook.ts:23
+app.post('/webhook', (req, res) => {
+  processWebhook(req.body);  // Not awaited!
+  res.json({ received: true });
+});
+```
+
+**Why it's bad:** If `processWebhook` throws, it's an unhandled promise rejection. The client got success response but processing failed.
+
+### ✅ Good: Explicit error propagation
+
+```typescript
+// services/user.ts:45
+async function updateUser(id: string, data: UpdateUserDto): Promise<User> {
+  const updated = await db.users.update(id, data);
+  if (!updated) {
+    throw new NotFoundError(`User ${id} not found`);
+  }
+  return updated;
+}
+```
+
+**Why it's good:** Errors propagate to the caller. The caller decides how to handle them (return 404, retry, etc.).
+
+### ✅ Good: Await and handle async operations
+
+```typescript
+// routes/webhook.ts:23
+app.post('/webhook', async (req, res, next) => {
+  try {
+    await processWebhook(req.body);
+    res.json({ received: true });
+  } catch (error) {
+    next(error);  // Let error middleware handle it
+  }
+});
+```
+
+**Why it's good:** Async operation is awaited. Errors are caught and passed to Express error middleware.
+
 ## Guidelines
 
 - Be specific. Reference exact file paths and line numbers.

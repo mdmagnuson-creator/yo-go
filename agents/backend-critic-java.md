@@ -155,6 +155,67 @@ Write `docs/review.md` with this structure:
 [Briefly call out 1-3 things the code does right — good patterns worth preserving]
 ```
 
+## Examples
+
+### ❌ Bad: Blocking call on Netty event loop
+
+```java
+// handler/UserHandler.java:45
+@Override
+public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    User user = userService.fetchFromDatabase(userId);  // Blocking IO!
+    ctx.writeAndFlush(new Response(user));
+}
+```
+
+**Why it's bad:** `fetchFromDatabase` blocks the event loop thread. One slow query blocks all connections handled by this thread. Netty event loops must never block.
+
+### ❌ Bad: Unclosed resources in Lambda
+
+```java
+// handler/S3Handler.java:23
+public String handleRequest(S3Event event, Context context) {
+    AmazonS3 s3 = AmazonS3ClientBuilder.defaultClient();
+    S3Object obj = s3.getObject(bucket, key);
+    return IOUtils.toString(obj.getObjectContent());
+    // S3Object never closed!
+}
+```
+
+**Why it's bad:** `S3Object` holds an HTTP connection. Not closing it leaks connections. Lambda functions that leak will eventually fail.
+
+### ✅ Good: Offload blocking work in Netty
+
+```java
+// handler/UserHandler.java:45
+private final EventExecutorGroup blockingGroup = new DefaultEventExecutorGroup(16);
+
+@Override
+public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    blockingGroup.execute(() -> {
+        User user = userService.fetchFromDatabase(userId);
+        ctx.writeAndFlush(new Response(user));
+    });
+}
+```
+
+**Why it's good:** Database call runs on a separate thread pool. Event loop returns immediately to handle other connections.
+
+### ✅ Good: Try-with-resources for Lambda
+
+```java
+// handler/S3Handler.java:23
+public String handleRequest(S3Event event, Context context) {
+    try (S3Client s3 = S3Client.create();
+         ResponseInputStream<GetObjectResponse> stream = 
+             s3.getObject(GetObjectRequest.builder().bucket(bucket).key(key).build())) {
+        return new String(stream.readAllBytes());
+    }
+}
+```
+
+**Why it's good:** Try-with-resources ensures both `S3Client` and `ResponseInputStream` are closed, even on exception.
+
 ## Guidelines
 
 - Be specific. Reference exact file paths and line numbers.

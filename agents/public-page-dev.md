@@ -54,6 +54,107 @@ Use documentation lookup tools.
 
 7. **Visual verification.** Take a screenshot of the completed page using @qa-explorer and review it yourself before finishing.
 
+## Examples
+
+### ✅ Good: Landing page following brand guidelines
+
+```tsx
+// docs/marketing/brand-voice.md says: "Clear, confident, no jargon"
+// docs/design-system.md says: "Use space-y-24 between sections"
+
+export default function LandingPage() {
+  return (
+    <main className="space-y-24">
+      {/* Hero - value prop above fold */}
+      <section className="pt-20 pb-16 text-center">
+        <h1 className="text-5xl font-bold text-foreground">
+          Ship faster with AI-powered reviews
+        </h1>
+        <p className="mt-6 text-xl text-muted-foreground max-w-2xl mx-auto">
+          Get instant code reviews that catch bugs before your users do.
+          No more waiting for teammates.
+        </p>
+        <div className="mt-10 flex gap-4 justify-center">
+          <Button size="lg" asChild>
+            <Link href="/signup">Start Free Trial</Link>
+          </Button>
+          <Button size="lg" variant="outline" asChild>
+            <Link href="/demo">Watch Demo</Link>
+          </Button>
+        </div>
+      </section>
+      
+      {/* Social proof */}
+      <section className="py-12 bg-muted">
+        <p className="text-center text-muted-foreground">
+          Trusted by 2,000+ engineering teams
+        </p>
+        <div className="mt-8 flex justify-center gap-12">
+          {/* Customer logos */}
+        </div>
+      </section>
+    </main>
+  );
+}
+```
+
+**Why it's good:** Headline is clear and benefit-focused (brand voice). CTA above fold. Social proof reinforces credibility. Uses design system spacing.
+
+### ✅ Good: SEO meta tags following project patterns
+
+```tsx
+// Following project's metadata pattern from existing pages
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'AI Code Review | ProductName',
+  description: 'Get instant code reviews that catch bugs before production. Free trial, no credit card required.',
+  openGraph: {
+    title: 'AI Code Review | ProductName',
+    description: 'Ship faster with AI-powered code reviews.',
+    images: ['/og/landing.png'],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AI Code Review | ProductName',
+    description: 'Ship faster with AI-powered code reviews.',
+  },
+};
+```
+
+**Why it's good:** Title follows project's pattern. Description is under 160 chars with keywords. OG tags for social sharing.
+
+### ✅ Good: Accessible and mobile-responsive
+
+```tsx
+<section className="px-4 md:px-8 lg:px-16">
+  {/* Stack on mobile, grid on desktop */}
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    {features.map((feature) => (
+      <article 
+        key={feature.id}
+        className="p-6 rounded-lg bg-card"
+      >
+        {/* Icon with aria-hidden since decorative */}
+        <feature.icon 
+          className="w-12 h-12 text-primary" 
+          aria-hidden="true" 
+        />
+        <h3 className="mt-4 text-lg font-semibold">
+          {feature.title}
+        </h3>
+        <p className="mt-2 text-muted-foreground">
+          {feature.description}
+        </p>
+      </article>
+    ))}
+  </div>
+</section>
+```
+
+**Why it's good:** Responsive padding and grid. Proper heading hierarchy. Decorative icons hidden from screen readers.
+
 ---
 
 ## Page Type Patterns

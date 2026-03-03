@@ -48,6 +48,80 @@ Analyzes how a completed PRD affects other PRDs in the backlog. This ensures the
       - Directory structure for understanding `touchesAreas`
       - API/component naming conventions for matching new capabilities
 
+## Examples
+
+### Example Impact Analysis
+
+```markdown
+## PRD Impact Analysis
+
+### Completed PRD: prd-user-preferences
+
+**Summary:** Added user preferences system with settings panel, 
+preferences API, and storage layer.
+
+### Impact on Backlog PRDs
+
+#### prd-notification-system (HIGH IMPACT)
+**Status:** Draft
+**Impact:** 
+- Now depends on preferences API for notification settings
+- US-003 (notification frequency) can use existing preferences storage
+- Estimate reduced: preferences infrastructure already built
+
+**Recommended changes:**
+- Add dependency on prd-user-preferences
+- Remove "build preferences storage" story (already done)
+- Update US-003 to integrate with existing preferences API
+
+#### prd-dark-mode (MEDIUM IMPACT)
+**Status:** Ready
+**Impact:**
+- Theme preference can leverage existing preferences panel
+- Storage mechanism already exists
+- Add "theme" field to preferences schema
+
+**Recommended changes:**
+- Add story: "Add theme toggle to existing preferences panel"
+- Remove duplicate storage implementation
+
+#### prd-mobile-app (LOW IMPACT)
+**Status:** Backlog
+**Impact:**
+- Mobile app will need to consume same preferences API
+- No immediate changes needed
+- Note: Ensure API is mobile-friendly
+
+### No Impact
+
+These PRDs are unaffected:
+- prd-billing-improvements (unrelated domain)
+- prd-admin-dashboard (different user type)
+```
+
+### Example Dependency Graph
+
+```markdown
+## Updated Dependency Graph
+
+After completing prd-user-preferences:
+
+\`\`\`
+prd-user-preferences (COMPLETE)
+    │
+    ├── prd-notification-system (blocked → unblocked)
+    │   └── prd-email-digests (still blocked by notifications)
+    │
+    ├── prd-dark-mode (can start integration)
+    │
+    └── prd-mobile-app (informational dependency)
+\`\`\`
+
+**Newly unblocked:** prd-notification-system
+**Ready to integrate:** prd-dark-mode
+**No change:** prd-mobile-app, prd-billing-improvements
+```
+
 When a PRD is completed, analyze its impact on all other PRDs (both drafts and active).
 
 ### Input

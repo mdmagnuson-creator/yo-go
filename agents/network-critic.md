@@ -147,6 +147,81 @@ Return your findings in this structure (do NOT write to files):
 [Briefly call out 1-3 things the code does right — good patterns worth preserving]
 ```
 
+## Examples
+
+### ❌ Bad: Lock held during HTTP call
+
+```go
+// service/cache.go:67
+func (c *Cache) Refresh(key string) {
+    c.mutex.Lock()
+    defer c.mutex.Unlock()
+    
+    // HTTP call while holding lock!
+    resp, err := http.Get("https://api.example.com/data/" + key)
+    if err != nil {
+        return
+    }
+    c.data[key] = parseResponse(resp)
+}
+```
+
+**Why it's bad:** If the HTTP call takes 30 seconds (or hangs), all other goroutines waiting for this mutex are blocked. Network IO + locks = deadlock risk.
+
+### ❌ Bad: Missing timeout on network call
+
+```typescript
+// services/api.ts:23
+async function fetchUserData(userId: string) {
+  const response = await fetch(`/api/users/${userId}`);
+  return response.json();
+}
+```
+
+**Why it's bad:** No timeout. If the server hangs, this request hangs forever, potentially exhausting connection pools or blocking user interactions.
+
+### ✅ Good: Network call outside lock
+
+```go
+// service/cache.go:67
+func (c *Cache) Refresh(key string) {
+    // Fetch BEFORE acquiring lock
+    resp, err := http.Get("https://api.example.com/data/" + key)
+    if err != nil {
+        return
+    }
+    data := parseResponse(resp)
+    
+    // Only hold lock for the write
+    c.mutex.Lock()
+    c.data[key] = data
+    c.mutex.Unlock()
+}
+```
+
+**Why it's good:** Network IO happens outside the critical section. The lock is only held for the fast in-memory operation.
+
+### ✅ Good: Timeout and retry with backoff
+
+```typescript
+// services/api.ts:23
+async function fetchUserData(userId: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  
+  try {
+    const response = await fetch(`/api/users/${userId}`, {
+      signal: controller.signal
+    });
+    return response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+```
+
+**Why it's good:** 5-second timeout prevents hanging. AbortController allows cancellation if the caller gives up.
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/CONVENTIONS.md` defines standard HTTP clients, timeout policies, or retry wrappers, code that uses them correctly is fine.

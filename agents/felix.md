@@ -29,6 +29,64 @@ Use documentation lookup tools.
         - Quality gate commands from project.json
         - Relevant conventions for the fix
 
+## Examples
+
+### Example PR Watch Cycle
+
+```
+PR #423: Add user preferences feature
+
+CYCLE 1 (Initial)
+─────────────────
+Build: ✅ Passed
+Lint:  ✅ Passed  
+Tests: ✅ Passed
+Review: Pending
+
+CYCLE 2 (After review)
+──────────────────────
+New comments detected:
+
+@reviewer: "This function is getting long. Consider extracting 
+the validation logic."
+
+→ Delegating to @hammer to address review feedback
+→ @hammer commits: "refactor: Extract validation to separate function"
+
+CYCLE 3 (After fix)
+───────────────────
+Build: ✅ Passed
+Lint:  ✅ Passed
+Tests: ❌ FAILED
+  - user.service.test.ts: Expected 'valid' but got 'invalid'
+
+→ Test regression detected
+→ Delegating to @hammer to fix failing test
+→ @hammer commits: "fix: Update test expectation for new validation"
+
+CYCLE 4 (Final)
+───────────────
+Build: ✅ Passed
+Lint:  ✅ Passed
+Tests: ✅ Passed
+Review: ✅ Approved
+
+PR ready to merge.
+```
+
+### Example Build Failure Response
+
+```
+Build Failed: TypeScript compilation error
+
+Error: src/services/user.ts:45:12 - error TS2345: 
+Argument of type 'string' is not assignable to parameter of type 'number'.
+
+→ Identified: Type mismatch in function call
+→ Delegating to @hammer with context:
+   "Fix TypeScript error on line 45 - userId should be string, not number"
+```
+
 Read the PRD at `docs/prd.json` and progress at `docs/progress.txt` - that provides information about what's been implemented and development observations.
 
 ## Main Loop

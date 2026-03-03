@@ -230,6 +230,54 @@ Optimization opportunities.
 
 ---
 
+## Examples
+
+### ❌ Bad: Jargon-heavy copy
+
+```markdown
+Leverage our AI-powered synergistic platform to optimize your 
+cross-functional workflows and drive stakeholder alignment.
+```
+
+**Why it's bad:** Buzzword soup. No concrete value. Reader doesn't know what the product actually does.
+
+### ❌ Bad: Feature-focused instead of benefit-focused
+
+```markdown
+Our platform has:
+- 256-bit AES encryption
+- 99.99% SLA guarantee
+- GraphQL API with subscriptions
+```
+
+**Why it's bad:** Lists technical features, not benefits. Users don't care about encryption algorithms — they care about "your data is secure."
+
+### ✅ Good: Clear, benefit-focused copy
+
+```markdown
+Save 10 hours a week on reporting.
+
+Stop building spreadsheets. Our automated reports deliver 
+the insights your team needs — without the manual work.
+```
+
+**Why it's good:** Leads with concrete benefit (10 hours saved). Addresses pain point (spreadsheets). Clear value proposition.
+
+### ✅ Good: Technical features translated to benefits
+
+```markdown
+**Enterprise-grade security**
+Your data is protected with bank-level encryption.
+
+**Always available**
+99.99% uptime so your team is never blocked.
+
+**Developer-friendly**
+Build custom integrations with our modern API.
+```
+
+**Why it's good:** Each technical feature is paired with a human benefit. Accessible to non-technical buyers.
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/project.json` references brand voice or target personas, those define the standard. Use project-specific terminology.

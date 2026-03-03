@@ -53,6 +53,117 @@ See AGENTS.md. Never truncate test failure output — show complete errors and s
 
 See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-jest-tester-`
 
+## Examples
+
+### Example Test File Structure
+
+```typescript
+// user.service.test.ts
+import { UserService } from './user.service';
+import { UserRepository } from './user.repository';
+
+jest.mock('./user.repository');
+
+describe('UserService', () => {
+  let service: UserService;
+  let mockRepo: jest.Mocked<UserRepository>;
+
+  beforeEach(() => {
+    mockRepo = new UserRepository() as jest.Mocked<UserRepository>;
+    service = new UserService(mockRepo);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('getUser', () => {
+    it('should return user when found', async () => {
+      // Arrange
+      const expectedUser = { id: '123', name: 'Alice' };
+      mockRepo.findById.mockResolvedValue(expectedUser);
+
+      // Act
+      const result = await service.getUser('123');
+
+      // Assert
+      expect(result).toEqual(expectedUser);
+      expect(mockRepo.findById).toHaveBeenCalledWith('123');
+    });
+
+    it('should throw NotFoundError when user does not exist', async () => {
+      // Arrange
+      mockRepo.findById.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.getUser('999'))
+        .rejects
+        .toThrow(NotFoundError);
+    });
+  });
+});
+```
+
+### Example API Endpoint Test
+
+```typescript
+// users.route.test.ts
+import request from 'supertest';
+import { app } from '../app';
+
+describe('POST /api/users', () => {
+  it('should create user and return 201', async () => {
+    const newUser = { name: 'Alice', email: 'alice@example.com' };
+
+    const response = await request(app)
+      .post('/api/users')
+      .send(newUser)
+      .expect(201);
+
+    expect(response.body).toMatchObject({
+      id: expect.any(String),
+      name: 'Alice',
+      email: 'alice@example.com',
+    });
+  });
+
+  it('should return 400 when email is missing', async () => {
+    const invalidUser = { name: 'Alice' };
+
+    const response = await request(app)
+      .post('/api/users')
+      .send(invalidUser)
+      .expect(400);
+
+    expect(response.body.error).toContain('email');
+  });
+});
+```
+
+### Example Edge Case Test
+
+```typescript
+describe('calculateDiscount', () => {
+  it.each([
+    [100, 0, 100],           // No discount
+    [100, 10, 90],           // 10% discount
+    [100, 100, 0],           // Full discount
+    [0, 50, 0],              // Zero amount
+    [99.99, 10, 89.99],      // Decimal handling
+  ])('amount %d with %d%% discount should be %d', (amount, percent, expected) => {
+    expect(calculateDiscount(amount, percent)).toBe(expected);
+  });
+
+  it('should throw for negative discount', () => {
+    expect(() => calculateDiscount(100, -10)).toThrow('Discount cannot be negative');
+  });
+
+  it('should throw for discount over 100%', () => {
+    expect(() => calculateDiscount(100, 150)).toThrow('Discount cannot exceed 100%');
+  });
+});
+```
+
 ## Backend Jest Testing Domain Expertise
 
 ### Jest Test Structure

@@ -165,6 +165,47 @@ Return your findings in this structure (do NOT write to files):
 [Call out consistent Tailwind patterns worth preserving]
 ```
 
+## Examples
+
+### ❌ Bad: Using arbitrary values instead of scale
+
+```tsx
+<div className="p-[13px] mt-[27px] text-[15px]">
+```
+
+**Why it's bad:** Arbitrary values bypass the spacing scale. Results in inconsistent spacing across the app. Should use `p-3`, `mt-7`, `text-sm`.
+
+### ❌ Bad: Inconsistent dark mode approach
+
+```tsx
+// Component A uses dark: prefix
+<div className="bg-white dark:bg-gray-800">
+
+// Component B uses class-based
+<div className="bg-white theme-dark:bg-gray-800">
+
+// Component C forgets dark mode entirely
+<div className="bg-white">  
+```
+
+**Why it's bad:** Three different patterns for dark mode. Some components break in dark mode. Project should use ONE approach consistently.
+
+### ✅ Good: Using design system scale
+
+```tsx
+<div className="p-4 mt-6 text-base">
+```
+
+**Why it's good:** Uses Tailwind's built-in scale. Consistent with other components. Responsive variants work as expected.
+
+### ✅ Good: Consistent dark mode with semantic tokens
+
+```tsx
+<div className="bg-background text-foreground">
+```
+
+**Why it's good:** Semantic tokens adapt automatically. No need for `dark:` prefix everywhere. Design system controls the actual colors.
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/CONVENTIONS.md` or `docs/project.json` specify Tailwind patterns, follow them even if they differ from general best practices.

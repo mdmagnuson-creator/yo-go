@@ -211,6 +211,55 @@ Nice-to-haves and optimization opportunities.
 
 ---
 
+## Examples
+
+### ❌ Bad: CTA below the fold with no urgency
+
+```tsx
+// pages/pricing.tsx
+<div className="mt-96">  {/* Way below fold */}
+  <button className="text-sm text-gray-500">
+    Learn More
+  </button>
+</div>
+```
+
+**Why it's bad:** Users must scroll extensively to find the CTA. "Learn More" is weak — no clear value proposition or urgency. Conversion will suffer.
+
+### ❌ Bad: Missing accessibility on interactive element
+
+```tsx
+<div onClick={handleClick} className="cursor-pointer">
+  Sign Up
+</div>
+```
+
+**Why it's bad:** Div is not focusable via keyboard. Screen readers don't announce it as a button. Users without a mouse can't activate it.
+
+### ✅ Good: CTA above fold with clear value
+
+```tsx
+// pages/pricing.tsx
+<div className="mt-8">
+  <button className="btn-primary text-lg">
+    Start Free Trial — No Credit Card
+  </button>
+  <p className="text-muted mt-2">Join 10,000+ teams</p>
+</div>
+```
+
+**Why it's good:** CTA visible immediately. Clear value (free trial). Social proof (10,000+ teams). Strong visual hierarchy.
+
+### ✅ Good: Accessible interactive element
+
+```tsx
+<button onClick={handleClick} className="btn-primary">
+  Sign Up
+</button>
+```
+
+**Why it's good:** Native button is keyboard accessible. Screen readers announce it correctly. Focus states work by default.
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/project.json` references design system or brand voice docs, those define the standard.

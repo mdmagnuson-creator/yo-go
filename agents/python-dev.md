@@ -162,6 +162,125 @@ results = await chain.abatch(inputs)
 - Conditional edges for dynamic routing
 - State persists across steps
 
+## Examples
+
+### ✅ Good: RAG chain following project patterns
+
+```python
+# CONVENTIONS.md says: "Use LCEL for all chains"
+# project.json says: "vectorstore: pinecone"
+
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import ChatOpenAI
+from langchain_pinecone import PineconeVectorStore
+
+def create_rag_chain(vectorstore: PineconeVectorStore) -> Runnable:
+    """Create a RAG chain for answering questions from documents."""
+    
+    retriever = vectorstore.as_retriever(
+        search_type="similarity",
+        search_kwargs={"k": 4}
+    )
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """Answer the question based only on the following context. 
+If the context doesn't contain the answer, say "I don't have information about that."
+
+Context: {context}"""),
+        ("human", "{question}")
+    ])
+    
+    model = ChatOpenAI(model="gpt-4", temperature=0)
+    
+    # LCEL chain composition
+    chain = (
+        {"context": retriever, "question": RunnablePassthrough()}
+        | prompt
+        | model
+        | StrOutputParser()
+    )
+    
+    return chain
+```
+
+**Why it's good:** Uses LCEL as specified in CONVENTIONS.md. Uses project's vectorstore. Clear docstring. Handles "no answer" case gracefully.
+
+### ✅ Good: Custom tool with proper typing
+
+```python
+# Following project's tool definition pattern
+from langchain_core.tools import tool
+from pydantic import BaseModel, Field
+from typing import Optional
+
+class SearchInput(BaseModel):
+    """Input schema for the search tool."""
+    query: str = Field(description="The search query")
+    max_results: int = Field(default=5, description="Maximum results to return")
+    category: Optional[str] = Field(default=None, description="Filter by category")
+
+@tool(args_schema=SearchInput)
+def search_knowledge_base(query: str, max_results: int = 5, category: Optional[str] = None) -> str:
+    """Search the knowledge base for relevant documents.
+    
+    Use this when you need to find information about products, policies, or procedures.
+    """
+    # Implementation using project's search service
+    results = knowledge_base.search(
+        query=query,
+        limit=max_results,
+        filter={"category": category} if category else None
+    )
+    
+    if not results:
+        return "No results found for your query."
+    
+    return "\n\n".join([
+        f"**{r.title}**\n{r.snippet}" 
+        for r in results
+    ])
+```
+
+**Why it's good:** Pydantic schema for type safety. Docstring describes when to use the tool. Handles empty results gracefully.
+
+### ✅ Good: Async chain with error handling
+
+```python
+# Following project's async patterns
+import asyncio
+from langchain_core.runnables import RunnableConfig
+
+async def process_documents(
+    documents: list[str],
+    chain: Runnable,
+    config: Optional[RunnableConfig] = None
+) -> list[dict]:
+    """Process multiple documents concurrently with error handling."""
+    
+    async def process_single(doc: str) -> dict:
+        try:
+            result = await chain.ainvoke(doc, config=config)
+            return {"status": "success", "result": result}
+        except Exception as e:
+            # Log error but don't fail entire batch
+            logger.error(f"Failed to process document: {e}")
+            return {"status": "error", "error": str(e)}
+    
+    # Process with concurrency limit to avoid rate limits
+    semaphore = asyncio.Semaphore(5)
+    
+    async def bounded_process(doc: str) -> dict:
+        async with semaphore:
+            return await process_single(doc)
+    
+    results = await asyncio.gather(*[bounded_process(doc) for doc in documents])
+    return results
+```
+
+**Why it's good:** Async processing for throughput. Semaphore prevents rate limits. Individual failures don't break batch. Returns structured results.
+
 ## Python Coding Guidelines
 
 ### Style and Conventions

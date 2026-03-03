@@ -181,6 +181,66 @@ Write Warnings and Suggestions to `docs/aesthetic-notes.md`:
 
 This keeps the consolidated review clean for blocking issues while preserving non-blocking feedback for the post-completion polish phase.
 
+## Examples
+
+### ❌ Bad: Hardcoded colors instead of design tokens
+
+```tsx
+// component.tsx:45
+<div className="bg-[#1a1a2e] text-[#ffffff]">
+```
+
+**Why it's bad:** Hardcoded hex values bypass the design system. When the theme changes, this component won't update. Should use `bg-background text-foreground` or similar tokens.
+
+### ❌ Bad: Missing dark mode variant
+
+```tsx
+// card.tsx:12
+<div className="bg-white border-gray-200">
+```
+
+**Why it's bad:** No `dark:` variants means this will render as a bright white card in dark mode, breaking visual consistency and potentially causing eye strain.
+
+### ✅ Good: Proper design token usage with dark mode
+
+```tsx
+// card.tsx:12
+<div className="bg-card text-card-foreground border-border">
+```
+
+**Why it's good:** Uses semantic design tokens that automatically adapt to light/dark mode. The design system controls the actual colors.
+
+### ✅ Good: Correct background layering hierarchy
+
+```tsx
+// layout.tsx
+<div className="bg-background">           {/* Base layer */}
+  <div className="bg-muted">              {/* Elevated surface */}
+    <div className="bg-card">             {/* Card on surface */}
+```
+
+**Why it's good:** Creates visual depth through progressive layering. Each level is slightly different, providing subtle visual hierarchy.
+
+### Example Review Output
+
+```markdown
+## Critical Issues
+
+### src/components/PricingCard.tsx:23 — Hardcoded background color
+**Category:** Color
+**Severity:** Critical
+
+The card uses `bg-[#0f172a]` instead of a design token. This bypasses the theme system and won't respond to dark mode changes.
+
+**Design System Reference:** docs/design-system.md §Colors - "All background colors must use semantic tokens"
+
+**Suggested fix:**
+```tsx
+- <div className="bg-[#0f172a]">
++ <div className="bg-card dark:bg-card">
+```
+```
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/CONVENTIONS.md` or `docs/project.json` specify styling patterns, follow them even if they differ from general best practices.

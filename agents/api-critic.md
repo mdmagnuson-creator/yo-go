@@ -145,6 +145,70 @@ Return your findings in this structure (do NOT write to files):
 [Briefly call out 1-3 things the API does right — consistent patterns, clear naming, good error responses]
 ```
 
+## Examples
+
+### ❌ Bad: Inconsistent naming conventions
+
+```typescript
+// routes/users.ts
+GET  /api/users/:userId/orders     // camelCase userId
+GET  /api/get-order-by-user        // verb in URL
+POST /api/User/create              // PascalCase, verb in URL
+
+// Existing endpoints use:
+GET  /api/users/:user_id           // snake_case
+```
+
+**Why it's bad:** Three different naming conventions in the same API. Consumers have to remember which style each endpoint uses.
+
+### ❌ Bad: Inconsistent response envelope
+
+```typescript
+// GET /api/users returns:
+{ "data": [{ "id": 1, "name": "Alice" }] }
+
+// GET /api/orders returns:
+[{ "id": 1, "total": 100 }]  // No envelope
+
+// GET /api/products returns:
+{ "result": [{ "id": 1 }], "success": true }  // Different envelope
+```
+
+**Why it's bad:** Each endpoint returns a different shape. Clients need special handling for each endpoint instead of a consistent parse pattern.
+
+### ✅ Good: Consistent REST conventions
+
+```typescript
+// All endpoints follow the same pattern:
+GET    /api/users                  // List
+GET    /api/users/:id              // Get one
+POST   /api/users                  // Create
+PUT    /api/users/:id              // Update
+DELETE /api/users/:id              // Delete
+
+GET    /api/users/:id/orders       // Nested resource
+```
+
+**Why it's good:** Predictable. A developer who knows one endpoint can guess all others.
+
+### ✅ Good: Consistent error response format
+
+```typescript
+// All errors return:
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Email is required",
+    "details": {
+      "field": "email",
+      "constraint": "required"
+    }
+  }
+}
+```
+
+**Why it's good:** Single error shape that clients can parse reliably. Actionable details about what went wrong.
+
 ## Guidelines
 
 - **Project context is authoritative.** If `docs/CONVENTIONS.md` or `docs/project.json` specify API patterns, follow them even if they differ from general best practices.
