@@ -123,10 +123,20 @@ Load the `multi-session` skill for detailed session coordination steps:
 **Delegate the implementation** to appropriate specialist subagent(s):
 
 1. **Analyze the story** to determine what files and technologies need to change
-2. **Include project context** in task descriptions:
+2. **Gather semantic context (if vectorization enabled):**
+   - Check `project.json` → `vectorization.enabled`
+   - If enabled and `.vectorindex/metadata.json` exists:
+     - Query: `semantic_search({ query: "how does [feature] work", topK: 5 })`
+     - Query: `semantic_search({ query: "functions that call [component/function]", topK: 5 })` — understand call graph
+     - Query: `semantic_search({ query: "tests for [module]", topK: 3 })` — find test patterns
+     - Query: `semantic_search({ query: "recent changes to [file/area]", topK: 3 })` — understand git history/intent
+   - Use results to inform implementation approach
+   - If no vectorization: fall back to grep/glob as normal
+3. **Include project context** in task descriptions:
    - Stack info from `docs/project.json`
    - Relevant conventions from `docs/CONVENTIONS.md`
-3. **Route to specialists:**
+   - **Semantic context** from step 2 (if available)
+4. **Route to specialists:**
    - `.go` → @go-dev
    - `.tsx`/`.jsx`/`.css` (frontend) → @react-dev
    - `.java` → @java-dev

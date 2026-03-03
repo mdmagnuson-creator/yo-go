@@ -1051,6 +1051,74 @@ Requirements:
 | @critic | Code review |
 | @quality-critic | Visual/a11y/performance checks |
 
+### Semantic Search Context (US-017)
+
+When vectorization is enabled (`project.json` → `vectorization.enabled: true`), use the `semantic_search` MCP tool to gather context BEFORE delegating to sub-agents.
+
+**When to use semantic search:**
+
+| Scenario | Query | Why |
+|----------|-------|-----|
+| Before implementing a feature | `"how does [feature] work"` | Understand existing patterns |
+| Before modifying a file | `"what calls [function/component]"` | Understand dependencies |
+| Before adding tests | `"tests for [module]"` | Find test patterns |
+| Understanding data flow | `"how does [data] flow through the system"` | See call graph |
+| Git history context | `"why was [file/function] changed"` | Understand intent |
+
+**Query patterns:**
+
+```typescript
+// Semantic search for context
+semantic_search({ query: "how does authentication work", topK: 5 })
+
+// Call graph query (who calls this?)
+semantic_search({ query: "functions that call [functionName]", topK: 10 })
+
+// Test mapping query (which tests cover this?)
+semantic_search({ query: "tests for [moduleName]", topK: 5 })
+
+// Git history query (why was this written?)
+semantic_search({ query: "changes to [filename] and why", topK: 5 })
+```
+
+**Pre-delegation checklist:**
+
+When vectorization is enabled, BEFORE delegating to `@developer`:
+
+1. **Check if index exists:** `.vectorindex/metadata.json`
+2. **Run semantic search** for the feature/area being modified
+3. **Include relevant results** in the context block:
+
+```yaml
+<context>
+version: 1
+project:
+  path: {path}
+  stack: nextjs-prisma
+semanticContext:
+  query: "how does user authentication work"
+  results:
+    - file: src/lib/auth.ts
+      summary: "Auth helper using NextAuth.js with credentials provider"
+    - file: src/app/api/auth/[...nextauth]/route.ts
+      summary: "NextAuth route handler with JWT session"
+  callGraph:
+    - "login() is called by LoginForm, AuthProvider"
+  testCoverage:
+    - src/lib/auth.test.ts covers login(), logout(), getSession()
+conventions:
+  summary: |
+    TypeScript strict. Tailwind + shadcn/ui. App Router.
+</context>
+```
+
+**Graceful fallback:**
+
+- If vectorization not enabled: skip semantic search, use grep/glob as normal
+- If index missing: suggest rebuild, then continue without
+- If search returns no results: proceed with grep fallback
+- Never block workflow on semantic search
+
 ---
 
 ## Commit Strategy Configuration

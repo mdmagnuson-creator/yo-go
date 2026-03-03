@@ -100,6 +100,20 @@ Use documentation lookup tools.
    - Look at file extensions to understand what changed
    - Check file paths to distinguish frontend from backend TypeScript
 
+2b. **Query test mapping (if vectorization enabled):**
+   - Check `project.json` → `vectorization.enabled`
+   - If enabled and `.vectorindex/metadata.json` exists:
+     - Use `semantic_search` to find existing test coverage:
+       ```
+       semantic_search({ query: "tests for [filename/module]", topK: 5 })
+       ```
+     - This returns test files that cover the changed code
+     - Use results to identify:
+       - Existing tests that may need updates
+       - Gaps where new tests are needed
+       - Test patterns to follow
+   - If no vectorization: use grep/glob to find related test files
+
 3. **Route to specialist testing agents** based on file types:
    
    **Project-specific testers take priority.** Check `<project>/docs/agents/` for:

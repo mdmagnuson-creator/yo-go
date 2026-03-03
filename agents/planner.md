@@ -530,7 +530,12 @@ When the user wants to work on a draft PRD:
 
 1. **Read the draft PRD** from `docs/drafts/prd-[name].md`
 2. **Analyze the existing codebase** to understand current state:
-   - Search for related files and patterns
+   - **If vectorization enabled** (`project.json` → `vectorization.enabled: true`):
+     - Use `semantic_search` to find related code: `"how does [feature] work"`
+     - Query architecture context: `"[feature] implementation patterns"`
+     - Search for test patterns: `"tests for [feature]"`
+     - This provides semantic understanding vs keyword matching
+   - **Fallback (no vectorization):** Search for related files and patterns using grep/glob
    - Check what already exists vs what needs to be built
    - Identify potential conflicts or dependencies
 3. **Ask clarifying questions** using lettered options (A, B, C, D) for quick responses

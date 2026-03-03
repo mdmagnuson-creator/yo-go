@@ -57,6 +57,14 @@ c. **Check for project-specific critics** in `<project>/docs/agents/` directory
 
 Run `git diff --name-only HEAD~1` (from the project directory) to see what changed in the last commit. Also run `git diff HEAD~1` to skim the actual changes — you need the content to route to content-based critics.
 
+**Use semantic search for consistency verification (if available):**
+- Check `project.json` → `vectorization.enabled`
+- If enabled and `.vectorindex/metadata.json` exists:
+  - Query: `semantic_search({ query: "similar patterns to [changed function/component]", topK: 5 })`
+  - This finds similar code elsewhere in the codebase
+  - Use results to verify the changes are consistent with existing patterns
+  - Include pattern inconsistencies in the review
+
 ### Phase 2: Route to Specialist Critics
 
 **When delegating to ANY specialist critic, pass a context block:**
