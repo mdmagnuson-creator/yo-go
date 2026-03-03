@@ -30,11 +30,14 @@ This creates confusion, false blockers, and unnecessary manual intervention.
 ## Goals
 
 1. **Detect prerequisite failures** — Distinguish "login failed" from "menu option broken"
-2. **Automated fix loop** — Automatically attempt to fix prerequisites, verify, and retry the original test
-3. **Clear reporting** — Tell user exactly what failed and what was attempted
-4. **Bounded attempts** — Stop after 3 failed fix attempts on any single component
-5. **Track blockers** — Log prerequisite failures and fix attempts for visibility
-6. **Graceful degradation** — When automation fails, provide clear manual options
+2. **Detect environment prerequisites** — Distinguish infrastructure issues from code issues
+3. **Automated fix loop** — Automatically attempt to fix prerequisites, verify, and retry the original test
+4. **Skill-based environment fixes** — Use existing skills for environment issues, queue skill creation when none exists
+5. **3-pass verification** — Require 3 consecutive passes to confirm stability (catch transient issues)
+6. **Clear reporting** — Tell user exactly what failed and what was attempted
+7. **Bounded attempts** — Stop after 3 failed fix attempts on any single component
+8. **Track blockers** — Log prerequisite failures and fix attempts for visibility
+9. **Graceful degradation** — When automation fails, provide clear manual options
 
 ---
 
@@ -112,6 +115,47 @@ This creates confusion, false blockers, and unnecessary manual intervention.
 - [ ] Each entry includes: feature, prerequisite, attempts, outcome, duration
 - [ ] Aggregated view: "Auth login failed 5 times this week, 3 auto-fixed, 2 manual"
 - [ ] Prerequisite health score: % of prerequisite failures that auto-resolve
+
+### Story 6: Environment Prerequisite Detection and Skill-Based Fixes
+
+**As a** developer whose test fails due to an environment issue (e.g., Electron instance conflict)  
+**I want** Builder to recognize this as an environment prerequisite and use the appropriate skill  
+**So that** infrastructure issues are fixed automatically without code changes
+
+**Acceptance Criteria:**
+- [ ] Environment prerequisites distinguished from application prerequisites
+- [ ] Environment categories detected: process management, port conflicts, native app bootstrap, external services
+- [ ] If matching skill exists, load and run skill's recovery procedure
+- [ ] If no skill exists, stop auto-fix and offer skill creation request
+- [ ] After skill created (by @toolkit), Builder can use it on retry
+
+### Story 7: Skill Creation Request for Missing Environment Skills
+
+**As a** developer encountering an environment issue with no existing skill  
+**I want** Builder to queue a skill creation request for @toolkit  
+**So that** the skill can be created with my verification and used for future fixes
+
+**Acceptance Criteria:**
+- [ ] Option [T] presented: "Queue skill creation for @toolkit"
+- [ ] Request file created in `~/.config/opencode/pending-updates/`
+- [ ] Request includes: detected pattern, suggested skill name, error context, screenshots
+- [ ] User can switch to @toolkit, verify and create skill
+- [ ] On retry, Builder checks if requested skill now exists and uses it
+- [ ] Skill creation requires user verification (not fully autonomous)
+
+### Story 8: 3-Pass Verification for Stability
+
+**As a** developer completing a feature  
+**I want** verification tests to pass 3 consecutive times before declaring success  
+**So that** transient/flaky issues are caught before the feature is marked complete
+
+**Acceptance Criteria:**
+- [ ] After first pass, run test 2 more times
+- [ ] All 3 passes required to declare "VERIFIED"
+- [ ] If any of the 3 runs fail, enter fix loop
+- [ ] After any fix is applied, reset pass counter to 0 (require fresh 3 passes)
+- [ ] Progress shown: "Stability check: 2/3 passes"
+- [ ] Configurable via `agents.verification.requiredPasses` (default: 3)
 
 ---
 
@@ -505,6 +549,253 @@ Builder: Found 3 features blocked by auth-login-timeout:
 Run verification for all? [Y/N]
 ```
 
+### Environment Prerequisites
+
+Environment prerequisites are infrastructure/configuration issues that cannot be fixed by changing application code. They require running commands, scripts, or specialized setup procedures.
+
+**Environment vs Application Prerequisites:**
+
+| Type | Examples | Fix Method |
+|------|----------|------------|
+| **Application** | Login bug, missing element, API error | Code change via @developer |
+| **Environment** | Process conflict, port in use, native app bootstrap | Skill-based recovery |
+
+**Environment prerequisite categories:**
+
+| Category | Examples | Detection Patterns |
+|----------|----------|-------------------|
+| Process management | Electron single-instance, zombie processes | "EADDRINUSE", "already running", "single instance" |
+| Port/service availability | Dev server port conflict, database not running | "ECONNREFUSED", "port in use", connection timeout |
+| Native app bootstrap | Electron app launch, desktop app initialization | Platform-specific launch errors |
+| External services | Auth service down, API rate limited | 503, 429, "service unavailable" |
+| File system | Missing permissions, locked files | "EACCES", "EBUSY", "EPERM" |
+
+**Environment fix flow:**
+
+```
+Environment prerequisite detected
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ CHECK FOR MATCHING SKILL                                             │
+│                                                                     │
+│ Search skills/ for matching environment skill:                       │
+│   • electron-testing (for Electron process issues)                  │
+│   • start-dev-server (for port/server issues)                       │
+│   • auth-* skills (for auth service issues)                         │
+│                                                                     │
+│ ├─── SKILL FOUND ──► Load skill, run recovery procedure             │
+│ │                                                                   │
+│ └─── NO SKILL ──► Stop auto-fix, offer skill creation request       │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼ (SKILL FOUND)
+┌─────────────────────────────────────────────────────────────────────┐
+│ RUN SKILL RECOVERY                                                   │
+│                                                                     │
+│ 1. Load skill via skill tool                                        │
+│ 2. Execute skill's environment setup/recovery steps                 │
+│ 3. Retry the original test                                          │
+│    ├─── PASS ──► Continue to stability check (3 passes)             │
+│    └─── FAIL ──► Classify new failure, continue fix loop            │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼ (NO SKILL)
+┌─────────────────────────────────────────────────────────────────────┐
+│ SKILL CREATION REQUEST                                               │
+│                                                                     │
+│ Cannot auto-fix: Environment issue requires a skill that doesn't   │
+│ exist yet.                                                          │
+│                                                                     │
+│ Detected pattern: "Electron single-instance conflict"              │
+│ Suggested skill: electron-testing                                   │
+│                                                                     │
+│ Options:                                                            │
+│   [T] Queue skill creation for @toolkit (creates pending-update)   │
+│   [M] Fix manually, then retry                                     │
+│   [S] Skip verification                                            │
+│                                                                     │
+│ After skill is created and verified, re-run this verification.     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Skill creation request format:**
+
+When user selects [T], Builder creates:
+
+```
+~/.config/opencode/pending-updates/2026-03-03-new-skill-electron-testing.md
+```
+
+```markdown
+---
+requestedBy: builder
+date: 2026-03-03
+priority: high
+type: new-skill
+---
+
+# New Skill Request: electron-testing
+
+## Detected Pattern
+
+Environment prerequisite failure during verification test.
+
+**Error:** "Error: another instance is already running"
+**Context:** Playwright could not connect to Electron app
+**Project:** my-electron-app
+
+## Suggested Skill
+
+**Name:** electron-testing
+**Purpose:** Handle Electron single-instance conflicts during E2E testing
+
+**Recovery steps needed:**
+1. Kill any existing Electron processes for this app
+2. Wait for process termination
+3. Start fresh Electron instance
+4. Connect Playwright to the new instance
+
+## Screenshots
+
+- ai-tmp/verification/screenshots/electron-conflict.png
+
+## Source Test
+
+- tests/ui-verify/settings-page.spec.ts
+- Failed at: app launch (before any assertions)
+```
+
+**Skill hot-reload on retry:**
+
+When user returns to Builder and types "retry":
+
+1. Builder checks if the requested skill now exists:
+   ```
+   skill("electron-testing") → exists?
+   ```
+2. If skill exists: Load and run it, then retry test
+3. If skill doesn't exist: Show same options again
+
+**State tracking for pending skill requests:**
+
+```json
+{
+  "verificationLoop": {
+    "pendingSkillRequest": {
+      "skillName": "electron-testing",
+      "requestedAt": "2026-03-03T10:45:00Z",
+      "requestFile": "~/.config/opencode/pending-updates/2026-03-03-new-skill-electron-testing.md"
+    }
+  }
+}
+```
+
+### 3-Pass Stability Verification
+
+To catch transient/flaky issues, verification requires 3 consecutive passes before declaring success.
+
+**Configuration:**
+
+```json
+{
+  "agents": {
+    "verification": {
+      "mode": "strict",
+      "requiredPasses": 3,
+      "autoFixLoop": true
+    }
+  }
+}
+```
+
+**Flow:**
+
+```
+Feature test passes (1/3)
+    │
+    ▼
+Run again (2/3)
+    │
+    ▼
+Run again (3/3)
+    │
+    ▼
+All 3 pass? ──► ✅ VERIFIED (stable)
+    │
+Any fail? ──► Enter fix loop (reset pass counter)
+```
+
+**Pass counter behavior:**
+
+| Event | Pass Counter |
+|-------|--------------|
+| Test passes | Increment (+1) |
+| Test fails | Reset to 0, enter fix loop |
+| Fix applied | Reset to 0, require fresh 3 passes |
+| All 3 pass | Verification complete |
+
+**Why reset after fix?**
+
+After any code or environment change, the system must verify stability from scratch. A fix might:
+- Introduce new flakiness
+- Only work sometimes
+- Break something else intermittently
+
+Fresh 3-pass requirement ensures the fix is actually stable.
+
+**Progress reporting:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+              🔄 STABILITY CHECK IN PROGRESS
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Status: Verifying stability...
+
+Progress: ✓ Pass 1/3 ✓ Pass 2/3 ○ Pass 3/3
+
+Running test 3 of 3...
+═══════════════════════════════════════════════════════════════════════
+```
+
+**After 3 passes:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+              ✅ VERIFICATION PASSED (Stable)
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Status: VERIFIED
+
+Stability: ✓ 3/3 passes (no transient failures)
+
+Total time: 45s
+═══════════════════════════════════════════════════════════════════════
+```
+
+**Failure during stability check:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+              ⚠️ STABILITY CHECK FAILED
+═══════════════════════════════════════════════════════════════════════
+
+Feature: Add "Settings" option to profile dropdown
+Status: Transient failure detected
+
+Progress: ✓ Pass 1/3 ✓ Pass 2/3 ✗ Fail 3/3
+
+Error on run 3:
+  "Timeout waiting for '[data-testid="settings-item"]'"
+
+This appears to be a flaky test or transient issue.
+Entering fix loop to investigate...
+═══════════════════════════════════════════════════════════════════════
+```
+
 ---
 
 ## Implementation Plan
@@ -530,7 +821,43 @@ Run verification for all? [Y/N]
 - [ ] Parse @prerequisites/@feature-assertions markers from test files
 - [ ] Screenshot capture at failure point with classification label
 
-### Phase 3: Automated Fix Loop
+### Phase 3: Environment Prerequisite Detection
+
+**Files to modify:**
+- `skills/test-flow/SKILL.md` — Add environment prerequisite detection
+- `agents/builder.md` — Add skill lookup before code-fix loop
+
+**Deliverables:**
+- [ ] Environment vs application prerequisite classification
+- [ ] Detection patterns for each environment category (process, port, native app, external service)
+- [ ] Skill lookup logic: search skills/ for matching environment skill
+- [ ] Skill-based recovery flow when skill exists
+
+### Phase 4: Skill Creation Request Flow
+
+**Files to modify:**
+- `agents/builder.md` — Add skill creation request generation
+- `agents/toolkit.md` — Add skill creation request handling (if not already present)
+
+**Deliverables:**
+- [ ] [T] option in failure menu: "Queue skill creation for @toolkit"
+- [ ] Request file format in pending-updates/
+- [ ] State tracking for pending skill requests
+- [ ] On retry: check if requested skill now exists
+
+### Phase 5: 3-Pass Stability Verification
+
+**Files to modify:**
+- `skills/test-flow/SKILL.md` — Add stability check loop
+- `agents/builder.md` — Add pass counter and reset logic
+
+**Deliverables:**
+- [ ] requiredPasses configuration (default: 3)
+- [ ] Pass counter with reset on any failure or fix
+- [ ] Progress reporting: "2/3 passes"
+- [ ] Stability check UI (distinct from fix loop)
+
+### Phase 6: Automated Fix Loop
 
 **Files to modify:**
 - `skills/test-flow/SKILL.md` — Add automated fix loop workflow
@@ -544,7 +871,7 @@ Run verification for all? [Y/N]
 - [ ] Stop conditions: 3 attempts per component, same error twice, >10 iterations
 - [ ] Progress report format during fix loop
 
-### Phase 4: Failure Logging & Manual Fallback
+### Phase 7: Failure Logging & Manual Fallback
 
 **Files to modify:**
 - `skills/test-flow/SKILL.md` — Add verification-failures.json logging
@@ -556,7 +883,7 @@ Run verification for all? [Y/N]
 - [ ] Manual options: [M] Fix manually, [S] Skip with reason, [A] Abandon
 - [ ] Screenshot preservation for all failure states
 
-### Phase 5: Blocker Tracking & Bulk Re-verification
+### Phase 8: Blocker Tracking & Bulk Re-verification
 
 **Files to modify:**
 - `agents/builder.md` — Add blocker resolution command and bulk re-verification
@@ -593,6 +920,11 @@ Run verification for all? [Y/N]
    - Should we have a per-attempt timeout?
    - Or trust the delegated agent to complete or fail?
 
+5. **Environment skill naming convention?**
+   - How should Builder search for matching skills?
+   - Naming pattern: `{category}-testing` (e.g., `electron-testing`, `docker-testing`)?
+   - Or skill metadata tags for discovery?
+
 ---
 
 ## Resolved Questions
@@ -600,9 +932,13 @@ Run verification for all? [Y/N]
 | Question | Resolution |
 |----------|------------|
 | Confidence in prerequisite detection | Use @prerequisites/@feature-assertions markers — failure location determines classification |
-| What if prerequisite is flaky | Transient failures handled by flaky test detection (PRD 1) before this logic runs |
+| What if prerequisite is flaky | 3-pass stability check catches transient issues |
 | Should we diagnose WHY prerequisite failed | Yes — error message + screenshot provided; @developer gets full context |
 | "Verification blocked" as tech debt | Tracked in test-debt.json separately as prerequisiteBlockers |
+| How many passes required | 3 consecutive passes required (configurable via requiredPasses) |
+| Reset counter after fix | Yes — require fresh 3 passes after any code/environment change |
+| Will Builder see new skills | Yes — skills loaded dynamically via skill tool; Builder checks on retry |
+| Who creates environment skills | @toolkit only — Builder queues request, user verifies, @toolkit creates |
 
 ---
 
@@ -612,3 +948,6 @@ Run verification for all? [Y/N]
 |------|--------|--------|
 | 2026-03-03 | @toolkit | Initial draft based on user question about auth failures blocking feature verification |
 | 2026-03-03 | @toolkit | Added automated fix loop algorithm, state tracking, implementation phases, resolved open questions |
+| 2026-03-03 | @toolkit | Added environment prerequisites with skill-based fixes and skill creation request flow |
+| 2026-03-03 | @toolkit | Added 3-pass stability verification requirement with reset after fix |
+| 2026-03-03 | @toolkit | Added Stories 6-8 for environment skills and stability checks; expanded to 8 implementation phases |
