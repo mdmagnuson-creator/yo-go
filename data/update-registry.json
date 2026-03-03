@@ -11,6 +11,15 @@
       "updateType": "schema",
       "createdAt": "2026-02-28",
       "templatePath": "templates/updates/add-desktop-app-config.md"
+    },
+    {
+      "id": "2026-03-04-migrate-git-config",
+      "description": "Migrate deprecated agents.* git fields to git.agentWorkflow (interactive)",
+      "affinityRule": "all-projects",
+      "priority": "high",
+      "updateType": "migration",
+      "createdAt": "2026-03-04",
+      "templatePath": "templates/updates/migrate-git-config.md"
     }
   ]
 }
