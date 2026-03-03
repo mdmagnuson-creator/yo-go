@@ -1489,6 +1489,33 @@
         }
       },
       "additionalProperties": { "type": "string" }
+    },
+
+    "relatedProjects": {
+      "type": "array",
+      "description": "Companion projects related to this one. Enables agents to find related projects (e.g., documentation site, marketing site, API backend) without guessing based on names.",
+      "items": {
+        "type": "object",
+        "required": ["projectId", "relationship"],
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "description": "Project ID from projects.json registry"
+          },
+          "relationship": {
+            "type": "string",
+            "description": "Relationship type. Common conventions: documentation-site, documented-project, marketing-site, marketed-product, admin-dashboard, managed-service, api-backend, frontend-client, mobile-app, web-counterpart, shared-library, dependent-project, monorepo-sibling, test-harness, tested-system"
+          },
+          "label": {
+            "type": "string",
+            "description": "Optional label for disambiguation when multiple projects share the same relationship type (e.g., 'user-docs' vs 'api-docs' for two documentation-site relationships)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional human-readable description of this relationship"
+          }
+        }
+      }
     }
   }
 }
