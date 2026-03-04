@@ -125,18 +125,44 @@
     },
     "version": {
       "type": "string",
-      "default": "1.0.0",
+      "default": "1.1.0",
       "description": "Schema version for migrations"
     },
     "prds": {
       "type": "array",
       "items": { "$ref": "#/definitions/prdEntry" },
-      "description": "List of all PRDs (active, blocked, completed)"
+      "description": "List of active PRDs (draft, ready, in_progress, etc.)"
     },
     "completed": {
       "type": "array",
       "items": { "$ref": "#/definitions/prdEntry" },
-      "description": "Archive of completed PRDs (optional, for performance)"
+      "maxItems": 5,
+      "description": "Rolling window of last 5 completed PRDs for recent context. Auto-archives to 'archived' when 6th PRD completes."
+    },
+    "archived": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/prdEntry" },
+      "description": "Full archive of older completed PRDs (beyond rolling window). Minimal metadata, not loaded at startup."
+    },
+    "archiveStats": {
+      "type": "object",
+      "properties": {
+        "totalArchived": {
+          "type": "integer",
+          "description": "Total count of archived PRDs for quick reference without loading archive"
+        },
+        "oldestArchivedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Completion date of oldest archived PRD"
+        },
+        "newestArchivedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Completion date of newest archived PRD"
+        }
+      },
+      "description": "Summary statistics for archived PRDs"
     }
   },
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-03-04T00:30:00Z",
+  "generatedAt": "2026-03-04T14:30:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -354,7 +354,7 @@
     }
   },
   "skills": {
-    "total": 54,
+    "total": 64,
     "categories": {
       "workflow": {
         "description": "Workflow and lifecycle skills",
@@ -407,7 +407,47 @@
           {
             "name": "test-flow",
             "path": "skills/test-flow/SKILL.md",
-            "description": "Automatic test generation and execution flows for Builder. Use when generating unit/E2E tests, handling test failures, or managing E2E deferral. Triggers on: generate tests, run tests, test failures, E2E deferral, test flow."
+            "description": "Test orchestrator skill that routes to specialized test sub-skills. Triggers on: generate tests, run tests, test failures, E2E deferral, test flow."
+          },
+          {
+            "name": "test-activity-resolution",
+            "path": "skills/test-activity-resolution/SKILL.md",
+            "description": "Resolves test activity from project.json commands. Triggers on: which tests to run, test commands, resolve test activity."
+          },
+          {
+            "name": "test-verification-loop",
+            "path": "skills/test-verification-loop/SKILL.md",
+            "description": "3-pass stability verification and automated fix loop. Triggers on: stability check, verification loop, fix loop, 3-pass."
+          },
+          {
+            "name": "test-prerequisite-detection",
+            "path": "skills/test-prerequisite-detection/SKILL.md",
+            "description": "Detect and classify test prerequisites and blockers. Triggers on: prerequisite failure, blocker detection, test dependencies."
+          },
+          {
+            "name": "test-e2e-flow",
+            "path": "skills/test-e2e-flow/SKILL.md",
+            "description": "E2E test generation and execution workflow. Triggers on: run e2e, generate e2e, deferred e2e, e2e flow."
+          },
+          {
+            "name": "test-ui-verification",
+            "path": "skills/test-ui-verification/SKILL.md",
+            "description": "UI verification test patterns and flaky test handling. Triggers on: ui verification, flaky test, visual verification."
+          },
+          {
+            "name": "test-quality-checks",
+            "path": "skills/test-quality-checks/SKILL.md",
+            "description": "Quality checks beyond tests - lint, type-check, build. Triggers on: quality checks, lint errors, type errors, build fails."
+          },
+          {
+            "name": "test-failure-handling",
+            "path": "skills/test-failure-handling/SKILL.md",
+            "description": "Test failure logging, manual fallback, and skip flows. Triggers on: test failed, skip test, abandon feature, manual fallback."
+          },
+          {
+            "name": "test-doc-sync",
+            "path": "skills/test-doc-sync/SKILL.md",
+            "description": "Test documentation sync workflow for keeping test files and docs aligned. Triggers on: test doc sync, sync test docs, update test documentation."
           },
           {
             "name": "session-state",
@@ -578,6 +618,16 @@
             "name": "browser-debugging",
             "path": "skills/browser-debugging/SKILL.md",
             "description": "Browser debugging escalation protocol for when tests pass but the feature doesn't work in the user's browser. Triggers on: tests pass but doesn't work, feature broken in browser, works in playwright but not browser, console screenshot, browser debugging."
+          },
+          {
+            "name": "builder-cli",
+            "path": "skills/builder-cli/SKILL.md",
+            "description": "CLI tool detection and proactive usage for Builder. Triggers on: cli command, project cli, use cli tools."
+          },
+          {
+            "name": "builder-delegation",
+            "path": "skills/builder-delegation/SKILL.md",
+            "description": "Sub-agent delegation patterns for Builder orchestration. Triggers on: delegate to, call subagent, orchestration patterns."
           },
           {
             "name": "cve",

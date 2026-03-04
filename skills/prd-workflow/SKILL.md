@@ -819,14 +819,59 @@ If `state: "MERGED"`:
 
 3. **Generate human testing script** (see template below)
 
-4. **Archive the PRD:**
+4. **Archive the PRD (with rolling window):**
    - Create folder: `docs/completed/[prd-id]/`
    - Move PRD JSON and MD files to archive folder
    - Move the generated `human-testing-script.md` to archive folder
-   - **Update registry status to `completed`:**
-     - Set `status: "completed"`, `completedAt: <now>`
-     - If E2E was skipped, add `e2eSkipped: true` and `e2eSkipReason: "user-requested"`
-     - Move entry to `completed` array
+   - **Update registry with rolling window enforcement:**
+   
+   ```
+   PRD completes
+       │
+       ▼
+   Count completed PRDs in registry
+       │
+       ├─── <5 completed ──► Add to completed[], done
+       │
+       └─── 5 completed ──► Archive oldest to archived[], add new to completed[]
+                            (maintains rolling window of 5)
+   ```
+   
+   **Rolling window steps:**
+   1. Read current `completed` array length
+   2. If `completed.length >= 5`:
+      - Find oldest entry (earliest `completedAt`)
+      - Move oldest entry to `archived` array
+      - Update `archiveStats` (totalArchived++, update dates)
+   3. Add new PRD entry to `completed` array:
+      - Set `status: "completed"`, `completedAt: <now>`
+      - If E2E was skipped, add `e2eSkipped: true` and `e2eSkipReason: "user-requested"`
+   
+   **Example jq command for rolling window:**
+   ```bash
+   # Move oldest from completed to archived when completing prd-123
+   jq --arg id "prd-123" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
+     # Find the entry to add
+     .prds |= map(if .id == $id then . + {status: "completed", completedAt: $now} else . end)
+     | .newEntry = (.prds[] | select(.id == $id))
+     | .prds |= map(select(.id != $id))
+     
+     # Handle rolling window
+     | if (.completed | length) >= 5 then
+         .oldest = (.completed | sort_by(.completedAt) | first)
+         | .archived = ((.archived // []) + [.oldest])
+         | .completed = (.completed | map(select(.id != .oldest.id)))
+         | .archiveStats.totalArchived = ((.archiveStats.totalArchived // 0) + 1)
+         | .archiveStats.newestArchivedAt = .oldest.completedAt
+         | if .archiveStats.oldestArchivedAt == null then .archiveStats.oldestArchivedAt = .oldest.completedAt else . end
+         | del(.oldest)
+       else . end
+     
+     # Add new entry
+     | .completed += [.newEntry]
+     | del(.newEntry)
+   ' docs/prd-registry.json > docs/prd-registry.json.tmp && mv docs/prd-registry.json.tmp docs/prd-registry.json
+   ```
 
 5. **Clear E2E queue:**
    - Remove `pendingTests.e2e` from `builder-state.json`
@@ -970,3 +1015,57 @@ When archiving a completed PRD, generate `human-testing-script.md`:
 
 **Overall result:** ☐ Ready to ship  ☐ Needs fixes
 ```
+
+---
+
+## PRD History Command
+
+Users can request full PRD history with "show PRD history" or similar phrases.
+
+**Trigger phrases:**
+- "show PRD history"
+- "show all completed PRDs"
+- "list archived PRDs"
+- "PRD archive"
+
+**Response format:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+                        PRD HISTORY
+═══════════════════════════════════════════════════════════════════════
+
+Recent (last 5):
+  ✅ prd-error-logging        Completed: 2026-03-02
+  ✅ prd-user-profile         Completed: 2026-02-28
+  ✅ prd-auth-flow            Completed: 2026-02-25
+  ✅ prd-dashboard            Completed: 2026-02-20
+  ✅ prd-settings             Completed: 2026-02-15
+
+Archived (15 total):
+  📦 prd-onboarding           Completed: 2026-02-10
+  📦 prd-notifications        Completed: 2026-02-05
+  📦 prd-search               Completed: 2026-01-30
+  ... (12 more)
+
+View full archive: jq '.archived' docs/prd-registry.json
+View PRD details: cat docs/completed/[prd-id]/prd-[id].json
+═══════════════════════════════════════════════════════════════════════
+```
+
+**Implementation:**
+
+```bash
+# Show recent completed (from active registry)
+jq -r '.completed[] | "  ✅ \(.id | ljust(25)) Completed: \(.completedAt[:10])"' docs/prd-registry.json
+
+# Show archived summary
+ARCHIVED_COUNT=$(jq '.archiveStats.totalArchived // (.archived | length) // 0' docs/prd-registry.json)
+echo "Archived ($ARCHIVED_COUNT total):"
+jq -r '.archived[:3][] | "  📦 \(.id | ljust(25)) Completed: \(.completedAt[:10])"' docs/prd-registry.json
+if [ "$ARCHIVED_COUNT" -gt 3 ]; then
+  echo "  ... ($((ARCHIVED_COUNT - 3)) more)"
+fi
+```
+
+This keeps startup reads minimal (only `completed` array) while allowing full history access on demand.

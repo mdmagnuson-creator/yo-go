@@ -157,7 +157,7 @@ Skills are large (30-130KB each). Load them **on-demand**, not eagerly:
 |-------|--------------|------|
 | `adhoc-workflow` | User enters ad-hoc mode | 61KB |
 | `prd-workflow` | User selects a PRD | 34KB |
-| `test-flow` | First test execution | 133KB |
+| `test-flow` | Routing overview (loads sub-skills as needed) | 6KB |
 | `builder-state` | Reference only — don't load full skill | 23KB |
 
 **Never load multiple large skills at session start.** Wait for the user to choose a workflow.
@@ -171,13 +171,36 @@ Builder workflows are defined in loadable skills. Load the appropriate skill **o
 | Skill | When to Load | Size | Token Impact |
 |-------|--------------|------|--------------|
 | `builder-state` | Reference in-line — rarely need full skill | 23KB | ~6K tokens |
-| `test-flow` | First test execution or verification | 133KB | ~33K tokens ⚠️ |
 | `adhoc-workflow` | User enters ad-hoc mode | 61KB | ~15K tokens |
 | `prd-workflow` | User selects a PRD to build | 34KB | ~9K tokens |
 | `browser-debugging` | Visual debugging escalation — see triggers below | 8KB | ~2K tokens |
 | `vercel-supabase-alignment` | Database errors with multi-environment Vercel + Supabase | 5KB | ~1K tokens |
 
-> ⚠️ **NEVER load `test-flow` eagerly.** At 133KB, it consumes 25% of context. Load only when first test runs.
+### Test Skill Loading (Incremental)
+
+Test functionality is split into focused sub-skills. Load only what you need:
+
+| Trigger | Load Skill | Size |
+|---------|------------|------|
+| Any test execution starts | `test-activity-resolution` | ~12KB |
+| Verification loop begins | `test-verification-loop` | ~20KB |
+| Test failure detected | `test-failure-handling` | ~10KB |
+| Prerequisite failure pattern | `test-prerequisite-detection` | ~19KB |
+| UI verification required | `test-ui-verification` | ~12KB |
+| E2E tests to run | `test-e2e-flow` | ~11KB |
+| Quality checks phase | `test-quality-checks` | ~12KB |
+
+**Typical loading scenarios:**
+
+| Scenario | Skills Loaded | Total |
+|----------|---------------|-------|
+| Simple unit test pass | `test-activity-resolution` | ~12KB |
+| Unit test failure + fix | `test-activity-resolution` + `test-failure-handling` | ~22KB |
+| UI verification | `test-activity-resolution` + `test-ui-verification` + `test-verification-loop` | ~44KB |
+| E2E with prereq failure | `test-activity-resolution` + `test-e2e-flow` + `test-prerequisite-detection` | ~42KB |
+
+> ⚠️ **Load `test-flow` orchestrator first** for an overview of which sub-skill to load. It's only ~6KB.
+> **Never load all test sub-skills at once** — that's ~96KB combined.
 
 ---
 
@@ -837,134 +860,18 @@ After the user selects a project number, show a **fast inline dashboard** — no
 
 4.7 **Detect available CLIs (with persistence for compaction resilience):**
    
-   > ⚠️ **CLI state survives context compaction.** This is critical for long PRD sessions.
+   > 📚 **SKILL: builder-cli** → "CLI Detection"
+   >
+   > Load the `builder-cli` skill for CLI detection and proactive usage patterns.
+   > CLI state persists in `builder-state.json` and survives context compaction.
    
-   **First, check for persisted CLI state:**
-   ```bash
-   # Check if we already have CLI state from a previous detection
-   CLI_STATE=$(jq -r '.availableCLIs // empty' docs/builder-state.json 2>/dev/null)
-   CLI_DETECTED_AT=$(echo "$CLI_STATE" | jq -r '.vercel.detectedAt // .gh.detectedAt // empty' 2>/dev/null)
-   ```
+   **Quick summary:**
+   - Check `docs/builder-state.json` → `availableCLIs` first (reuse if <24h old)
+   - If stale/missing, detect: `vercel`, `supabase`, `gh`, `aws`, `netlify`, `fly`, `railway`, `wrangler`
+   - Persist results to `builder-state.json` for compaction resilience
+   - Show authenticated CLIs in dashboard: `CLIs: vercel ✓ | supabase ✓ | gh ✓`
    
-   **If CLI state exists and is fresh (<24h), reuse it:**
-   - Skip re-detection
-   - Log: "Restored CLI state from previous session"
-   - Continue to dashboard
-   
-   **If no CLI state or stale (>24h), detect CLIs:**
-   ```bash
-   # Run in parallel for speed
-   which vercel && vercel whoami 2>/dev/null
-   which supabase && supabase projects list 2>/dev/null | head -1
-   which aws && aws sts get-caller-identity 2>/dev/null | jq -r '.Account'
-   which gh && gh auth status 2>/dev/null | head -1
-   which netlify && netlify status 2>/dev/null | head -1
-   which fly && fly auth whoami 2>/dev/null
-   which railway && railway whoami 2>/dev/null
-   which wrangler && wrangler whoami 2>/dev/null
-   ```
-   
-   **Persist to builder-state.json (CRITICAL):**
-   ```bash
-   # Read existing state, add/update availableCLIs, write back
-   TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-   jq --arg ts "$TIMESTAMP" '.availableCLIs = {
-     "vercel": { "installed": true, "authenticated": true, "user": "team-name", "detectedAt": $ts },
-     "supabase": { "installed": true, "authenticated": true, "detectedAt": $ts },
-     "gh": { "installed": true, "authenticated": true, "user": "username", "detectedAt": $ts },
-     "aws": { "installed": false, "authenticated": false },
-     "netlify": { "installed": false, "authenticated": false },
-     "fly": { "installed": false, "authenticated": false },
-     "railway": { "installed": false, "authenticated": false },
-     "wrangler": { "installed": false, "authenticated": false }
-   }' docs/builder-state.json > docs/builder-state.json.tmp && mv docs/builder-state.json.tmp docs/builder-state.json
-   ```
-   
-   **Show in dashboard** (only authenticated CLIs):
-   ```
-   CLIs: vercel ✓ | supabase ✓ | gh ✓
-   ```
-   
-   **Common CLI capabilities:**
-   | CLI | Capabilities |
-   |-----|--------------|
-   | `vercel` | Deploy, env vars, domains, logs, rollback |
-   | `supabase` | DB migrations, edge functions, secrets, logs |
-   | `aws` | S3, Lambda, CloudFormation, SSM params, secrets |
-   | `gh` | PRs, issues, releases, actions, secrets |
-   | `netlify` | Deploy, env vars, functions, forms |
-   | `fly` | Deploy, secrets, logs, scaling |
-   | `railway` | Deploy, env vars, logs |
-   | `wrangler` | Workers, KV, R2, secrets |
-
----
-
-### Proactive CLI Usage (CRITICAL)
-
-> ⛔ **NEVER tell the user to manually configure a service when you have CLI access.**
->
-> Before ANY instruction like "Go to [service] dashboard and configure...", check `availableCLIs` in `builder-state.json`. If the CLI is authenticated, **use it directly**.
->
-> **Failure behavior:** If you find yourself about to write "Go to Vercel dashboard" or "Configure in Supabase console" — STOP. Check if CLI can do it.
-
-**Proactive CLI Triggers:**
-
-| Instead of telling user... | Check CLI | Use command instead |
-|---------------------------|-----------|---------------------|
-| "Go to Vercel → Domains → Add domain" | `vercel` | `vercel domains add [domain]` |
-| "Go to Vercel → Settings → Environment Variables" | `vercel` | `vercel env add [NAME]` / `vercel env ls` |
-| "Go to Vercel → Settings → Git → Production Branch" | `vercel` | `vercel project [name] --prod-branch [branch]` |
-| "Deploy to Vercel" | `vercel` | `vercel deploy` / `vercel --prod` |
-| "Check Vercel deployment status" | `vercel` | `vercel ls` / `vercel inspect [url]` |
-| "View Vercel logs" | `vercel` | `vercel logs [deployment]` |
-| "Go to Supabase dashboard → SQL Editor" | `supabase` | `supabase db diff` / `supabase db push` |
-| "Configure Supabase secrets" | `supabase` | `supabase secrets set [NAME]=[VALUE]` |
-| "Check Supabase migration status" | `supabase` | `supabase db status` / `supabase migration list` |
-| "Add GitHub secret in Settings" | `gh` | `gh secret set [NAME]` |
-| "Create GitHub release" | `gh` | `gh release create [tag]` |
-| "Check PR status/checks" | `gh` | `gh pr checks` / `gh pr view` |
-| "View GitHub Actions logs" | `gh` | `gh run view [run-id] --log` |
-| "Deploy to Netlify" | `netlify` | `netlify deploy` / `netlify deploy --prod` |
-| "Configure Netlify env vars" | `netlify` | `netlify env:set [NAME] [VALUE]` |
-| "Deploy to Fly.io" | `fly` | `fly deploy` |
-| "Set Fly secrets" | `fly` | `fly secrets set [NAME]=[VALUE]` |
-| "Deploy to Railway" | `railway` | `railway up` |
-| "Set Railway env vars" | `railway` | `railway variables set [NAME]=[VALUE]` |
-| "Deploy Cloudflare Worker" | `wrangler` | `wrangler deploy` |
-| "Set Cloudflare secrets" | `wrangler` | `wrangler secret put [NAME]` |
-
-**Decision flow:**
-
-```
-About to tell user to configure something manually?
-    │
-    ▼
-Read availableCLIs from docs/builder-state.json
-    │
-    ▼
-Is the relevant CLI authenticated?
-    │
-    ├─── YES ──► Use the CLI command directly. Show output.
-    │
-    └─── NO ──► OK to tell user to configure manually.
-                Include: "Tip: Install [cli] to automate this in future"
-```
-
-**Common patterns where CLIs help:**
-
-| Scenario | CLI Solution |
-|----------|--------------|
-| Setting up staging/preview environments | `vercel env add`, `supabase link` |
-| Domain configuration | `vercel domains`, `netlify domains` |
-| Checking deployment health | `vercel ls`, `fly status`, `railway status` |
-| Debugging deployment failures | `vercel logs`, `fly logs`, `railway logs` |
-| Database migrations | `supabase db push`, `supabase migration up` |
-| Secret management | `gh secret set`, `fly secrets set`, `vercel env add` |
-
-**After using CLI, verify:**
-- Command succeeded (exit code 0)
-- Show relevant output to user
-- If command fails, THEN suggest manual dashboard approach as fallback
+   > ⛔ **NEVER tell user to configure manually when CLI is available.** Load `builder-cli` skill for the full replacement table.
 
 ---
 
@@ -1138,7 +1045,7 @@ See `prd-workflow` skill → "Post-Story Status Update" for full details.
 
 > ⛔ **When UI verification is required but incomplete, tasks/stories are BLOCKED.**
 >
-> **Trigger:** After quality checks (typecheck, lint, tests, critic) pass, test-flow returns verification status.
+> **Trigger:** After quality checks (typecheck, lint, tests, critic) pass, verification loop returns status.
 >
 > **Failure behavior:** If verification returns `unverified`, do NOT mark the task/story as complete. It remains `in_progress` until verified or explicitly skipped.
 
@@ -1226,7 +1133,7 @@ Users can override verification requirements by typing "mark complete without ve
 - `builder-state.json` → `verificationStatus: "unverified"`
 - User must resolve before committing
 
-See `test-flow` skill → "UI Verification" for full verification flow.
+See `test-ui-verification` skill for full verification flow.
 
 ### Never Use curl/wget for Browser Verification
 
@@ -1245,7 +1152,7 @@ See `test-flow` skill → "UI Verification" for full verification flow.
 
 **Especially for CORS:** A `curl -I` request will succeed even when browsers are blocked. CORS is enforced by browsers, not servers. The server sends headers, but only browsers actually block requests when headers are missing or wrong.
 
-**Always delegate browser verification to Playwright via the test-flow skill.**
+**Always delegate browser verification to Playwright via the `test-ui-verification` skill.**
 
 #### What Requires Browser Verification
 
@@ -1279,7 +1186,7 @@ See `test-flow` skill → "UI Verification" for full verification flow.
 
 1. Parse test file for `@prerequisites` and `@feature-assertions` markers
 2. Analyze failure location against markers
-3. If markers missing, use heuristic detection (see test-flow skill)
+3. If markers missing, use heuristic detection (see `test-prerequisite-detection` skill)
 
 **Prerequisite failure handling:**
 
@@ -1308,7 +1215,7 @@ Verification test fails
 4. After fix, re-run prerequisite test
 5. If prerequisite passes, retry original feature verification
 
-See `test-flow` skill → "Prerequisite Failure Detection" for full algorithm.
+See `test-prerequisite-detection` skill for full algorithm.
 
 ### Environment Prerequisite Handling
 
@@ -1356,7 +1263,7 @@ Loading skill and attempting recovery...
 ═══════════════════════════════════════════════════════════════════════
 ```
 
-See `test-flow` skill → "Environment Prerequisite Detection" for full detection patterns.
+See `test-prerequisite-detection` skill for full detection patterns.
 
 ### Skill Creation Request Flow
 
@@ -1480,432 +1387,75 @@ When user types "retry" after requesting a skill:
 
 ### 3-Pass Stability Verification
 
-> 🔄 **A single passing test run is not enough. Require 3 consecutive passes to declare verified.**
+> 📚 **SKILL: test-verification-loop** → "3-Pass Stability Verification"
 >
-> **Trigger:** After a verification test passes for the first time (or after any fix is applied).
->
-> **Why:** Transient issues, timing problems, and flaky behavior are only caught with multiple passes.
+> Load the `test-verification-loop` skill for the complete stability verification workflow.
 
-**Configuration** in `project.json` → `agents.verification`:
+**Essential trigger:** After a verification test passes for the first time (or after any fix is applied).
 
-```json
-{
-  "agents": {
-    "verification": {
-      "requiredPasses": 3,        // Default: 3 consecutive passes required
-      "runBroaderTestsAfterFix": true  // Run related tests after fixing
-    }
-  }
-}
-```
-
-**Stability verification flow:**
-
-```
-Verification test PASSES
-    │
-    ▼
-Increment pass counter → { passCount: 1, requiredPasses: 3 }
-    │
-    ▼
-passCount >= requiredPasses?
-    │
-    ├─── NO ──► Run test again, loop
-    │
-    └─── YES ──► ✅ VERIFIED (stable)
-```
-
-**Pass counter reset rules:**
-
-| Event | Pass Counter Action |
-|-------|---------------------|
-| Test passes | Increment by 1 |
-| Test fails | Reset to 0, enter fix loop |
-| Fix applied by @developer | Reset to 0 (require fresh 3 passes) |
-| Environment recovery completed | Reset to 0 (require fresh 3 passes) |
-| Manual intervention | Reset to 0 (require fresh 3 passes) |
-
-**State tracking** in `builder-state.json`:
-
-```json
-{
-  "verificationLoop": {
-    "stabilityCheck": {
-      "testPath": "tests/ui-verify/profile-dropdown.spec.ts",
-      "feature": "Add Settings option to profile dropdown",
-      "requiredPasses": 3,
-      "currentPasses": 2,
-      "lastPassAt": "2026-03-03T10:45:00Z",
-      "resetReason": null
-    }
-  }
-}
-```
-
-**Stability progress display:**
-
-```
-═══════════════════════════════════════════════════════════════════════
-              🔄 STABILITY VERIFICATION IN PROGRESS
-═══════════════════════════════════════════════════════════════════════
-
-Feature: Add "Settings" option to profile dropdown
-Test: tests/ui-verify/profile-dropdown.spec.ts
-
-Stability check: 2/3 passes ██████████████░░░░░░░ 67%
-
-Pass 1: ✅ 10:42:15 (2.3s)
-Pass 2: ✅ 10:42:18 (2.1s)
-Pass 3: ⏳ Running...
-═══════════════════════════════════════════════════════════════════════
-```
-
-**After fix — fresh passes required:**
-
-```
-═══════════════════════════════════════════════════════════════════════
-              🔄 FIX APPLIED — RESTARTING STABILITY CHECK
-═══════════════════════════════════════════════════════════════════════
-
-Fix: Updated selector timing in ProfileDropdown component
-Applied by: @developer
-
-Stability check reset: 0/3 passes (fresh verification required)
-Running pass 1...
-═══════════════════════════════════════════════════════════════════════
-```
-
-See `test-flow` skill → "3-Pass Stability Verification" for full state tracking and display patterns.
+**Quick reference:**
+- Require 3 consecutive passes to declare verified
+- Reset counter to 0 on any failure or fix
+- Configuration: `project.json` → `agents.verification.requiredPasses`
 
 ### Automated Fix Loop
 
-> 🔄 **When verification tests fail, automatically classify and fix the issue.**
+> 📚 **SKILL: test-verification-loop** → "Automated Fix Loop"
 >
-> **Trigger:** Verification test fails (during initial run or stability check).
->
-> **Why:** Automated fixing reduces manual intervention and ensures systematic issue resolution.
+> Load the `test-verification-loop` skill for the complete fix loop algorithm and state tracking.
 
-**Configuration** in `project.json` → `agents.verification`:
+**Essential trigger:** Verification test fails (during initial run or stability check).
 
-```json
-{
-  "agents": {
-    "verification": {
-      "autoFixLoop": true,              // Default: true
-      "fixAttemptTimeoutMinutes": 5,    // Timeout per fix attempt
-      "runBroaderTestsAfterFix": true   // Run related tests after fixing
-    }
-  }
-}
-```
-
-**Fix loop algorithm:**
-
-```
-Verification test FAILS
-    │
-    ▼
-1. CLASSIFY: PREREQUISITE | FEATURE | ENVIRONMENT | TEST_INVALID
-    │
-    ▼
-2. CHECK STOP CONDITIONS:
-   • Component has 3 failed fix attempts → STOP
-   • Same exact error twice in a row → STOP
-   • Total iterations > 10 → STOP
-    │
-    ▼
-3. FIND EXISTING TEST (for prerequisites):
-   • Check tests/e2e/ for matching component name
-   • Run that test to confirm issue
-    │
-    ▼
-4. DELEGATE FIX:
-   • PREREQUISITE/FEATURE (code) → @developer
-   • ENVIRONMENT → Load skill-based recovery
-   • TEST_INVALID → @e2e-playwright
-    │
-    ▼
-5. VERIFY FIX:
-   • Re-run component test
-   • If pass → Retry verification test → 3-pass stability
-   • If fail → Record attempt, loop
-```
-
-**Stop conditions:**
-
-| Condition | Description | Action |
-|-----------|-------------|--------|
-| **3 attempts per component** | Component has failed 3 fix attempts | Stop fixing this component |
-| **Same error twice** | Exact same error message twice in a row | Stop (no progress being made) |
-| **10 total iterations** | Runaway prevention (entire loop) | Stop entire verification |
-
-**State tracking** in `builder-state.json`:
-
-```json
-{
-  "verificationLoop": {
-    "originalFeature": "tests/ui-verify/profile-dropdown-settings.spec.ts",
-    "startedAt": "2026-03-03T10:30:00Z",
-    "totalIterations": 3,
-    "lastError": null,
-    "lastErrorCount": 0,
-    "components": {
-      "auth-login": {
-        "type": "prerequisite",
-        "testFile": "tests/e2e/auth.spec.ts",
-        "attempts": [
-          {
-            "attemptNumber": 1,
-            "error": "Timeout waiting for '[data-testid=\"login-submit\"]'",
-            "fixAgent": "@developer",
-            "fixDescription": "Fixed missing data-testid on login button",
-            "result": "pass",
-            "duration": "45s"
-          }
-        ],
-        "status": "fixed"
-      }
-    }
-  }
-}
-```
-
-**Fix loop progress display:**
-
-```
-═══════════════════════════════════════════════════════════════════════
-              🔧 AUTOMATED FIX LOOP IN PROGRESS
-═══════════════════════════════════════════════════════════════════════
-
-Feature: Add "Settings" option to profile dropdown
-Status: Fixing prerequisite failure
-
-Component: auth-login (PREREQUISITE)
-Attempt: 2/3
-Agent: @developer
-
-Error: Timeout waiting for '[data-testid="login-submit"]'
-
-Previous attempt:
-  Fix: Added explicit wait for login form
-  Result: ❌ Still failing
-
-Current fix in progress...
-═══════════════════════════════════════════════════════════════════════
-```
-
-**Fix loop stopped display:**
-
-```
-═══════════════════════════════════════════════════════════════════════
-              ❌ FIX LOOP STOPPED
-═══════════════════════════════════════════════════════════════════════
-
-Feature: Add "Settings" option to profile dropdown
-Stop reason: Component reached 3 failed attempts
-
-Component: auth-login (PREREQUISITE)
-Attempts: 3/3 (max reached)
-
-Options:
-  [M] Fix manually, then type "retry"
-  [S] Skip verification (marks feature as unverified)
-  [A] Abandon feature (reverts story changes)
-═══════════════════════════════════════════════════════════════════════
-```
-
-See `test-flow` skill → "Automated Fix Loop" for full algorithm and state tracking details.
+**Stop conditions (quick reference):**
+- 3 attempts per component → stop fixing that component
+- Same exact error twice → stop (no progress)
+- 10 total iterations → stop entire verification
 
 ### Failure Logging and Manual Fallback
 
-> 📝 **Log all verification failures for debugging and pattern analysis.**
+> 📚 **SKILL: test-failure-handling** → "Failure Logging and Manual Fallback"
 >
-> **Trigger:** Fix loop stopped (any stop condition), or manual skip/abandon.
->
-> **Why:** Enables debugging of recurring issues and identification of systemic problems.
+> Load the `test-failure-handling` skill for failure logging formats and manual fallback flows.
 
-**Failure log location:** `<project>/ai-tmp/verification-failures.json`
+**Essential trigger:** Fix loop stopped (any stop condition), or manual skip/abandon.
 
-**Stop reasons logged:**
-
-| Value | Description |
-|-------|-------------|
-| `max_attempts_reached` | Component had 3 failed fix attempts |
-| `same_error_twice` | Exact same error occurred twice in a row |
-| `max_iterations` | Total loop iterations exceeded 10 |
-| `environment_no_skill` | Environment issue with no matching skill |
-| `external_service_unavailable` | External service failure (503, 429) |
-| `user_skip` | User selected [S] Skip |
-| `user_abandon` | User selected [A] Abandon |
-
-**Manual fallback options:**
-
-| Option | Action |
-|--------|--------|
-| **[M] Fix manually** | Display context, wait for "retry", then restart verification |
-| **[S] Skip** | Require reason, log skip, add to test-debt.json, continue |
-| **[A] Abandon** | Confirm, revert changes, mark story abandoned |
-
-**When user selects [S] Skip:**
-
-1. Require skip reason
-2. Log to `verification-failures.json` with `"resolution": "skipped"`
-3. Add entry to `test-debt.json` (see Blocker Tracking section)
-4. Mark feature as unverified, continue to next story
-
-**When user selects [A] Abandon:**
-
-1. Confirm abandonment
-2. Revert all story changes (`git checkout`)
-3. Log to `verification-failures.json` with `"resolution": "abandoned"`
-4. Move to next story
-
-See `test-flow` skill → "Failure Logging" and "Manual Fallback Options" for full structure and flows.
+**Manual options (quick reference):**
+- [M] Fix manually, then type "retry"
+- [S] Skip verification (logs to test-debt.json)
+- [A] Abandon feature (reverts changes)
 
 ### Blocker Tracking and Bulk Re-verification
 
-> 🚧 **Track prerequisite blockers that affect multiple features.**
+> 📚 **SKILL: test-prerequisite-detection** → "Blocker Tracking"
 >
-> **Trigger:** User selects [S] Skip or [B] Mark as verification blocked.
->
-> **Why:** Enables bulk re-verification when blockers are fixed.
+> Load the `test-prerequisite-detection` skill for blocker tracking and bulk re-verification.
 
-**Blocker tracking location:** `<project>/ai-tmp/test-debt.json`
+**Essential trigger:** User selects [S] Skip or [B] Mark as verification blocked.
 
-**When same prerequisite blocks multiple features:**
-
-1. Match on prerequisite name and error pattern
-2. Add to existing blocker's `affectedFeatures` array
-3. Display correlation to user:
-   ```
-   ⚠️ KNOWN BLOCKER DETECTED
-   
-   This feature is blocked by a known issue:
-     Blocker: auth-login-timeout
-     First seen: 2026-03-03T10:30:00Z
-     Other affected features: 1
-   
-   Options:
-     [B] Mark as verification blocked (tracks for bulk re-verify)
-     [M] Attempt manual fix
-     [S] Skip verification
-   ```
-
-**"Verification Blocked" status:**
-
-When user chooses [B]:
-- Story marked complete with `"verificationBlocked": "blocker-id"`
-- Blocker entry updated in `test-debt.json`
-- Completion message includes: "When fixed, run: verify-blocked [story]"
-
-**Bulk re-verification:**
-
-When user indicates a blocker is fixed ("auth is fixed", "verify-blocked auth-login-timeout"):
-
-1. **Verify blocker is fixed:**
-   - Run prerequisite test first
-   - If fails, abort bulk verification
-
-2. **Verify each affected feature:**
-   - Run verification test with 3-pass stability check
-   - Record results
-
-3. **Update blocker status:**
-   - Mark resolved if all pass
-   - Keep open for any failures
-   - Clear `verificationBlocked` from passed stories
-
-**Bulk verification display:**
-
-```
-═══════════════════════════════════════════════════════════════════════
-              🔄 BULK RE-VERIFICATION
-═══════════════════════════════════════════════════════════════════════
-
-Found blocker that may be resolved: auth-login-timeout
-
-Affected features (3):
-  1. US-005: Add Settings menu option
-  2. US-007: Add Logout confirmation
-  3. US-012: Add Profile edit link
-
-Run verification for all? [Y/N]
-> _
-═══════════════════════════════════════════════════════════════════════
-```
-
-See `test-flow` skill → "Blocker Tracking" and "Bulk Re-verification" for full structure and flows.
+**Quick reference:**
+- Blocker tracking location: `<project>/ai-tmp/test-debt.json`
+- Bulk re-verify command: "verify-blocked [blocker-id]"
 
 ### Flaky Test Handling
 
-> 🔄 **When tests pass intermittently, they are FLAKY and must be fixed.**
+> 📚 **SKILL: test-ui-verification** → "Flaky Test Handling"
 >
-> **Trigger:** test-flow detects a test that passes some runs but fails others.
->
-> **Failure behavior:** Do NOT retry flaky tests indefinitely. Analyze the failure pattern, delegate to the appropriate agent for fix, then verify stability.
+> Load the `test-ui-verification` skill for flaky test detection and escalation.
 
-**Flaky test detection flow:**
+**Essential trigger:** Test passes intermittently (1/3 or 2/3 passes on retry).
 
-```
-Test fails
-    │
-    ▼
-Re-run same test 2 more times
-    │
-    ├─── 0/3 pass ──► Genuine failure (normal fix loop)
-    │
-    └─── 1/3 or 2/3 pass ──► FLAKY — escalate for fix
-```
-
-**Flaky test escalation:**
-
-1. **Analyze failure pattern:**
-   - Timing/selector issues → delegate to @e2e-playwright
-   - Component state/data issues → delegate to @developer
-   
-2. **Delegate with flaky context:**
-   ```
-   Fix flaky test: tests/ui-verify/[name].spec.ts
-   
-   Failure pattern: 1/3 passes (timing issue suspected)
-   Error: Timeout waiting for '[data-testid="submit-btn"]'
-   
-   Root cause hypothesis: Button renders after async operation
-   Required: Test must pass 3/3 consecutive runs
-   ```
-
-3. **Verify fix stability:**
-   - Re-run test 3 times after fix
-   - All 3 must pass to consider resolved
-   - If still flaky → offer quarantine option
-
-**Quarantine option for persistent flakiness:**
-
-```
-❌ TEST STILL FLAKY
-
-After fix attempt, test still fails intermittently.
-
-Options:
-  [T] Try different fix approach
-  [Q] Quarantine test (moves to tests/quarantine/, tracked in test-debt.json)
-  [M] Manual investigation
-```
-
-Quarantined tests:
-- Moved to `tests/quarantine/` directory
-- Excluded from CI but tracked for 7-day review
-- Logged to `test-debt.json` with `quarantined: true`
-
-See `test-flow` skill → "Flaky Test Detection" for full detection and escalation flow.
+**Quick reference:**
+- 0/3 pass = genuine failure (normal fix loop)
+- 1/3 or 2/3 pass = FLAKY (escalate for fix)
+- Quarantine option for persistent flakiness
 
 ---
 
 ## Deferred E2E Test Flow
 
-> 📚 **SKILL: test-flow** → "Deferred E2E Test Flow (Post-PRD-Completion)"
+> 📚 **SKILL: test-e2e-flow** → "Deferred E2E Test Flow (Post-PRD-Completion)"
 >
-> Load the `test-flow` skill for the complete deferred E2E workflow including:
+> Load the `test-e2e-flow` skill for the complete deferred E2E workflow including:
 > - Runtime verification (devPort check)
 > - Source identification (builder-state.json → pendingTests.e2e)
 > - Branch detection and checkout
@@ -2076,157 +1626,46 @@ Read status from multiple sources and display appropriately:
 
 ## Dev Server Management
 
+> 📚 **SKILL: test-url-resolution** and **SKILL: start-dev-server**
+>
+> Load these skills for full test environment setup workflows.
+
 **The dev server is checked/started after workflow selection** (`P`, `A`, `U`, or `E`), not immediately after project selection.
 
 > ⛔ **CRITICAL: Never begin PRD, ad-hoc, updates, or E2E work without confirming a test environment is available.**
 >
-> Once the user chooses a workflow, verify a test URL is accessible before proceeding.
-> This may be a local dev server OR a remote URL (preview deployment, staging).
->
 > **Failure behavior:** If no test environment is available, stop and report. Do not execute PRD or ad-hoc tasks.
 
-### Test URL Resolution
-
-Before starting work that requires browser testing, resolve the test URL:
+### Test URL Resolution (Quick Reference)
 
 **Priority order:**
 1. `project.json` → `agents.verification.testBaseUrl` (explicit override)
-2. Preview URL environment variables:
-   - Vercel: `VERCEL_URL`, `NEXT_PUBLIC_VERCEL_URL`
-   - Netlify: `DEPLOY_URL`, `DEPLOY_PRIME_URL`
-   - Railway: `RAILWAY_PUBLIC_DOMAIN`
-   - Render: `RENDER_EXTERNAL_URL`
-   - Fly.io: `FLY_APP_NAME` (appended with `.fly.dev`)
+2. Preview URL env vars: `VERCEL_URL`, `DEPLOY_URL`, `RAILWAY_PUBLIC_DOMAIN`, etc.
 3. `project.json` → `environments.staging.url`
 4. `http://localhost:{devPort}` (from `projects.json`)
-
-**If remote URL detected:** Skip local server startup, perform health check on remote URL instead.
-
-**If localhost URL:** Start dev server as normal (see below).
-
-**If no URL resolvable:** Check if project has `capabilities.ui: false` — if so, no test URL needed. Otherwise, stop and report missing configuration.
 
 > ⚠️ **SINGLE SOURCE OF TRUTH FOR LOCALHOST: `~/.config/opencode/projects.json`**
 >
 > The dev port is stored ONLY in the projects registry: `projects[].devPort`
->
-> Do NOT read port from:
-> - ❌ `project.json` → `devServer.port` (field removed)
-> - ❌ `project.json` → `apps[].port` (deprecated)
-> - ❌ Hardcoded values like 3000
->
-> Always read from: `~/.config/opencode/projects.json` → find project by path/name → use `devPort`
 
-### CLI Triggers for Remote Testing
-
-When Builder detects preview/staging environment variables, it can proactively offer testing against deployed environments:
-
-```
-═══════════════════════════════════════════════════════════════════════
-                     PREVIEW ENVIRONMENT DETECTED
-═══════════════════════════════════════════════════════════════════════
-
-Vercel preview URL available: https://my-app-abc123.vercel.app
-
-Options:
-  [P] Test against preview URL (no local server needed)
-  [L] Test against localhost (start dev server)
-  [S] Skip E2E for this session
-
-> _
-═══════════════════════════════════════════════════════════════════════
-```
-
-**When to show this prompt:**
-- `VERCEL_URL`, `DEPLOY_URL`, or other preview env vars are set
-- User starts a workflow that requires E2E testing
-- Project has `capabilities.ui: true`
-
-### When Test Environment Is Required
+### Test Environment Required When
 
 - E2E tests — `e2e`, `e2e-write`
 - Visual verification — `visual-verify`
-- Any sub-agent using browser automation tooling (Playwright, browser-use, or equivalent)
+- Any sub-agent using browser automation (Playwright, browser-use)
 
-### Test Environment Lifecycle
-
-**For remote URLs (preview deployments, staging):**
-
-1. **Resolve remote URL** using the priority chain above
-2. **Health check with retry:**
-   ```bash
-   # Retry with exponential backoff (cold starts)
-   for i in 1 2 3; do
-     if curl -sf --max-time 30 "$TEST_BASE_URL" > /dev/null 2>&1; then
-       echo "Remote environment ready: $TEST_BASE_URL"
-       break
-     fi
-     sleep $((5 * i))
-   done
-   ```
-3. **Export for downstream:**
-   ```bash
-   export TEST_BASE_URL="$REMOTE_URL"
-   ```
-
-**For localhost (local dev server):**
-
-1. **Read port from registry:**
-   ```bash
-   cat ~/.config/opencode/projects.json
-   # Find devPort for current project
-   ```
-
-2. **Use strict readiness script (required):**
-   ```bash
-   ~/.config/opencode/scripts/check-dev-server.sh --project-path "<project-path>"
-   ```
-
-3. **Interpret status strictly:**
-   - `running` -> continue workflow
-   - `startup failed: ...` -> report failure and stop workflow
-   - `timed out` -> report timeout and stop workflow
-
-4. **Never make a running claim without immediate verification:**
-   - Re-run the script immediately before replying "running"
-   - If second check is not `running`, report failure state instead
-
-5. **Export for downstream:**
-   ```bash
-   export TEST_BASE_URL="http://localhost:${DEV_PORT}"
-   ```
+### Server Lifecycle Rules
 
 > ⚠️ **ALWAYS LEAVE THE DEV SERVER RUNNING**
 >
-> The dev server must remain running at all times — before, during, and after all Builder operations.
->
-> **Do NOT stop the dev server:**
-> - ❌ After completing a task
-> - ❌ After running E2E tests
-> - ❌ After completing a PRD
-> - ❌ Between ad-hoc tasks
-> - ❌ When ending your session
-> - ❌ When the user is away or idle
-> - ❌ Ever — unless the user explicitly requests it
->
-> The server is a shared resource. Other sessions or processes may depend on it. Only stop it when the user explicitly asks.
+> Do NOT stop the dev server after tasks, PRDs, or at session end.
+> The server is a shared resource — only stop when user explicitly requests.
 
-### Session End Behavior
-
-**When your session ends (user closes session, starts new project, or goes idle):**
-
-- ✅ Leave the dev server **running** — it should continue serving
-- ❌ Do NOT run any cleanup commands that stop the server
-- ❌ Do NOT check if the server should be stopped
-- The server persists and will be available for the next session
-
-This ensures zero latency startup for subsequent sessions.
->
-> **If the user asks to stop the server**, confirm first:
-> ```
-> ⚠️ Other Builder sessions may be using this dev server.
-> Are you sure you want to stop it? (y/n)
-> ```
+**If user asks to stop:**
+```
+⚠️ Other Builder sessions may be using this dev server.
+Are you sure you want to stop it? (y/n)
+```
 
 ---
 
@@ -2237,7 +1676,7 @@ This ensures zero latency startup for subsequent sessions.
 Load `skills/verification-contracts/SKILL.md` for contract generation, types, and verification.
 
 **Quick reference:**
-- `verifiable` → Full test-flow (typecheck, lint, unit-test, e2e)
+- `verifiable` → Full test suite (typecheck, lint, unit-test, e2e)
 - `advisory` → No automated verification (investigate, research, explore)
 - `skip` → Lint/typecheck only (docs, typo, comments)
 
@@ -2271,78 +1710,11 @@ When specialists fail, try alternatives before escalating. Load the skill for:
 
 ## Sub-Agent Delegation
 
-When delegating to sub-agents, **always pass a context block** following the [Context Protocol](docs/context-protocol.md).
+> 📚 **SKILL: builder-delegation**
+>
+> Load the `builder-delegation` skill for full delegation patterns, context block format, and semantic search context.
 
-### Context Block Format
-
-Generate a `<context>` block at the start of every sub-agent prompt:
-
-```yaml
-<context>
-version: 1
-project:
-  path: {absolute path to project}
-  stack: {stack from project.json}
-  commands:
-    dev: {commands.dev}
-    test: {commands.test}
-    build: {commands.build}
-    lint: {commands.lint}
-git:
-  defaultBranch: {git.defaultBranch}
-  pushTo: {git.agentWorkflow.pushTo or defaultBranch}
-  createPrTo: {git.agentWorkflow.createPrTo or defaultBranch}
-  requiresHumanApproval: {git.agentWorkflow.requiresHumanApproval or []}
-  autoCommit: {git.autoCommit}
-conventions:
-  summary: |
-    {2-5 sentence summary of key conventions relevant to the task}
-  fullPath: {path}/docs/CONVENTIONS.md
-currentWork:
-  prd: {current PRD name, if in PRD mode}
-  story: {current story, if applicable}
-  branch: {current branch}
-</context>
-```
-
-**Git context is required** — sub-agents need this to validate their git operations.
-
-### Context Summary Guidelines
-
-When generating `conventions.summary`:
-- **Keep it concise** — 50-100 tokens, max 200
-- **Make it relevant** — Include conventions that apply to the current task
-- **Include key patterns** — Language, framework, component library, error handling
-- **Omit details** — Sub-agents can read `fullPath` if they need more
-
-### Example Delegation
-
-```markdown
-<context>
-version: 1
-project:
-  path: /Users/dev/code/project
-  stack: nextjs-prisma
-  commands:
-    test: npm test
-    lint: npm run lint
-conventions:
-  summary: |
-    TypeScript strict. Tailwind + shadcn/ui. App Router.
-    Server components by default. Prisma ORM. Zod validation.
-  fullPath: /Users/dev/code/project/docs/CONVENTIONS.md
-currentWork:
-  prd: print-templates
-  story: US-003 Add print preview modal
-  branch: feature/print-templates
-</context>
-
-Implement US-003: Add print preview modal
-
-Requirements:
-- Show modal with template rendered at actual size
-- Use existing Modal component from components/ui/modal.tsx
-```
+When delegating to sub-agents, **always pass a context block** with project path, stack, git settings, and conventions summary.
 
 ### Primary Sub-Agents
 
@@ -2354,113 +1726,20 @@ Requirements:
 | @critic | Code review |
 | @quality-critic | Visual/a11y/performance checks |
 
-### Analysis Gate Pre-Delegation Check (Compaction-Resilient)
+### Analysis Gate (MANDATORY)
 
 > ⛔ **MANDATORY CHECK BEFORE EVERY @developer DELEGATION**
->
-> This check survives context compaction because it reads from the state file, not from conversation memory.
-
-**Before delegating to @developer, ALWAYS run this check:**
 
 ```bash
 # Read analysis gate status from state file
 ANALYSIS_COMPLETED=$(jq -r '.activeTask.analysisCompleted // false' docs/builder-state.json 2>/dev/null)
-echo "Analysis gate check: analysisCompleted=$ANALYSIS_COMPLETED"
 ```
 
-**Decision tree:**
+- If `true`: proceed with delegation
+- If `false` or missing: STOP — show ANALYSIS COMPLETE dashboard first
+- Always log: `Analysis gate check: analysisCompleted=true ✓`
 
-| `analysisCompleted` | Action |
-|---------------------|--------|
-| `true` | ✅ Proceed with delegation |
-| `false` or missing | ⛔ STOP — must show ANALYSIS COMPLETE dashboard and get [G] first |
-| File doesn't exist | ⛔ STOP — initialize state file, then show analysis dashboard |
-
-**If check fails:**
-
-1. Do NOT proceed with delegation
-2. Output: `"⛔ Analysis gate not passed. Must show ANALYSIS COMPLETE dashboard and receive [G] before delegating."`
-3. Run Phase 0 from `adhoc-workflow` skill
-4. After receiving [G], update state: `activeTask.analysisCompleted: true`
-5. Re-run the check (should now pass)
-
-**Logging requirement:**
-
-Always log the check result before delegation:
-```
-Analysis gate check: analysisCompleted=true ✓
-Delegating to @developer...
-```
-
-This ensures the gate is enforced even after context compaction when behavioral guardrails may be summarized away.
-
-### Semantic Search Context (US-017)
-
-When vectorization is enabled (`project.json` → `vectorization.enabled: true`), use the `semantic_search` MCP tool to gather context BEFORE delegating to sub-agents.
-
-**When to use semantic search:**
-
-| Scenario | Query | Why |
-|----------|-------|-----|
-| Before implementing a feature | `"how does [feature] work"` | Understand existing patterns |
-| Before modifying a file | `"what calls [function/component]"` | Understand dependencies |
-| Before adding tests | `"tests for [module]"` | Find test patterns |
-| Understanding data flow | `"how does [data] flow through the system"` | See call graph |
-| Git history context | `"why was [file/function] changed"` | Understand intent |
-
-**Query patterns:**
-
-```typescript
-// Semantic search for context
-semantic_search({ query: "how does authentication work", topK: 5 })
-
-// Call graph query (who calls this?)
-semantic_search({ query: "functions that call [functionName]", topK: 10 })
-
-// Test mapping query (which tests cover this?)
-semantic_search({ query: "tests for [moduleName]", topK: 5 })
-
-// Git history query (why was this written?)
-semantic_search({ query: "changes to [filename] and why", topK: 5 })
-```
-
-**Pre-delegation checklist:**
-
-When vectorization is enabled, BEFORE delegating to `@developer`:
-
-1. **Check if index exists:** `.vectorindex/metadata.json`
-2. **Run semantic search** for the feature/area being modified
-3. **Include relevant results** in the context block:
-
-```yaml
-<context>
-version: 1
-project:
-  path: {path}
-  stack: nextjs-prisma
-semanticContext:
-  query: "how does user authentication work"
-  results:
-    - file: src/lib/auth.ts
-      summary: "Auth helper using NextAuth.js with credentials provider"
-    - file: src/app/api/auth/[...nextauth]/route.ts
-      summary: "NextAuth route handler with JWT session"
-  callGraph:
-    - "login() is called by LoginForm, AuthProvider"
-  testCoverage:
-    - src/lib/auth.test.ts covers login(), logout(), getSession()
-conventions:
-  summary: |
-    TypeScript strict. Tailwind + shadcn/ui. App Router.
-</context>
-```
-
-**Graceful fallback:**
-
-- If vectorization not enabled: skip semantic search, use grep/glob as normal
-- If index missing: suggest rebuild, then continue without
-- If search returns no results: proceed with grep fallback
-- Never block workflow on semantic search
+Load `builder-delegation` skill for full context block format and semantic search integration.
 
 ---
 
@@ -2666,117 +1945,24 @@ Update `builder-state.json` → `pendingUpdates` with detected items.
 
 ## Test Documentation Sync (MANDATORY BEFORE COMMIT)
 
+> 📚 **SKILL: test-doc-sync**
+>
+> Load the `test-doc-sync` skill for the full synchronization workflow.
+
 > ⛔ **CRITICAL: Run test doc sync before EVERY commit that includes behavior changes.**
 >
 > **Trigger:** After implementation complete, before `git add`/`git commit`.
 >
 > **Failure behavior:** If stale test references remain after the sync process, do NOT commit. Fix the references first.
 
-### Why This Exists
+**Quick summary:**
+1. Extract keywords from `git diff` (renamed functions, changed strings)
+2. Expand keywords semantically (variations, common phrases)
+3. Search test files for stale references
+4. Auto-update 1-5 matches; confirm 6-15 matches; narrow scope for 16+
+5. Verify no stale references remain before commit
 
-When code changes (renamed functions, changed behavior, updated strings), test comments and docstrings often become stale. This leaves misleading documentation that confuses future developers. Test doc sync catches and fixes these before they're committed.
-
-### Step 1: Extract Keywords from Diff
-
-Run `git diff --cached` (or `git diff` if not yet staged) and extract:
-
-| Source | Keywords |
-|--------|----------|
-| Removed/renamed function names | `showQRCode`, `handlePayment` |
-| Removed/renamed variable names | `isLoading`, `userData` |
-| Changed string literals | `"Submit"`, `"Processing..."` |
-| Removed/modified comments | `// handles QR display` |
-| Removed class/type names | `PaymentForm`, `UserProfile` |
-
-### Step 2: Semantic Expansion
-
-Expand each keyword to catch variations:
-
-| Original | Expanded to search |
-|----------|-------------------|
-| `showQRCode` | `showQRCode`, `QR code`, `QR-code`, `qrcode`, `QRCode` |
-| `handlePayment` | `handlePayment`, `payment handler`, `payment handling` |
-| `isLoading` | `isLoading`, `loading state`, `is loading` |
-
-### Step 3: Search Test Files
-
-```bash
-# Search for stale references in test files
-grep -rn "<keywords>" tests/ e2e/ --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" | grep -v node_modules
-```
-
-**Scope restrictions:**
-- ✅ Search in: `tests/`, `e2e/`, `__tests__/`, `*.test.*`, `*.spec.*`
-- ❌ Never search: `node_modules/`, `dist/`, `build/`, `.next/`
-- ❌ Never modify files outside test directories
-
-### Step 4: Handle Matches
-
-| Match Count | Action |
-|-------------|--------|
-| 0 matches | Proceed to commit (no stale references) |
-| 1-5 matches | Auto-update comments/docstrings, show changes |
-| 6-15 matches | Show matches, ask user to confirm updates |
-| 16+ matches | Narrow search (too broad), ask user to specify scope |
-
-**Prioritization:** Files already touched in this change are updated first.
-
-**Auto-update behavior (1-5 matches):**
-1. Read each file with a match
-2. Update the comment/docstring to reflect new behavior
-3. Show the user what was changed
-4. Include updated test files in the commit
-
-**Example update:**
-```typescript
-// Before (stale)
-/**
- * Tests the showQRCode function displays a QR code
- */
-
-// After (updated)
-/**
- * Tests the displayQRImage function renders a QR image
- */
-```
-
-### Step 5: Verification Grep
-
-Before committing, verify no stale references remain:
-
-```bash
-# Final check - should return 0 matches
-grep -rn "<original-keywords>" tests/ e2e/ --include="*.ts" --include="*.tsx" | grep -v node_modules | wc -l
-```
-
-If matches remain, either:
-- Fix the remaining references
-- Add to `docs/test-debt.json` with justification (explicit skip)
-
-### When to Skip (Explicit Only)
-
-Skip test doc sync ONLY when:
-- Changes are purely infrastructure (CI, build config)
-- Changes are documentation-only (README, CHANGELOG)
-- User explicitly requests skip with justification
-
-Log skips to `docs/test-debt.json`:
-```json
-{
-  "testDocSkips": [{
-    "commit": "abc123",
-    "reason": "Infrastructure change only",
-    "skippedAt": "2026-03-03T10:30:00Z"
-  }]
-}
-```
-
-### Integration with Developer
-
-Developer agent handles the actual test doc sync. Builder ensures:
-1. Developer runs sync before commit
-2. Sync results are reported
-3. Remaining stale references block commit
+**Skip ONLY when:** Infrastructure-only changes, documentation-only, or explicit user request with justification.
 
 ---
 

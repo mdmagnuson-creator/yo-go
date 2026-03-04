@@ -185,12 +185,12 @@ skills/
 **So that** startup reads a minimal registry
 
 **Acceptance Criteria:**
-- [ ] Archive file format defined (`prd-archive.json`)
-- [ ] Auto-archive triggers when 6th PRD completes (archives oldest)
-- [ ] Active registry always has ≤5 completed PRDs
-- [ ] Dashboard shows recent completed from active registry
-- [ ] Full history accessible via "show PRD history" command
-- [ ] No manual archive command needed (fully automatic)
+- [x] Archive file format defined (using `archived` array in prd-registry.json with archiveStats)
+- [x] Auto-archive triggers when 6th PRD completes (archives oldest)
+- [x] Active registry always has ≤5 completed PRDs (schema enforces maxItems: 5)
+- [x] Dashboard shows recent completed from active registry
+- [x] Full history accessible via "show PRD history" command
+- [x] No manual archive command needed (fully automatic)
 
 **Archive Behavior:**
 
