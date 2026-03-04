@@ -99,6 +99,43 @@ Options:
 
 ## Running E2E Tests
 
+### Step 0: Detect Execution Mode (MANDATORY)
+
+Before running any E2E tests, determine if this project uses Electron or browser-based testing:
+
+```bash
+# Check for Electron-only architecture
+DEPLOYMENT=$(jq -r '.architecture.deployment // empty' docs/project.json)
+ELECTRON_APP=$(jq -r '.apps | to_entries[] | select(.value.framework == "electron") | .key' docs/project.json 2>/dev/null)
+ELECTRON_TESTING=$(jq -r '.apps | to_entries[] | select(.value.testing.framework == "playwright-electron") | .value.testing' docs/project.json 2>/dev/null)
+
+if [ "$DEPLOYMENT" = "electron-only" ] || [ -n "$ELECTRON_APP" ]; then
+  echo "ELECTRON_MODE=true"
+  # Extract Electron-specific config
+  TEST_DIR=$(jq -r '.apps | to_entries[] | select(.value.framework == "electron") | .value.testing.testDir // "e2e/desktop"' docs/project.json)
+  EXEC_PATH=$(jq -r '.apps | to_entries[] | select(.value.framework == "electron") | .value.testing.executablePath.macos // empty' docs/project.json)
+  
+  # Look for Electron Playwright config
+  ELECTRON_CONFIG=""
+  for cfg in playwright.electron.config.ts e2e/playwright.electron.config.ts e2e/desktop/playwright.config.ts; do
+    if [ -f "$cfg" ]; then
+      ELECTRON_CONFIG="$cfg"
+      break
+    fi
+  done
+else
+  echo "ELECTRON_MODE=false"
+fi
+```
+
+**If ELECTRON_MODE=true:**
+- Skip Steps 1 and 2 (no base URL or dev server needed — Electron launches the app directly)
+- Jump to **Step 3E: Run Electron Tests** (below)
+- Load the `e2e-electron` skill for test writing patterns
+
+**If ELECTRON_MODE=false:**
+- Continue with existing Steps 1, 2, 3 (browser flow)
+
 ### Step 1: Resolve Test Base URL (MANDATORY)
 
 Before running any Playwright tests:
@@ -165,7 +202,38 @@ export TEST_BASE_URL
 npx playwright test --reporter=list [list of test files]
 ```
 
+### Step 3E: Run Electron Tests (Electron Mode Only)
+
+> This step replaces Steps 1-3 when ELECTRON_MODE=true.
+
+```bash
+# Use Electron config if found, otherwise default
+if [ -n "$ELECTRON_CONFIG" ]; then
+  npx playwright test --config="$ELECTRON_CONFIG" --reporter=list [list of test files]
+else
+  # Fallback: run from Electron test directory
+  npx playwright test --reporter=list "$TEST_DIR"/**/*.spec.ts
+fi
+```
+
+**Key differences from browser mode:**
+- No `TEST_BASE_URL` needed — Electron app launches directly via `_electron.launch()`
+- No dev server check — the Electron app IS the server
+- Workers must be 1 (`--workers=1`) — Electron tests cannot parallelize
+- Timeout should be 60s+ (Electron apps take longer to start)
+- Global setup should kill zombie Electron processes (see `e2e-electron` skill)
+
+**If executablePath is configured in project.json:**
+```bash
+# Pass to tests via environment variable
+export ELECTRON_EXECUTABLE_PATH="$EXEC_PATH"
+npx playwright test --config="$ELECTRON_CONFIG" --workers=1 --reporter=list
+```
+
 ### Playwright Config: No webServer
+
+> ⚠️ **Electron projects:** Do NOT use the browser config below. Electron tests use `_electron.launch()` 
+> instead of `baseURL`. See the `e2e-electron` skill for the correct Playwright config pattern.
 
 > ⚠️ **Do NOT use Playwright's `webServer` config option.**
 >
@@ -208,10 +276,15 @@ export default defineConfig({
 ### Step 0: Check for Local Runtime
 
 ```bash
-DEV_PORT=$(jq -r '.projects[] | select(.path == "'"$(pwd)"'") | .devPort' ~/.config/opencode/projects.json)
-
-if [ "$DEV_PORT" = "null" ]; then
-  echo "⏭️  Cannot run E2E tests: Project has no local runtime (devPort: null)"
+# Electron apps don't need devPort — they launch directly
+DEPLOYMENT=$(jq -r '.architecture.deployment // empty' docs/project.json)
+if [ "$DEPLOYMENT" = "electron-only" ]; then
+  echo "✅ Electron-only project — no devPort needed for E2E"
+else
+  DEV_PORT=$(jq -r '.projects[] | select(.path == "'"$(pwd)"'") | .devPort' ~/.config/opencode/projects.json)
+  if [ "$DEV_PORT" = "null" ]; then
+    echo "⏭️  Cannot run E2E tests: Project has no local runtime (devPort: null)"
+  fi
 fi
 ```
 
