@@ -4,10 +4,11 @@
 **Priority:** High  
 **Created:** 2026-03-04  
 **Approved:** 2026-03-04  
-**Source:** Consolidated from 3 pending updates:
+**Source:** Consolidated from 4 pending updates:
 - `2026-03-03-builder-mandatory-ui-verification.md` (HIGH)
 - `2026-03-03-builder-app-type-detection-before-testing.md` (CRITICAL)
 - `2026-03-04-electron-e2e-cleanup-patterns.md` (documentation)
+- `2026-03-03-builder-test-documentation-sync.md` (HIGH)
 
 ---
 
@@ -30,6 +31,12 @@ Builder completes UI changes without proper verification, often attempting the w
    - Electron E2E tests leave zombie processes when they fail
    - Multiple dock icons appear on macOS
    - No cleanup patterns documented for Electron test teardown
+
+4. **Stale Test Documentation After Behavior Changes**
+   - Builder changed behavior (removed QR code as default sign-in for Electron)
+   - Did not update corresponding test comments and docstrings
+   - Left outdated documentation in 4 E2E test files
+   - Test documentation serves as living docs; stale comments are worse than none
 
 ### Root Cause
 
@@ -170,6 +177,38 @@ export default async function globalSetup() {
 - Warn if multiple Electron processes detected before test run
 - Auto-cleanup option when detected
 
+### 5. Test Documentation Sync
+
+After any behavior change, Builder MUST search for and update related test comments and docstrings.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Behavior Change Implemented                                 │
+├─────────────────────────────────────────────────────────────┤
+│ 1. Identify keywords describing the OLD behavior            │
+│ 2. Search test files for those keywords:                    │
+│    grep -rn "<old behavior>" tests/ e2e/ --include="*.ts"   │
+│ 3. Update all matching comments and docstrings              │
+│ 4. Include updates in the SAME commit as code changes       │
+│ 5. Verify no references to old behavior remain              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Search patterns by change type:**
+
+| Change Type | Search Pattern |
+|-------------|----------------|
+| Auth behavior | `grep -rn "default.*auth\|auth.*default" e2e/ tests/` |
+| UI defaults | `grep -rn "shows.*by default\|default.*shows\|initially shows" e2e/ tests/` |
+| Component rendering | `grep -rn "<ComponentName>.*default\|renders.*<ComponentName>" e2e/ tests/` |
+
+**Verification before completion:**
+```bash
+# No references to old behavior should remain
+grep -rn "<old behavior description>" tests/ e2e/ | wc -l
+# Should return 0
+```
+
 ---
 
 ## User Stories
@@ -224,17 +263,31 @@ export default async function globalSetup() {
 - [ ] Platform-specific cleanup (macOS pkill patterns)
 - [ ] test-flow skill detects zombie processes as environment issue
 
+### Story 5: Test Documentation Sync
+**As** a user  
+**When** Builder changes application behavior  
+**I should** have all related test comments and docstrings updated automatically  
+**So that** test documentation stays accurate and useful
+
+**Acceptance Criteria:**
+- [ ] After behavior changes, Builder searches for related test comments
+- [ ] All matching comments/docstrings are updated to reflect new behavior
+- [ ] Updates included in same commit as code changes (not separate "docs" commit)
+- [ ] Verification grep confirms no stale references remain
+- [ ] Search patterns documented for common change types (auth, UI defaults, components)
+
 ---
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `skills/test-flow/SKILL.md` | Add platform/architecture detection, pre-completion verification gate |
+| `skills/test-flow/SKILL.md` | Add platform/architecture detection, pre-completion verification gate, test doc sync requirement |
 | `skills/adhoc-workflow/SKILL.md` | Add pre-analysis screenshot requirement, enforce verification before completion |
 | `skills/e2e-electron/SKILL.md` | Add globalSetup cleanup patterns (create new skill) |
 | `skills/start-dev-server/SKILL.md` | Ensure it handles desktop app startup (not just web dev servers) |
-| `agents/builder.md` | Remove generic `[V]` option, add architecture-aware verification logic |
+| `agents/builder.md` | Remove generic `[V]` option, add architecture-aware verification logic, add test doc sync to post-implementation checklist |
+| `agents/developer.md` | Add test doc sync to implementation workflow |
 | `schemas/project.schema.json` | Add `webContent` field to `apps[]` schema |
 | `skills/project-bootstrap/SKILL.md` | Document `webContent` field during project setup |
 
@@ -279,15 +332,17 @@ export default async function globalSetup() {
 - Time-to-verification reduced (no wasted attempts)
 - Ad-hoc analysis always includes screenshot (100% coverage)
 - Zero "code said X but UI showed Y" surprises during implementation
+- Zero stale test comments after behavior changes
 
 ---
 
 ## Consolidation Notes
 
-This PRD consolidates 3 related pending updates that all stem from the same root issue. After implementation:
+This PRD consolidates 4 related pending updates that all stem from the same root issue. After implementation:
 
 1. Delete `pending-updates/2026-03-03-builder-mandatory-ui-verification.md`
 2. Delete `pending-updates/2026-03-03-builder-app-type-detection-before-testing.md`
 3. Delete `pending-updates/2026-03-04-electron-e2e-cleanup-patterns.md`
+4. Delete `pending-updates/2026-03-03-builder-test-documentation-sync.md`
 
-All three issues are addressed by understanding app architecture before verification.
+All four issues are addressed by understanding app architecture before verification and ensuring complete verification (including documentation) before declaring done.
