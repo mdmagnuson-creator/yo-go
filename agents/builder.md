@@ -120,18 +120,64 @@ Before any `git push` or `gh pr create`, validate branch targets against `projec
 
 ---
 
+## Token Budget Management (CRITICAL)
+
+> ⛔ **CONTEXT IS LIMITED. Every file read consumes tokens toward the ~128K limit.**
+>
+> Builder sessions can easily hit context limits through careless file reads.
+> A single unfiltered `cat` of `prd-registry.json` can consume 15,000+ tokens.
+>
+> **Failure behavior:** If you hit context compaction early in a session, you likely violated token budget rules.
+
+### Token Budget Rules
+
+| Action | Rule | Example |
+|--------|------|---------|
+| **JSON files >10KB** | Use `jq` to extract only needed fields | `jq '[.prds[] \| {id, status}]' prd-registry.json` |
+| **Text files >50 lines** | Read specific sections with offset/limit | Read lines 100-200 only |
+| **Log files** | Never read in full — use `tail` or `grep` | `tail -100 build.log` |
+| **Source code** | Read specific files, not entire directories | One file at a time |
+| **Multiple files** | Read in parallel to reduce rounds, but filter each | jq/grep per file |
+
+### Files That Commonly Exceed Budget
+
+| File | Typical Size | Safe Approach |
+|------|--------------|---------------|
+| `docs/prd-registry.json` | 30-100KB | `jq '[.prds[] \| {id,name,status}]'` |
+| `docs/progress.txt` | 50-100KB | Don't read unless debugging |
+| Build/test output | Unbounded | `tail -50` or grep for errors |
+| `node_modules/**` | Never read | Excluded |
+| Git history | Unbounded | `git log --oneline -20` |
+
+### Skill Loading Strategy
+
+Skills are large (30-130KB each). Load them **on-demand**, not eagerly:
+
+| Skill | When to Load | Size |
+|-------|--------------|------|
+| `adhoc-workflow` | User enters ad-hoc mode | 61KB |
+| `prd-workflow` | User selects a PRD | 34KB |
+| `test-flow` | First test execution | 133KB |
+| `builder-state` | Reference only — don't load full skill | 23KB |
+
+**Never load multiple large skills at session start.** Wait for the user to choose a workflow.
+
+---
+
 ## Skills Reference
 
-Builder workflows are defined in loadable skills. Load the appropriate skill based on the mode:
+Builder workflows are defined in loadable skills. Load the appropriate skill **only when needed**:
 
-| Skill | When to Load |
-|-------|--------------|
-| `builder-state` | Always — defines state management patterns |
-| `test-flow` | When running tests, handling failures, E2E deferral |
-| `adhoc-workflow` | Ad-hoc mode — direct requests without PRD |
-| `prd-workflow` | PRD mode — building features from PRDs |
-| `browser-debugging` | Visual debugging escalation — see triggers below |
-| `vercel-supabase-alignment` | Database errors with multi-environment Vercel + Supabase |
+| Skill | When to Load | Size | Token Impact |
+|-------|--------------|------|--------------|
+| `builder-state` | Reference in-line — rarely need full skill | 23KB | ~6K tokens |
+| `test-flow` | First test execution or verification | 133KB | ~33K tokens ⚠️ |
+| `adhoc-workflow` | User enters ad-hoc mode | 61KB | ~15K tokens |
+| `prd-workflow` | User selects a PRD to build | 34KB | ~9K tokens |
+| `browser-debugging` | Visual debugging escalation — see triggers below | 8KB | ~2K tokens |
+| `vercel-supabase-alignment` | Database errors with multi-environment Vercel + Supabase | 5KB | ~1K tokens |
+
+> ⚠️ **NEVER load `test-flow` eagerly.** At 133KB, it consumes 25% of context. Load only when first test runs.
 
 ---
 
@@ -609,20 +655,39 @@ After the user selects a project number, show a **fast inline dashboard** — no
    ```
    Replace `[Project Name]` with the actual project name from `projects.json`.
 
-2. **Read essential files in parallel (without expected file-missing errors):**
-    ```
-    In parallel:
-    - cat <project>/docs/prd-registry.json
-    - cat <project>/docs/project.json
-    - list <project>/docs/ first, then read <project>/docs/builder-state.json only if it exists
-    - ls <project>/docs/pending-updates/*.md 2>/dev/null
-    - cat <project>/docs/applied-updates.json 2>/dev/null
-    - ls ~/.config/opencode/project-updates/[project-id]/*.md 2>/dev/null
-    - cat ~/.config/opencode/data/update-registry.json
-    - cat ~/.config/opencode/data/update-affinity-rules.json
-    ```
+2. **Read essential files in parallel (TOKEN-LIGHT READS):**
 
-   **Important:** Treat missing `docs/builder-state.json` and `docs/applied-updates.json` as normal. Do not call a file-read tool against those paths unless you confirmed they exist, and do not surface "File not found" errors for these optional files.
+   > ⚠️ **TOKEN BUDGET: Startup reads must total <10KB.** Large files like prd-registry.json can be 50KB+. Use selective reads.
+   
+   ```bash
+   # SELECTIVE READ — prd-registry.json (extract only what dashboard needs)
+   jq '[.prds[] | {id, name, status, priority, storiesCompleted, estimatedStories}]' <project>/docs/prd-registry.json
+   
+   # FULL READ — these are small (<10KB each)
+   cat <project>/docs/project.json
+   
+   # CONDITIONAL READ — only if file exists
+   [ -f <project>/docs/builder-state.json ] && cat <project>/docs/builder-state.json
+   
+   # LIST ONLY — don't read file contents
+   ls <project>/docs/pending-updates/*.md 2>/dev/null
+   ls ~/.config/opencode/project-updates/[project-id]/*.md 2>/dev/null
+   
+   # SELECTIVE READ — applied-updates.json (just the IDs)
+   jq '.applied[].id' <project>/docs/applied-updates.json 2>/dev/null
+   
+   # FULL READ — these are small (<3KB)
+   cat ~/.config/opencode/data/update-registry.json
+   cat ~/.config/opencode/data/update-affinity-rules.json
+   ```
+
+   **Token-light read rules:**
+   - ❌ Never `cat` files >10KB without filtering
+   - ✅ Use `jq` to extract only needed fields from JSON
+   - ✅ Use `head` for text files if only checking existence/header
+   - ✅ List directories instead of reading file contents when possible
+
+   **Important:** Treat missing `docs/builder-state.json` and `docs/applied-updates.json` as normal. Do not surface "File not found" errors for these optional files.
    
    **Pending updates discovery:** Check all three sources and filter out already-applied updates:
    - Project-local: `<project>/docs/pending-updates/*.md` (committed to project repo)
@@ -1972,6 +2037,11 @@ COMPLETED PRDs (recent)
 - **Ready PRDs** — PRDs with `status: "ready"` from `prd-registry.json`
 - **Completed PRDs** — Recent PRDs with `status: "completed"` (for context)
 - **Pending updates** — If `project-updates/[project-id]/` has files
+
+> 💡 **Dashboard only needs these prd-registry fields:** `id`, `name`, `status`, `estimatedStories`
+>
+> Use: `jq '[.prds[] | {id, name, status, estimatedStories}]' docs/prd-registry.json`
+> This reduces a 50KB file to ~2KB of dashboard-relevant data.
 
 ### Vectorization Status Logic
 
