@@ -2254,6 +2254,46 @@ Requirements:
 | @critic | Code review |
 | @quality-critic | Visual/a11y/performance checks |
 
+### Analysis Gate Pre-Delegation Check (Compaction-Resilient)
+
+> ⛔ **MANDATORY CHECK BEFORE EVERY @developer DELEGATION**
+>
+> This check survives context compaction because it reads from the state file, not from conversation memory.
+
+**Before delegating to @developer, ALWAYS run this check:**
+
+```bash
+# Read analysis gate status from state file
+ANALYSIS_COMPLETED=$(jq -r '.activeTask.analysisCompleted // false' docs/builder-state.json 2>/dev/null)
+echo "Analysis gate check: analysisCompleted=$ANALYSIS_COMPLETED"
+```
+
+**Decision tree:**
+
+| `analysisCompleted` | Action |
+|---------------------|--------|
+| `true` | ✅ Proceed with delegation |
+| `false` or missing | ⛔ STOP — must show ANALYSIS COMPLETE dashboard and get [G] first |
+| File doesn't exist | ⛔ STOP — initialize state file, then show analysis dashboard |
+
+**If check fails:**
+
+1. Do NOT proceed with delegation
+2. Output: `"⛔ Analysis gate not passed. Must show ANALYSIS COMPLETE dashboard and receive [G] before delegating."`
+3. Run Phase 0 from `adhoc-workflow` skill
+4. After receiving [G], update state: `activeTask.analysisCompleted: true`
+5. Re-run the check (should now pass)
+
+**Logging requirement:**
+
+Always log the check result before delegation:
+```
+Analysis gate check: analysisCompleted=true ✓
+Delegating to @developer...
+```
+
+This ensures the gate is enforced even after context compaction when behavioral guardrails may be summarized away.
+
 ### Semantic Search Context (US-017)
 
 When vectorization is enabled (`project.json` → `vectorization.enabled: true`), use the `semantic_search` MCP tool to gather context BEFORE delegating to sub-agents.

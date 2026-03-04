@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-03-03T23:33:50Z",
+  "generatedAt": "2026-03-04T01:53:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -941,6 +941,12 @@
       {
         "date": "2026-03-04",
         "changes": [
+          {
+            "type": "fix",
+            "scope": "builder",
+            "description": "make Analysis Gate compaction-resilient with mandatory state checkpoint before @developer delegation",
+            "hash": "pending"
+          },
           {
             "type": "feat",
             "scope": "builder",

@@ -38,6 +38,8 @@ Write state atomically (read → modify → write) at these key moments:
 | Event | State Changes |
 |-------|---------------|
 | **Session start** | Set `sessionId`, `lastHeartbeat` |
+| **Enter ad-hoc mode** | Set `activeTask.analysisCompleted: false` (MANDATORY — see Analysis Gate section) |
+| **User approves analysis [G]** | Set `activeTask.analysisCompleted: true` |
 | **Claim PRD** | Set `activePrd` with PRD details (including `testingRigor`), clear old ad-hoc if any |
 | **Start story** | Update `activePrd.currentStory` |
 | **Resolve story intensity** | Write `activePrd.storyAssessments[storyId]` (`planned`, `effective`, `escalatedBy`) |
@@ -55,6 +57,45 @@ Write state atomically (read → modify → write) at these key moments:
 | **Detect doc updates** | Update `pendingUpdates.supportArticles`, `marketingScreenshots` |
 | **Commit work** | Update `uncommittedWork` to reflect remaining uncommitted changes |
 | **Any action** | Always update `lastHeartbeat` |
+
+### Analysis Gate Checkpoint (MANDATORY — Compaction Resilient)
+
+> ⛔ **CRITICAL: `activeTask.analysisCompleted` is a mandatory checkpoint field.**
+>
+> This field serves as a technical backstop for the Analysis Gate guardrail.
+> Even if behavioral instructions are "forgotten" after context compaction, this field persists in the state file and is checked before every @developer delegation.
+
+**Field specification:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `activeTask.analysisCompleted` | boolean | `false` | Whether user has approved the analysis via `[G] Go ahead` |
+
+**Lifecycle:**
+
+1. **On entering ad-hoc mode:** Immediately write `activeTask.analysisCompleted: false`
+2. **Before showing analysis dashboard:** Verify field is `false` (safety check)
+3. **After user responds with [G]:** Set `activeTask.analysisCompleted: true`
+4. **Before ANY @developer delegation:** Read state file and verify `analysisCompleted === true`
+5. **On task completion:** Clear `activeTask` entirely
+
+**Pre-delegation check (Builder runs this before every delegation):**
+
+```bash
+ANALYSIS_COMPLETED=$(jq -r '.activeTask.analysisCompleted // false' docs/builder-state.json 2>/dev/null)
+echo "Analysis gate check: analysisCompleted=$ANALYSIS_COMPLETED"
+
+if [ "$ANALYSIS_COMPLETED" != "true" ]; then
+  echo "⛔ Analysis gate not passed. Must show ANALYSIS COMPLETE dashboard and receive [G]."
+  exit 1
+fi
+```
+
+**Why this matters:**
+- Context compaction can cause Builder to "forget" that it needs user approval
+- The state file persists across compaction boundaries
+- This technical checkpoint catches any drift from the behavioral guardrail
+- Without this, Builder might delegate to @developer without user approval after compaction
 
 ### CLI State Persistence (Compaction Resilience)
 

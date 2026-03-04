@@ -95,6 +95,35 @@ Task Specs follow the **same lifecycle as PRDs** but in a parallel folder struct
 >
 > **Failure behavior:** If proceeding to implementation without showing analysis output, STOP and run analysis first.
 
+### Step 0.0: Initialize Analysis Gate (CRITICAL — First Step)
+
+> ⛔ **This initialization is MANDATORY and must happen BEFORE any analysis.**
+>
+> This ensures the analysis gate is enforced even after context compaction.
+
+**Immediately on entering ad-hoc mode, write to `builder-state.json`:**
+
+```json
+{
+  "activeTask": {
+    "id": null,
+    "analysisCompleted": false,
+    "enteredAt": "2026-03-03T10:30:00Z"
+  }
+}
+```
+
+**Why this matters:**
+- The `analysisCompleted: false` flag serves as a technical checkpoint
+- Even if behavioral guardrails are "forgotten" after context compaction, this flag persists
+- The flag is checked before EVERY @developer delegation (see builder.md)
+- The flag is ONLY set to `true` after user responds with `[G] Go ahead`
+
+**Compaction resilience:**
+- On session resume after compaction, Builder reads this flag
+- If `analysisCompleted === false`, Builder knows analysis approval is pending
+- If `analysisCompleted === true`, Builder can verify approval was received
+
 When user gives a task in ad-hoc mode:
 
 ### Step 0.1: Time-Boxed Analysis (10 seconds)
