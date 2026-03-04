@@ -20,6 +20,15 @@
       "updateType": "migration",
       "createdAt": "2026-03-04",
       "templatePath": "templates/updates/migrate-git-config.md"
+    },
+    {
+      "id": "2026-03-04-add-electron-e2e-execution-path",
+      "description": "Add Electron execution mode detection and routing to test-e2e-flow skill so Electron projects use playwright-electron instead of browser Chromium",
+      "affinityRule": "electron-apps",
+      "priority": "high",
+      "updateType": "skill",
+      "createdAt": "2026-03-04",
+      "templatePath": "templates/updates/add-electron-e2e-execution-path.md"
     }
   ]
 }
