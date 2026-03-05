@@ -61,7 +61,29 @@ const isStale = (lock) => {
 
 ### Update Heartbeat
 
-After completing each story:
+After completing each story, choose the path based on active session count:
+
+#### Lazy heartbeat (solo — `sessions.length === 1`)
+
+When you are the only active session, skip the expensive git round-trip:
+
+1. Read `docs/session-locks.json` from the working tree (no checkout)
+2. Update your lock entry in-place:
+   ```json
+   {
+     "heartbeat": "<current ISO8601>",
+     "currentStory": "US-XXX"
+   }
+   ```
+3. Write the file back — **do NOT commit or push** (stays as a local-only change)
+4. Continue working on your feature branch
+
+> This avoids the stash → checkout main → pull → commit → push → checkout branch → pop cycle,
+> saving 2-10 seconds per story for solo developers.
+
+#### Full heartbeat (multi — `sessions.length > 1`)
+
+When multiple sessions are active, perform the full git round-trip:
 
 1. Checkout main: `git checkout main && git pull origin main`
 2. Update lock entry:
@@ -148,6 +170,21 @@ When user encounters stale session:
 | **Skip** | Leave stale alone → claim different PRD |
 
 ## Example: Heartbeat Update
+
+### Solo session (lazy)
+
+```bash
+# Read session-locks.json from working tree
+# Update your heartbeat timestamp in-place
+# Write back — no commit, no push, no branch switching
+jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+   '.sessions[] | select(.sessionId == "developer-abc123") .heartbeat = $ts' \
+   docs/session-locks.json > docs/session-locks.json.tmp && \
+   mv docs/session-locks.json.tmp docs/session-locks.json
+# Continue working on feature branch — zero git overhead
+```
+
+### Multiple sessions (full round-trip)
 
 ```bash
 # Save current work
