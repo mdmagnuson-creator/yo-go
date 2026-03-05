@@ -177,6 +177,7 @@ Builder workflows are defined in loadable skills. Load the appropriate skill **o
 
 | Skill | When to Load | Size | Token Impact |
 |-------|--------------|------|--------------|
+| `session-setup` | Always — load at session start for session coordination | 4KB | ~1K tokens |
 | `builder-state` | Reference in-line — rarely need full skill | 23KB | ~6K tokens |
 | `adhoc-workflow` | User enters ad-hoc mode | 61KB | ~15K tokens |
 | `prd-workflow` | User selects a PRD to build | 34KB | ~9K tokens |
@@ -786,10 +787,10 @@ After the user selects a project number, show a **fast inline dashboard** — no
    - See AGENTS.md § Git Workflow Enforcement for error formats
    - Builder should prompt user to configure during first blocked operation
 
-   **Detect solo mode:**
-   - Check `project.json` → `agents.multiSession`
-   - If `false` (default) or missing → **Solo Mode** (simpler operation)
-   - If `true` → **Multi-session Mode** (full coordination)
+   **Session coordination (always-on):**
+   - Session setup always runs on Developer startup (via `session-setup` skill)
+   - `session-locks.json` is created lazily on first run if missing (`{"sessions":[]}`)
+   - Full coordination (heartbeat, merge queue) activates only when multiple sessions detected
 
 4.5 **Check for platform skill suggestions (one-time):**
    - Read `~/.config/opencode/data/skill-mapping.json`
@@ -899,9 +900,8 @@ After the user selects a project number, show a **fast inline dashboard** — no
    - Preserve status (`pending`, `in_progress`, `completed`, `cancelled`) and priority
    - Keep at most one `in_progress` item; if state has multiple, keep the newest as `in_progress` and downgrade others to `pending`
 
-6. **Show appropriate dashboard:**
-    - **Solo Mode**: Simplified dashboard (no session/lock info)
-    - **Multi-session Mode**: Full dashboard with session tracking
+6. **Show dashboard:**
+    - Dashboard always includes session info section
     - If trunk branchless mode is active, show `Git: Trunk (branchless)` in the dashboard header
     - **Do not run dev server health checks yet**
 
@@ -1474,20 +1474,6 @@ When user types "retry" after requesting a skill:
 
 ---
 
-## Solo Mode vs Multi-Session Mode
-
-Builder operates differently based on `project.json` → `agents.multiSession`:
-
-| Feature | Solo Mode (default) | Multi-Session Mode |
-|---------|---------------------|-------------------|
-| Session locks | ❌ Skipped | ✅ Active |
-| Heartbeat | ❌ Skipped | ✅ Every 5 min |
-| Merge queue | ❌ Skipped | ✅ Coordinated |
-| PRD claiming | ❌ Just pick | ✅ Lock-based |
-| Dashboard | Simplified | Full session info |
-
-**Most solo developers should use Solo Mode** (the default). Multi-Session Mode is for teams with parallel AI sessions.
-
 ---
 
 ## Resume Dashboard
@@ -1623,13 +1609,6 @@ Read status from multiple sources and display appropriately:
    → If age <= 24h:
      "🟢 Enabled | {chunkCount} chunks | Updated {age} ago"
 ```
-
-**Key differences in Solo Mode:**
-- No session/lock status section
-- No heartbeat updates
-- No merge queue coordination
-- Direct push to branches
-- Dev server check runs when user selects a workflow (`P`, `A`, `U`, `E`)
 
 ---
 
@@ -2045,9 +2024,9 @@ See AGENTS.md for format. Your filename prefix: `YYYY-MM-DD-builder-`
 
 ---
 
-## Session Lock Format (Multi-Session Mode Only)
+## Session Lock Format
 
-> ℹ️ **Solo Mode:** Skip session locks entirely. This section only applies when `agents.multiSession: true`.
+> ℹ️ Session locks are always active. The `session-setup` skill creates `session-locks.json` lazily on first run.
 
 ```json
 {
