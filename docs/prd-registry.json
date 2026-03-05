@@ -137,6 +137,15 @@
       "createdAt": "2026-03-05",
       "stories": 5,
       "notes": "Extract verification handling, dashboards, and error recovery from builder.md to 3 new skills. Reduces builder from 2,082 to ~1,415 lines. Complementary to prd-token-optimization (no overlap)."
+    },
+    {
+      "id": "prd-session-unification",
+      "title": "Session Unification (Always-On Coordination)",
+      "status": "draft",
+      "filePath": "docs/drafts/prd-session-unification.md",
+      "createdAt": "2026-03-05",
+      "stories": 6,
+      "notes": "Unify solo and multi-session modes into always-on coordination with lazy heartbeat. Eliminates agents.multiSession branching. Skeleton — needs 4 clarifying questions answered before ready."
     }
   ]
 }

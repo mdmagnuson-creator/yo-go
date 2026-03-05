@@ -35,7 +35,7 @@ The real opportunity is extracting the **shared infrastructure sections** that a
 | Section | Lines in builder.md | Size | Extract To |
 |---------|---------------------|------|------------|
 | Verification-Incomplete Handling (1053-1145) | ~93 | Self-contained status handling, override mechanism, state updates | `builder-verification` skill |
-| Never Use curl/wget (1147-1175) | ~29 | Browser verification rules and table | `builder-verification` skill |
+| Never Use curl/wget (1147-1175) | ~29 | As-user verification rules and table | `builder-verification` skill |
 | Prerequisite Failure Detection (1177-1227) | ~51 | Classification table, detection method, handling flow | `builder-verification` skill |
 | Environment Prerequisite Handling (1229-1275) | ~47 | Environment categories, recovery flow, prompt | `builder-verification` skill |
 | Skill Creation Request Flow (1277-1396) | ~120 | Full flow for requesting new skills from @toolkit | `builder-verification` skill |
@@ -84,6 +84,7 @@ The real opportunity is extracting the **shared infrastructure sections** that a
 |-----|--------------|---------|
 | `prd-token-optimization` (ready) | **Complementary** — targets different Builder sections (CLI, env diagnosis, dev server) | None — this PRD explicitly excludes those sections |
 | `prd-toolkit-agent-organization` (completed) | **Continuation** — first phase reduced Builder from 2,255 to 1,312; this is phase 2 after Builder re-grew | None — org refactor extracted different patterns (AGENTS.md guardrails, 6 skills) |
+| `prd-session-unification` (draft) | **Adjacent** — may simplify dashboard templates and remove solo/multi branching from builder.md | None — this PRD keeps the Solo Mode section inline; unification would modify it later |
 
 ---
 
@@ -105,12 +106,13 @@ The real opportunity is extracting the **shared infrastructure sections** that a
 
 - [ ] New skill `skills/builder-verification/SKILL.md` created
 - [ ] Skill contains: Verification-Incomplete Handling (status table, blocked prompt, skip handling, override mechanism, state updates)
-- [ ] Skill contains: Never Use curl/wget for Browser Verification (rules table, what requires browser verification)
+- [ ] Skill contains: Never Use curl/wget for As-User Verification (rules table, what requires Playwright verification)
 - [ ] Skill contains: Prerequisite Failure Detection (classification table, detection method, handling flow)
 - [ ] Skill contains: Environment Prerequisite Handling (categories, recovery flow, prompt)
 - [ ] Skill contains: Skill Creation Request Flow (no-skill prompt, pending-update creation, state tracking, retry/hot-reload)
 - [ ] builder.md lines 1053-1396 replaced with single skill reference block (~5-8 lines)
-- [ ] Skill reference includes essential triggers: "When verification-incomplete, browser verification needed, prerequisite failure, or environment issue"
+- [ ] Skill reference includes essential triggers: "When verification-incomplete, as-user verification needed, prerequisite failure, or environment issue"
+- [ ] All instances of "browser verification" / "browser-verified" within the extracted skill use "as-user verification" / "as-user verified" instead
 - [ ] No functionality lost — all current flows preserved in the skill
 - [ ] builder.md net reduction: ~335 lines
 
@@ -311,7 +313,14 @@ No external credentials required for this PRD.
 
 ---
 
-## Open Questions
+## Resolved Questions
 
-1. Should `builder-dashboard` include the Solo Mode vs Multi-Session Mode section (lines 1477-1491) since it's adjacent and dashboard-related? (Recommendation: No — it's a mode decision, not a template)
-2. Should `builder-verification` also be referenced by the Tester agent, or keep it Builder-specific for now? (Recommendation: Builder-specific initially, extend later if needed)
+1. **Should `builder-dashboard` include the Solo Mode vs Multi-Session Mode section?**
+   **Decision: No.** Keep it inline in builder.md — it's a behavioral mode switch, not a dashboard template. The solo/multi-session distinction is being evaluated for unification in a separate PRD (`prd-session-unification`).
+
+2. **Should `builder-verification` also be referenced by the Tester agent?**
+   **Decision: Builder-specific initially.** Adding Tester references is a one-line change later. Validate the skill works for Builder first before widening its audience.
+
+3. **Terminology: "browser verification" → "as-user verification"**
+   **Decision: Rename.** The term "browser verification" is misleading — Playwright also drives Electron desktop apps, not just browsers. All occurrences of "browser verification" and "browser-verified" within the extracted skill and the builder.md replacements should use **"as-user verification"** (meaning: testing the UI as a user would, via Playwright). The broader `builder-verification` skill name stays as-is since it covers more than just as-user verification (also prerequisite failures, environment issues, skill creation requests).
+   **Note:** A toolkit-wide rename of "browser verification" → "as-user verification" across all 12 affected files (22 occurrences) is out of scope for this PRD but should be tracked as a follow-up task.
