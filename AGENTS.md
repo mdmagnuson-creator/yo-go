@@ -18,7 +18,7 @@
 - System notifications
 
 **Safe alternatives:**
-- Store files in the project directory or `.tmp/`
+- Store files in the project directory or `<project>/.tmp/` (never system `/tmp/`)
 - Use environment variables for secrets
 - Write output to files instead of clipboard
 - Log to files instead of system notifications
