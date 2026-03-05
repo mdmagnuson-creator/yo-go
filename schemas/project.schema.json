@@ -717,6 +717,67 @@
       }
     },
 
+    "postChangeWorkflow": {
+      "type": "object",
+      "description": "Optional override: Mandatory steps Builder must complete after code changes, before committing. If absent, Builder auto-infers from apps[] configuration (desktop+bundled → rebuild+relaunch, desktop+remote → ensure Electron running, web → HMR).",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of this workflow"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "required"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique step identifier"
+              },
+              "name": {
+                "type": "string",
+                "description": "Human-readable step name"
+              },
+              "command": {
+                "type": "string",
+                "description": "Shell command to execute"
+              },
+              "required": {
+                "type": "boolean",
+                "description": "Whether this step must pass before commit"
+              },
+              "type": {
+                "type": "string",
+                "enum": ["command", "process", "playwright-check"],
+                "default": "command",
+                "description": "Step type: command (run and check exit code), process (start long-running process), playwright-check (browser/Electron verification)"
+              },
+              "notes": {
+                "type": "string",
+                "description": "Why this step exists or what it does"
+              }
+            }
+          }
+        },
+        "enforcement": {
+          "type": "object",
+          "properties": {
+            "beforeCommit": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether this workflow must complete before committing"
+            },
+            "skipConditions": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Human-readable conditions under which the workflow can be skipped (e.g., 'docs-only changes', 'config-only changes', 'user explicitly says skip verification')"
+            }
+          }
+        }
+      }
+    },
+
     "capabilities": {
       "type": "object",
       "description": "Project capabilities. Set at bootstrap, updated by agents as new integrations are added. Used to determine which workflow steps are applicable.",
@@ -1076,9 +1137,63 @@
               "default": false,
               "description": "Enable headless auth for faster tests"
             },
+            "method": {
+              "type": "string",
+              "enum": ["supabase-admin", "nextauth-direct", "custom-api", "cli"],
+              "description": "How to acquire auth tokens headlessly. 'cli' runs a shell command that outputs tokens."
+            },
+            "command": {
+              "type": "string",
+              "description": "CLI command to run (for method: cli). Supports $ENV_VAR expansion (e.g., 'pnpm cli auth:test-token --email $TEST_EMAIL')."
+            },
+            "responseFormat": {
+              "type": "string",
+              "enum": ["json", "text", "env"],
+              "default": "json",
+              "description": "Format of CLI command output: json (parsed with tokenPath), text (entire stdout is the token), env (KEY=VALUE lines)"
+            },
+            "tokenPath": {
+              "type": "string",
+              "default": "accessToken",
+              "description": "Dot-path to access token in response (for json format, e.g., 'data.accessToken')"
+            },
+            "refreshTokenPath": {
+              "type": "string",
+              "description": "Dot-path to refresh token in response (optional, for json format)"
+            },
+            "sessionStorage": {
+              "type": "string",
+              "enum": ["cookies", "localStorage", "both"],
+              "default": "cookies",
+              "description": "Where to inject the token in browser context after CLI acquisition"
+            },
             "uiTestPath": {
               "type": "string",
               "description": "Path to the one E2E test that exercises full login UI (e.g., 'e2e/auth.spec.ts')"
+            }
+          }
+        },
+        "acquisition": {
+          "type": "object",
+          "description": "Human-readable auth acquisition procedure for agents. Read by agents when headless fails or for initial understanding of how auth works in this project.",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "One-line summary of how auth works in this project"
+            },
+            "steps": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Ordered steps an agent should follow to get an authenticated session"
+            },
+            "fallbackToUI": {
+              "type": "boolean",
+              "default": true,
+              "description": "If headless/CLI fails, fall back to UI-based auth flow using the appropriate auth skill"
+            },
+            "notes": {
+              "type": "string",
+              "description": "Additional context about the auth system (gotchas, requirements, env vars needed, etc.)"
             }
           }
         },

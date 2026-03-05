@@ -1132,6 +1132,50 @@ ANALYSIS_COMPLETED=$(jq -r '.activeTask.analysisCompleted // false' docs/builder
 
 Load `builder-delegation` skill for full context block format and semantic search integration.
 
+### Verification Pipeline Resolution (MANDATORY before commit)
+
+> ⛔ **MANDATORY: Before committing any code change, Builder MUST resolve and execute the verification pipeline.**
+>
+> This ensures desktop apps are rebuilt/relaunched and all apps are verified using the correct Playwright variant.
+
+**Step 1: Check for `postChangeWorkflow` override**
+
+```bash
+PCW=$(jq -r '.postChangeWorkflow // null' docs/project.json 2>/dev/null)
+```
+
+- If `postChangeWorkflow` exists: execute its `steps` array in order. Block commit if any `required: true` step fails. **Skip auto-inference entirely.**
+- If absent: continue to auto-inference (Step 2).
+
+**Step 2: Auto-infer from `apps[]` configuration**
+
+Read `apps[]` from `project.json` and determine the verification pipeline:
+
+| App Type | Framework | webContent | Pipeline |
+|----------|-----------|------------|----------|
+| desktop | electron | bundled | typecheck → test → **build** → **relaunch Electron** → verify-with-playwright-electron |
+| desktop | electron | remote | typecheck → test → **ensure Electron is running** → verify-with-playwright-electron (HMR handles code changes, but Electron must be launched for Playwright to connect) |
+| desktop | electron | hybrid | typecheck → test → **build** → **relaunch Electron** → verify-with-playwright-electron |
+| web | any | n/a | typecheck → test → verify-with-playwright (dev server + HMR) |
+| mobile | react-native | n/a | typecheck → test → (no automated UI verify yet) |
+| No apps[] | — | — | Fall back to existing quality checks (typecheck/lint/test) |
+
+**Critical rule:** Desktop apps **ALWAYS** use `playwright-electron`, **NEVER** browser-based verification. Even `webContent: "remote"` (where HMR delivers changes via dev server) requires connecting Playwright to the Electron process, not opening `localhost` in a browser.
+
+**Step 3: Execute the resolved pipeline**
+
+Run each step in order. Block commit if any required step fails. Fix and re-run from the failed step.
+
+**Step 4: Skip conditions** (apply to both override and auto-inferred pipelines)
+
+The verification pipeline can be skipped when ALL changed files match one of:
+- docs-only changes (`*.md` files only)
+- project.json or config-only changes
+- test-only changes (`*.test.ts`, `*.spec.ts`, `__tests__/`)
+- CI/build config changes (`.github/`, `Dockerfile`, `docker-compose*`)
+- dependency lockfile-only changes (`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`)
+- user explicitly says "skip verification"
+
 ---
 
 ## Commit Strategy Configuration

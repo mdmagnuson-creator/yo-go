@@ -47,25 +47,55 @@ Read verification settings from `project.json`:
 ## Architecture-Aware Verification
 
 > 🎯 **Before running verification, detect app architecture to choose the optimal strategy.**
+>
+> Desktop apps ALWAYS use `playwright-electron`, NEVER browser-based verification.
+> The `webContent` field determines whether a rebuild is needed, not whether to use Electron.
 
 ### Step 0: Read App Architecture
 
 ```
 function determineVerificationStrategy(project, changedFiles):
+  # Check for postChangeWorkflow override first
+  if project.postChangeWorkflow:
+    return { strategy: "custom-workflow", steps: project.postChangeWorkflow.steps }
+  
   for appName, appConfig in project.apps:
     if anyFileMatchesPath(changedFiles, appConfig.path):
       
-      if appConfig.type in ["desktop", "mobile"]:
+      if appConfig.type == "desktop":
         if !appConfig.webContent:
-          return { strategy: "error", message: "Missing 'webContent' field" }
+          return { strategy: "error", message: "Missing 'webContent' field for desktop app. Add webContent: 'bundled' | 'remote' | 'hybrid' to apps[].'" }
         
         match appConfig.webContent:
           case "bundled":
-            return { strategy: "launch-app", ... }
+            return { strategy: "rebuild-then-launch-app",
+                     rebuild: true,
+                     buildCommand: project.commands.build or appConfig.commands?.build,
+                     devCommand: project.commands.dev or appConfig.commands?.dev,
+                     playwright: "electron",
+                     notes: "Electron loads bundled files — must rebuild + relaunch for changes to appear" }
           case "remote":
-            return { strategy: "verify-web-url", ... }
+            return { strategy: "ensure-electron-running",
+                     rebuild: false,
+                     devCommand: project.commands.dev or appConfig.commands?.dev,
+                     playwright: "electron",
+                     notes: "HMR via dev server handles code changes, but Electron must be running for Playwright-Electron to connect" }
           case "hybrid":
-            return { strategy: "hybrid", ... }
+            return { strategy: "rebuild-then-launch-app",
+                     rebuild: true,
+                     buildCommand: project.commands.build or appConfig.commands?.build,
+                     devCommand: project.commands.dev or appConfig.commands?.dev,
+                     playwright: "electron",
+                     notes: "Hybrid app has both bundled and remote content — rebuild to be safe" }
+      
+      if appConfig.type == "mobile":
+        if !appConfig.webContent:
+          return { strategy: "error", message: "Missing 'webContent' field" }
+        match appConfig.webContent:
+          case "remote":
+            return { strategy: "verify-web-url", baseUrl: appConfig.remoteUrl }
+          default:
+            return { strategy: "no-automated-verify", notes: "Mobile native verification not yet supported" }
       
       if appConfig.type in ["frontend", "fullstack"]:
         return { strategy: "browser", baseUrl: resolveTestBaseUrl(project) }
@@ -77,11 +107,72 @@ function determineVerificationStrategy(project, changedFiles):
 
 | App Type | webContent | Strategy | How Verification Works |
 |----------|------------|----------|------------------------|
-| frontend/fullstack | n/a | `browser` | Standard Playwright against dev server |
-| desktop | `bundled` | `launch-app` | Launch Electron/Tauri, test with Playwright |
-| desktop | `remote` | `verify-web-url` | Test web URL directly |
-| desktop | `hybrid` | `hybrid` | Mixed approach |
+| frontend/fullstack | n/a | `browser` | Standard Playwright against dev server (HMR) |
+| desktop | `bundled` | `rebuild-then-launch-app` | **Build** → **relaunch Electron** → verify with Playwright-Electron |
+| desktop | `remote` | `ensure-electron-running` | Ensure Electron process is running (HMR handles code changes) → verify with Playwright-Electron |
+| desktop | `hybrid` | `rebuild-then-launch-app` | **Build** → **relaunch Electron** → verify with Playwright-Electron |
+| mobile | `remote` | `verify-web-url` | Test web URL directly in browser |
+| mobile | other | `no-automated-verify` | No automated UI verify yet |
 | backend/cli | n/a | `not-required` | No UI verification |
+
+> ⛔ **CRITICAL: ALL desktop strategies use `playwright: "electron"`. NEVER use browser-based verification for desktop apps.**
+>
+> Even `webContent: "remote"` (where HMR delivers changes via dev server) requires connecting Playwright to the Electron process. Opening `localhost` in a browser is NOT the same as testing inside Electron — Electron has its own window chrome, IPC, and process model.
+
+### Custom Workflow Override
+
+When `postChangeWorkflow` exists in `project.json`, execute its steps verbatim instead of auto-inferring:
+
+```
+if strategy == "custom-workflow":
+  for step in steps:
+    match step.type:
+      case "command":
+        run(step.command)
+        if step.required and exitCode != 0: BLOCK
+      case "process":
+        startProcess(step.command)
+        waitForReady()
+      case "playwright-check":
+        runPlaywrightVerification()
+        if step.required and failed: BLOCK
+```
+
+### Rebuild + Relaunch Flow (for `bundled` and `hybrid`)
+
+```
+1. Run build command:
+   $ {buildCommand}        # e.g., "pnpm --filter desktop build"
+   
+2. Kill existing Electron process (if running):
+   $ pkill -f electron     # or project-specific kill command
+   
+3. Launch Electron in dev mode:
+   $ {devCommand} &        # e.g., "pnpm --filter desktop dev"
+   
+4. Wait for Electron ready signal (window visible, IPC ready)
+
+5. Connect Playwright-Electron to the running process
+
+6. Run verification assertions
+```
+
+### Ensure-Running Flow (for `remote`)
+
+```
+1. Check if Electron process is already running
+   
+2. If not running:
+   $ {devCommand} &        # Launch Electron
+   Wait for ready signal
+
+3. If running:
+   No action needed (HMR handles code changes automatically)
+
+4. Connect Playwright-Electron to the running process
+
+5. Run verification assertions
+```
 
 ---
 

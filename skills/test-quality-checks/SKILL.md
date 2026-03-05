@@ -22,6 +22,7 @@ After @developer completes a task, run resolved activities in this order:
 | 1 | **Typecheck** | Always (baseline) | Yes, max 3 attempts |
 | 2 | **Lint** | Always (baseline) | Yes, max 3 attempts |
 | 3 | **Unit Tests** | Resolved testers | Yes, max 3 attempts |
+| 3.5 | **Rebuild/Relaunch** | Auto-inferred from `apps[]` or `postChangeWorkflow` | Yes, max 3 attempts |
 | 4 | **Critics** | Resolved from patterns | Report findings, @developer fixes |
 | 5 | **E2E Tests** | If `immediate` | Yes, max 3 attempts |
 | 6 | **Quality** | Resolved quality critics | Report findings |
@@ -66,6 +67,23 @@ Task/Story complete
 └─────────────────────┘
     │
     ├─── PASS ──► Continue
+    └─── FAIL ──► Fix loop (max 3) ──► Still failing? STOP
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ 3.5. Rebuild/Relaunch (architecture-aware)                          │
+│                                                                     │
+│ Check apps[] in project.json:                                       │
+│   • No apps[] or web-only → Skip (HMR handles it)                  │
+│   • Desktop + bundled/hybrid → Build + relaunch Electron            │
+│   • Desktop + remote → Ensure Electron running (no rebuild)         │
+│                                                                     │
+│ If postChangeWorkflow exists → execute its steps instead            │
+│                                                                     │
+│ CRITICAL: Desktop → always Playwright-Electron, never browser       │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ├─── PASS (or skipped) ──► Continue
     └─── FAIL ──► Fix loop (max 3) ──► Still failing? STOP
     │
     ▼

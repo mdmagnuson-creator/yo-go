@@ -328,6 +328,151 @@ function getNestedValue(obj: any, path: string): any {
 }
 ```
 
+### CLI (`"method": "cli"`)
+
+For projects with CLI tools that generate auth tokens (admin APIs, custom scripts):
+
+```json
+{
+  "authentication": {
+    "headless": {
+      "enabled": true,
+      "method": "cli",
+      "command": "pnpm cli auth:test-token --email $TEST_EMAIL",
+      "responseFormat": "json",
+      "tokenPath": "accessToken",
+      "refreshTokenPath": "refreshToken",
+      "sessionStorage": "localStorage"
+    }
+  }
+}
+```
+
+**Configuration fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `command` | Yes | Shell command to run. Supports `$ENV_VAR` and `${ENV_VAR}` expansion. |
+| `responseFormat` | No | Format of CLI output: `json` (default), `text`, or `env` (KEY=VALUE lines) |
+| `tokenPath` | No | Dot-path to access token in JSON response (default: `accessToken`) |
+| `refreshTokenPath` | No | Dot-path to refresh token in JSON response (optional) |
+| `sessionStorage` | No | Where to inject: `cookies`, `localStorage`, or `both` (default: `cookies`) |
+
+```typescript
+async function authenticateHeadlessCLI(
+  context: BrowserContext,
+  baseUrl: string,
+  projectRoot: string
+): Promise<HeadlessAuthResult> {
+  const config = loadAuthConfig(projectRoot);
+  const headless = config.headless!;
+  const email = getTestEmail(config);
+
+  // Expand env vars in command
+  const command = headless.command
+    .replace(/\$TEST_EMAIL|\${TEST_EMAIL}/g, email)
+    .replace(/\$([A-Z_]+)|\${([A-Z_]+)}/g, (_, a, b) => process.env[a || b] || '');
+
+  // Execute CLI command from project root
+  const { stdout, stderr, exitCode } = await exec(command, { cwd: projectRoot });
+
+  if (exitCode !== 0) {
+    return { success: false, email, error: `CLI failed (exit ${exitCode}): ${stderr}` };
+  }
+
+  // Parse response based on format
+  let tokens: Record<string, string>;
+  switch (headless.responseFormat || 'json') {
+    case 'json':
+      tokens = JSON.parse(stdout);
+      break;
+    case 'text':
+      tokens = { accessToken: stdout.trim() };
+      break;
+    case 'env':
+      tokens = {};
+      stdout.split('\n').forEach(line => {
+        const [k, ...rest] = line.split('=');
+        if (k && rest.length) tokens[k.trim()] = rest.join('=').trim();
+      });
+      break;
+    default:
+      throw new Error(`Unknown responseFormat: ${headless.responseFormat}`);
+  }
+
+  // Extract tokens using configured paths
+  const accessToken = getNestedValue(tokens, headless.tokenPath || 'accessToken');
+  const refreshToken = headless.refreshTokenPath
+    ? getNestedValue(tokens, headless.refreshTokenPath)
+    : undefined;
+
+  if (!accessToken) {
+    return {
+      success: false,
+      email,
+      error: `No token found at path "${headless.tokenPath || 'accessToken'}" in CLI output`,
+    };
+  }
+
+  // Inject into browser context
+  await injectSession(context, baseUrl, config, accessToken, refreshToken);
+
+  return { success: true, email, accessToken };
+}
+
+async function injectSession(
+  context: BrowserContext,
+  baseUrl: string,
+  config: AuthConfig,
+  accessToken: string,
+  refreshToken?: string
+): Promise<void> {
+  const url = new URL(baseUrl);
+  const domain = url.hostname;
+  const storage = config.headless?.sessionStorage || 'cookies';
+
+  if (storage === 'cookies' || storage === 'both') {
+    const cookies = [
+      {
+        name: 'access-token',
+        value: accessToken,
+        domain,
+        path: '/',
+        httpOnly: true,
+        secure: url.protocol === 'https:',
+        sameSite: 'Lax' as const,
+        expires: Date.now() / 1000 + 3600,
+      },
+    ];
+    if (refreshToken) {
+      cookies.push({
+        name: 'refresh-token',
+        value: refreshToken,
+        domain,
+        path: '/',
+        httpOnly: true,
+        secure: url.protocol === 'https:',
+        sameSite: 'Lax' as const,
+        expires: Date.now() / 1000 + 86400 * 7,
+      });
+    }
+    await context.addCookies(cookies);
+  }
+
+  if (storage === 'localStorage' || storage === 'both') {
+    const page = await context.newPage();
+    await page.goto(baseUrl);
+    await page.evaluate(({ accessToken, refreshToken }) => {
+      localStorage.setItem('access-token', accessToken);
+      if (refreshToken) localStorage.setItem('refresh-token', refreshToken);
+    }, { accessToken, refreshToken });
+    await page.close();
+  }
+}
+```
+
+**Fallback behavior:** If the CLI command fails, agents should check `authentication.acquisition.steps` for manual fallback instructions. If `acquisition.fallbackToUI` is `true`, fall back to the UI-based auth flow using the appropriate auth skill.
+
 ---
 
 ## Complete Script Template
@@ -380,6 +525,8 @@ async function authenticateHeadless(
       return authenticateHeadlessNextAuth(context, baseUrl, projectRoot);
     case 'custom-api':
       return authenticateHeadlessCustom(context, baseUrl, config, getTestCredentials(config));
+    case 'cli':
+      return authenticateHeadlessCLI(context, baseUrl, projectRoot);
     default:
       throw new Error(`Unknown headless method: ${config.headless?.method}`);
   }

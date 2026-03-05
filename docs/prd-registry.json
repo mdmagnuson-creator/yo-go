@@ -148,6 +148,16 @@
       "completedAt": "2026-03-05",
       "stories": 7,
       "notes": "Unified solo and multi-session modes into always-on coordination with lazy heartbeat. Created session-setup skill, deprecated agents.multiSession flag, eliminated all solo/multi branching from builder.md and developer.md."
+    },
+    {
+      "id": "prd-architecture-aware-verification",
+      "title": "Architecture-Aware Verification & Auth Acquisition",
+      "status": "complete",
+      "filePath": "docs/prds/prd-architecture-aware-verification.md",
+      "createdAt": "2026-03-05",
+      "completedAt": "2026-03-05",
+      "stories": 5,
+      "notes": "Builder auto-infers verification pipelines from app architecture (desktop/Electron → rebuild+relaunch, web → HMR). Added postChangeWorkflow schema, CLI-based headless auth acquisition, interactive rollout template for all projects."
     }
   ]
 }

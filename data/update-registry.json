@@ -29,6 +29,16 @@
       "updateType": "schema",
       "createdAt": "2026-03-05",
       "templatePath": "templates/updates/deprecate-multi-session.md"
+    },
+    {
+      "id": "2026-03-05-architecture-aware-verification",
+      "description": "Configure auth acquisition and app architecture settings for automated verification",
+      "affinityRule": "all-projects",
+      "priority": "high",
+      "updateType": "schema",
+      "interactive": true,
+      "createdAt": "2026-03-05",
+      "templatePath": "templates/updates/architecture-aware-verification.md"
     }
   ]
 }

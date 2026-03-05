@@ -262,6 +262,128 @@ Headless Auth:
 
 ---
 
+## Step 6b: CLI Auth Configuration (if headless enabled)
+
+If headless auth is enabled, ask about CLI-based token acquisition:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                    CLI AUTH TOKEN ACQUISITION
+═══════════════════════════════════════════════════════════════════════
+
+Does this project have a CLI command for getting test auth tokens?
+
+  A. Yes — I have a CLI that outputs tokens
+     (e.g., pnpm cli auth:test-token, custom admin API script)
+  B. No — use standard auth method (Supabase admin, NextAuth direct, etc.)
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+### If A (CLI available):
+
+```
+═══════════════════════════════════════════════════════════════════════
+                    CLI AUTH DETAILS
+═══════════════════════════════════════════════════════════════════════
+
+Configure the CLI auth command:
+
+  Command: ____________
+  (e.g., pnpm cli auth:test-token --email $TEST_EMAIL)
+  ($TEST_EMAIL will be expanded to the test user email)
+
+  Output format?
+    1. JSON (e.g., {"accessToken": "...", "refreshToken": "..."})
+    2. Plain text (single token string)
+    3. KEY=VALUE (one per line, e.g., ACCESS_TOKEN=... )
+
+  > _
+
+  Token field path (for JSON): accessToken
+  (Dot-path to the access token in the JSON output)
+
+  Refresh token path (for JSON, optional): refreshToken
+  (Leave blank if no refresh token)
+
+  Where does the app store the session?
+    1. Cookies
+    2. localStorage
+    3. Both
+
+  > _
+═══════════════════════════════════════════════════════════════════════
+```
+
+**This populates `authentication.headless` with `method: "cli"`:**
+
+```json
+{
+  "headless": {
+    "enabled": true,
+    "method": "cli",
+    "command": "pnpm cli auth:test-token --email $TEST_EMAIL",
+    "responseFormat": "json",
+    "tokenPath": "accessToken",
+    "refreshTokenPath": "refreshToken",
+    "sessionStorage": "localStorage"
+  }
+}
+```
+
+---
+
+## Step 6c: Auth Acquisition Steps (always ask)
+
+Regardless of headless/CLI configuration, collect acquisition steps for agent understanding and fallback:
+
+```
+═══════════════════════════════════════════════════════════════════════
+                    AUTH ACQUISITION STEPS
+═══════════════════════════════════════════════════════════════════════
+
+Describe how an agent should get an authenticated session for this
+project. These steps are used as documentation and as a fallback when
+automated auth fails.
+
+  Summary (one line): ____________
+  (e.g., "Use CLI to get a test token, inject into localStorage")
+
+  Steps (one per line, press Enter twice to finish):
+    1. ____________
+    2. ____________
+    3. ____________
+
+  If automated auth fails, should the agent try UI-based login? (Y/n)
+
+  Any gotchas or notes about the auth system? (optional): ____________
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
+**This populates `authentication.acquisition`:**
+
+```json
+{
+  "acquisition": {
+    "description": "Use CLI to get a test token, inject into localStorage",
+    "steps": [
+      "1. Ensure SUPABASE_SERVICE_ROLE_KEY is set in .env.local",
+      "2. Run: pnpm cli auth:test-token --email $TEST_EMAIL",
+      "3. Parse JSON output for accessToken and refreshToken",
+      "4. Inject tokens into browser localStorage",
+      "5. Navigate to /dashboard — session should be active"
+    ],
+    "fallbackToUI": true,
+    "notes": "The CLI command requires the service role key. Token expires after 1 hour."
+  }
+}
+```
+
+---
+
 ## Step 7: Configure Cleanup (if dynamic users)
 
 ```
@@ -355,6 +477,49 @@ Based on collected answers, generate the `authentication` block:
     "headless": {
       "enabled": true,
       "uiTestPath": "e2e/auth.spec.ts"
+    }
+  }
+}
+```
+
+**Example: Supabase OTP with CLI headless auth:**
+
+```json
+{
+  "authentication": {
+    "method": "passwordless-otp",
+    "provider": "supabase",
+    "skill": "auth-supabase-otp",
+    "testUser": {
+      "type": "fixed",
+      "email": "test@example.com"
+    },
+    "routes": {
+      "login": "/login",
+      "verify": "/verify",
+      "authenticated": "/dashboard"
+    },
+    "reuseSession": true,
+    "headless": {
+      "enabled": true,
+      "method": "cli",
+      "command": "pnpm cli auth:test-token --email $TEST_EMAIL",
+      "responseFormat": "json",
+      "tokenPath": "accessToken",
+      "refreshTokenPath": "refreshToken",
+      "sessionStorage": "localStorage"
+    },
+    "acquisition": {
+      "description": "Use CLI to generate a test token via Supabase admin API",
+      "steps": [
+        "1. Ensure SUPABASE_SERVICE_ROLE_KEY is set in .env.local",
+        "2. Run: pnpm cli auth:test-token --email $TEST_EMAIL",
+        "3. Parse JSON output for accessToken and refreshToken",
+        "4. Inject tokens into browser localStorage",
+        "5. Navigate to /dashboard — session should be active"
+      ],
+      "fallbackToUI": true,
+      "notes": "CLI requires service role key. Tokens expire after 1 hour."
     }
   }
 }
@@ -546,5 +711,6 @@ Add directly to `docs/project.json`:
 - `auth-supabase-password` — Supabase password login implementation
 - `auth-nextauth-credentials` — NextAuth credentials implementation
 - `auth-generic` — Generic/custom auth implementation
-- `auth-headless` — Headless auth session injection
+- `auth-headless` — Headless auth session injection (includes CLI method)
+- `auth-config-check` — Validates auth configuration including acquisition block
 - `test-user-cleanup` — Test user cleanup implementation

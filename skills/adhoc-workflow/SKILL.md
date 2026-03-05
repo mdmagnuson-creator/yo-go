@@ -906,6 +906,7 @@ After @developer completes each story, Builder automatically runs:
 | 1 | **Typecheck** | `npm run typecheck` (or project equivalent) | Yes, max 3 attempts |
 | 2 | **Lint** | `npm run lint` (or project equivalent) | Yes, max 3 attempts |
 | 3 | **Unit tests** | `CI=true npm test` (MUST include CI=true) | Yes, max 3 attempts |
+| 3.5 | **Rebuild/Relaunch** | Architecture-aware rebuild (see below) | Yes, max 3 attempts |
 | 4 | **Critic** | Run @critic for code review | Report findings, @developer fixes |
 | 5 | **UI Verification** | Playwright browser verification (if required) | Yes, max 3 attempts |
 
@@ -915,6 +916,37 @@ After @developer completes each story, Builder automatically runs:
 >
 > **Correct:** `CI=true npm test`
 > **Wrong:** `npm test` (may trigger watch mode)
+
+### Architecture-Aware Rebuild/Relaunch (Step 3.5)
+
+> 🏗️ **After unit tests pass, BEFORE critic/UI verification, check if a rebuild is needed.**
+>
+> This step is auto-inferred from `apps[]` in `project.json`. If `postChangeWorkflow` exists, use it instead.
+
+```
+After unit tests pass (step 3):
+    │
+    ▼
+Read apps[] from project.json
+    │
+    ├── No apps[] or web-only → Skip rebuild, continue to step 4
+    │
+    ├── Desktop + webContent: "bundled" or "hybrid":
+    │   1. Run build command (commands.build or apps[].commands.build)
+    │   2. Kill existing Electron process
+    │   3. Relaunch Electron (apps[].commands.dev or commands.dev)
+    │   4. Wait for app ready
+    │   5. Continue to step 4 (critic) then step 5 (Playwright-Electron verify)
+    │
+    └── Desktop + webContent: "remote":
+        1. Ensure Electron process is running (launch if not)
+        2. No rebuild needed (HMR via dev server handles code changes)
+        3. Continue to step 4 (critic) then step 5 (Playwright-Electron verify)
+
+CRITICAL: Desktop apps ALWAYS use Playwright-Electron for step 5, never browser-based verification.
+```
+
+**Override:** If `postChangeWorkflow` exists in `project.json`, execute its `steps[]` in order instead of auto-inference.
 
 ### UI Verification Enforcement
 

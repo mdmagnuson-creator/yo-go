@@ -132,6 +132,52 @@ Based on `authentication.provider` and `authentication.method`:
 
 If `authentication.headless.enabled` is `true`, prefer `auth-headless` for speed.
 
+### Acquisition Validation
+
+When `authentication.acquisition` is present, validate:
+
+| Field | Required | Check |
+|-------|----------|-------|
+| `description` | Yes | Must be a non-empty string |
+| `steps` | Yes | Must be a non-empty array of strings |
+| `fallbackToUI` | No | Boolean, defaults to `true` |
+| `notes` | No | Optional string |
+
+If `acquisition` exists but is invalid (empty `steps` or missing `description`), warn:
+
+```
+⚠️ ACQUISITION CONFIG INCOMPLETE
+
+authentication.acquisition exists but is missing required fields:
+  - description: [present/missing]
+  - steps: [N items / empty / missing]
+
+Fix: Ensure both description and steps are populated.
+Agents use acquisition.steps as fallback when headless auth fails.
+```
+
+### Headless CLI Validation
+
+When `authentication.headless.method` is `"cli"`, additionally validate:
+
+| Field | Required | Check |
+|-------|----------|-------|
+| `command` | Yes | Must be a non-empty string |
+| `responseFormat` | No | Must be `json`, `text`, or `env` if present |
+| `tokenPath` | No | Must be a non-empty string if present |
+| `sessionStorage` | No | Must be `cookies`, `localStorage`, or `both` if present |
+
+If `method: "cli"` but `command` is missing:
+
+```
+⚠️ CLI AUTH CONFIG INCOMPLETE
+
+headless.method is "cli" but command is missing.
+
+Fix: Add headless.command with the CLI command to generate auth tokens.
+Example: "pnpm cli auth:test-token --email $TEST_EMAIL"
+```
+
 ---
 
 ## Sub-Agent Delegation with Auth
