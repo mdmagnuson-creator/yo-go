@@ -203,12 +203,9 @@ Clear state (delete file) when:
 rm docs/builder-state.json 2>/dev/null
 ```
 
-## Solo vs Multi-Session Mode
+## Session Coordination
 
-Check `project.json → agents.multiSession`:
-
-- **`false` (default)**: Solo mode. Skip session locks, heartbeat coordination, and merge queue. State file still used for resumability.
-- **`true`**: Multi-session mode. Full coordination with session locks, heartbeat monitoring, and merge queue.
+Session coordination is always active. The `session-setup` skill initializes session tracking on every run. State file always includes session tracking fields (`sessionId`, `heartbeat`) regardless of how many sessions are active.
 
 ## Todo Semantics by Flow
 
