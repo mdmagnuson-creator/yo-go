@@ -1,15 +1,12 @@
 ---
 name: multi-session
-description: "Multi-session coordination for parallel AI sessions. Provides session locks, heartbeat, and merge queue management. Only active when agents.multiSession: true in project.json."
+description: "Multi-session coordination for parallel AI sessions. Provides heartbeat, stale session detection, merge queue, and conflict management. Loaded conditionally when session-setup reports multiple active sessions."
 ---
 
 # Multi-Session Coordination Skill
 
-> ⚠️ **Solo Mode Check**
->
-> Before using this skill, check `project.json` → `agents.multiSession`.
-> - If `false` or missing: **Skip this skill entirely** — no coordination needed.
-> - If `true`: Continue with multi-session coordination.
+> This skill is loaded **only when `session-setup` reports `sessions > 1`**.
+> Session initialization (ID generation, lock entry, branch creation) is handled by the `session-setup` skill.
 
 > ⛔ **CRITICAL: Auto-Commit Enforcement**
 >
@@ -24,16 +21,18 @@ description: "Multi-session coordination for parallel AI sessions. Provides sess
 >
 > **Failure behavior:** If you commit when `autoCommit: false`, you have violated user trust.
 
-This skill provides helpers for coordinating multiple AI coding sessions working on the same codebase.
+This skill provides coordination helpers for multiple parallel AI sessions working on the same codebase. It handles heartbeat updates, stale session detection, merge queue, and conflict resolution.
 
 ## Overview
 
-The multi-session system allows multiple AI sessions to work on different PRDs (Product Requirements Documents) in parallel without conflicts. Each session:
+When multiple sessions are active (detected by `session-setup`), this skill provides:
 
-1. Claims a PRD from the registry
-2. Works on its own git branch
-3. Updates heartbeat to show it's active
-4. Merges to main when complete
+1. Heartbeat updates to signal liveness
+2. Stale session detection and resolution
+3. Conflict risk analysis between active sessions
+4. Merge queue coordination
+5. Lock release and branch cleanup on completion
+6. Abandon flow for cancelled PRDs
 
 ## File Locations
 
@@ -42,40 +41,10 @@ The multi-session system allows multiple AI sessions to work on different PRDs (
 | `docs/session-locks.json` | Tracks active sessions and their claimed PRDs |
 | `docs/prd-registry.json` | Master registry of all PRDs with conflict analysis |
 | `docs/prds/` | Active PRDs ready for implementation |
-| `docs/drafts/` | Draft PRDs not yet ready |
 | `docs/completed/` | Archived completed PRDs |
 | `docs/abandoned/` | Archived abandoned PRDs |
 
-## Session Lifecycle
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   STATUS     │────▶│    CLAIM     │────▶│    WORK      │────▶│   COMPLETE   │
-│   CHECK      │     │    PRD       │     │   STORIES    │     │   & MERGE    │
-└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
-       │                                         │
-       │                                         ▼
-       │                                  ┌──────────────┐
-       │                                  │  HEARTBEAT   │
-       │                                  │  (per story) │
-       │                                  └──────────────┘
-       │
-       ▼
-┌──────────────┐
-│ HANDLE STALE │
-│  SESSIONS    │
-└──────────────┘
-```
-
 ## Operations
-
-### Generate Session ID
-
-```bash
-# Generate a unique session ID
-SESSION_ID="developer-$(openssl rand -hex 3)"
-echo $SESSION_ID  # e.g., developer-a1b2c3
-```
 
 ### Check for Stale Sessions
 
@@ -89,28 +58,6 @@ const isStale = (lock) => {
   return minutesAgo > 10;
 };
 ```
-
-### Claim a PRD
-
-1. Read `docs/session-locks.json`
-2. Read `docs/prd-registry.json`
-3. Find available PRD (not locked, dependencies met)
-4. Add lock entry:
-   ```json
-   {
-     "sessionId": "developer-abc123",
-     "prdId": "print-templates",
-     "prdFile": "docs/prds/prd-print-templates.json",
-     "branch": "feature/print-templates",
-     "claimedAt": "2026-02-19T15:00:00Z",
-     "heartbeat": "2026-02-19T15:00:00Z",
-     "currentStory": null,
-     "status": "in_progress"
-   }
-   ```
-5. Update registry: set PRD status to `"in_progress"`
-6. Commit and push to main
-7. Create/checkout feature branch
 
 ### Update Heartbeat
 
@@ -199,33 +146,6 @@ When user encounters stale session:
 | **Resume** | Update lock with new sessionId → checkout branch → continue |
 | **Abandon** | Delete branch → move to abandoned/ → remove lock |
 | **Skip** | Leave stale alone → claim different PRD |
-
-## Example: Full Claim Workflow
-
-```bash
-# 1. Generate session ID
-SESSION_ID="developer-$(openssl rand -hex 3)"
-
-# 2. Read registry and find available PRD
-# (done in code by reading docs/prd-registry.json)
-
-# 3. Add lock entry
-# (edit docs/session-locks.json)
-
-# 4. Commit claim
-git add docs/session-locks.json docs/prd-registry.json
-git commit -m "chore: claim print-templates for $SESSION_ID"
-git push origin main
-
-# 5. Create feature branch
-git checkout -b feature/print-templates main
-
-# 6. Rebase from main
-git fetch origin main
-git rebase origin/main
-
-# 7. Start working on stories...
-```
 
 ## Example: Heartbeat Update
 
