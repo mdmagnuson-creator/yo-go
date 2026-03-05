@@ -96,27 +96,14 @@ If no context block was provided:
 
 4. **If none of these files exist**, continue with standard behavior.
 
-#### Step 3: Detect Operation Mode
+### Phase 0B: Session Setup (Always-On)
 
-- Check `project.json` → `agents.multiSession`
-- If `false` (default) or missing → **Solo Mode**
-- If `true` → **Multi-session Mode**
+Load the `session-setup` skill to initialize session coordination:
+- Generate session ID, write lock entry to `docs/session-locks.json`
+- Create or checkout feature branch, rebase from default branch
+- Returns active session count
 
-### Phase 0B: Session Setup (Multi-Session Mode Only)
-
-> ⚠️ **Solo Mode:** Skip this entire phase. No session locks, no heartbeat, no coordination.
-
-**Only perform if:**
-1. `docs/prd-registry.json` exists, AND
-2. `project.json` → `agents.multiSession: true`
-
-Otherwise, skip to Phase 1.
-
-Load the `multi-session` skill for detailed session coordination steps:
-- Check for active session in `docs/session-locks.json`
-- Claim PRD if not already claimed
-- Create or checkout branch
-- Rebase from default branch
+**If `session-setup` reports `sessions > 1`:** Also load `multi-session` skill for heartbeat, stale detection, merge queue, and conflict management.
 
 ---
 
@@ -125,7 +112,7 @@ Load the `multi-session` skill for detailed session coordination steps:
 1. **Check if `docs/review.md` exists** — if so, a critic has flagged issues. Fix them first.
 
 2. **Read the PRD:**
-   - Multi-session mode: read from lock entry path
+   - If session lock has a PRD path: read from lock entry path
    - Otherwise: read `docs/prd.json`
 
 3. **Read `docs/progress.txt`** (check Codebase Patterns section first)
@@ -195,8 +182,7 @@ Load the `multi-session` skill for detailed session coordination steps:
 
 4. **Append progress** to `docs/progress.txt`
 
-5. **Update heartbeat** (multi-session mode only) — see `multi-session` skill
-   - **Solo Mode:** Skip heartbeat updates
+5. **Update heartbeat** — handled by `multi-session` skill (lazy: local-only when solo, full git round-trip when multi)
 
 6. **Run test documentation sync (BEFORE commit):**
 
@@ -425,20 +411,20 @@ Only create `pending-updates/` requests for **significant gaps** that would affe
    - Step D: Copy review for new articles
 
 2. **Final sync and quality gate:**
-   - **Multi-session mode:** Rebase from default branch, run all quality checks
-   - **Solo mode:** Just run quality checks (no rebase coordination needed)
+   - If multiple sessions active: Rebase from default branch, run all quality checks
+   - If solo session: Just run quality checks (no rebase coordination needed)
 
 3. **Merge to default branch:**
-   - **Multi-session mode:** Use merge queue if enabled
-   - **Solo mode:** Direct merge or push
+   - If multiple sessions active: Use merge queue if enabled
+   - If solo session: Direct merge or push
 
-4. **Archive the PRD** (both modes)
+4. **Archive the PRD**
 
 5. **Analyze Impact on Other PRDs** — invoke @prd-impact-analyzer
 
 6. **Cleanup:**
-   - **Multi-session mode:** Release session lock, update session-locks.json
-   - **Solo mode:** No cleanup needed
+   - If multiple sessions active: Release session lock, update session-locks.json
+   - If solo session: Remove lock entry from session-locks.json
 
 7. **Reply with:**
    ```
@@ -667,7 +653,7 @@ After completing UI stories:
 - Commit frequently
 - Keep CI green
 - Read Codebase Patterns before starting
-- In multi-session mode, update heartbeat after each story
+- Update heartbeat after each story (lazy when solo, full when multi — handled by `multi-session` skill)
 
 ---
 
