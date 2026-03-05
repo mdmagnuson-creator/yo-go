@@ -24,6 +24,15 @@
   },
   "integrations": [],
   "gitHubRepo": "mdmagnuson-creator/yo-go",
+  "git": {
+    "agentWorkflow": {
+      "defaultBranch": "main",
+      "workBranch": "main",
+      "pushTo": "main",
+      "createPrTo": "main",
+      "requiresHumanApproval": []
+    }
+  },
   "relatedProjects": [
     {
       "projectId": "opencode-toolkit-website",
