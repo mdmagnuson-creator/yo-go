@@ -1061,81 +1061,29 @@ See `prd-workflow` skill → "Post-Story Status Update" for full details.
 
 ### 3-Pass Stability Verification
 
-> 📚 **SKILL: test-verification-loop** → "3-Pass Stability Verification"
->
-> Load the `test-verification-loop` skill for the complete stability verification workflow.
-
-**Essential trigger:** After a verification test passes for the first time (or after any fix is applied).
-
-**Quick reference:**
-- Require 3 consecutive passes to declare verified
-- Reset counter to 0 on any failure or fix
-- Configuration: `project.json` → `agents.verification.requiredPasses`
+> 📚 **SKILL: test-verification-loop** — Load after a verification test passes for the first time (or after any fix).
 
 ### Automated Fix Loop
 
-> 📚 **SKILL: test-verification-loop** → "Automated Fix Loop"
->
-> Load the `test-verification-loop` skill for the complete fix loop algorithm and state tracking.
-
-**Essential trigger:** Verification test fails (during initial run or stability check).
-
-**Stop conditions (quick reference):**
-- 3 attempts per component → stop fixing that component
-- Same exact error twice → stop (no progress)
-- 10 total iterations → stop entire verification
+> 📚 **SKILL: test-verification-loop** → "Automated Fix Loop" — Load when verification test fails (during initial run or stability check).
 
 ### Failure Logging and Manual Fallback
 
-> 📚 **SKILL: test-failure-handling** → "Failure Logging and Manual Fallback"
->
-> Load the `test-failure-handling` skill for failure logging formats and manual fallback flows.
-
-**Essential trigger:** Fix loop stopped (any stop condition), or manual skip/abandon.
-
-**Manual options (quick reference):**
-- [M] Fix manually, then type "retry"
-- [S] Skip verification (logs to test-debt.json)
-- [A] Abandon feature (reverts changes)
+> 📚 **SKILL: test-failure-handling** — Load when fix loop stops (any stop condition), or manual skip/abandon.
 
 ### Blocker Tracking and Bulk Re-verification
 
-> 📚 **SKILL: test-prerequisite-detection** → "Blocker Tracking"
->
-> Load the `test-prerequisite-detection` skill for blocker tracking and bulk re-verification.
-
-**Essential trigger:** User selects [S] Skip or [B] Mark as verification blocked.
-
-**Quick reference:**
-- Blocker tracking location: `<project>/ai-tmp/test-debt.json`
-- Bulk re-verify command: "verify-blocked [blocker-id]"
+> 📚 **SKILL: test-prerequisite-detection** → "Blocker Tracking" — Load when user selects Skip or Mark as verification blocked.
 
 ### Flaky Test Handling
 
-> 📚 **SKILL: test-ui-verification** → "Flaky Test Handling"
->
-> Load the `test-ui-verification` skill for flaky test detection and escalation.
-
-**Essential trigger:** Test passes intermittently (1/3 or 2/3 passes on retry).
-
-**Quick reference:**
-- 0/3 pass = genuine failure (normal fix loop)
-- 1/3 or 2/3 pass = FLAKY (escalate for fix)
-- Quarantine option for persistent flakiness
+> 📚 **SKILL: test-ui-verification** → "Flaky Test Handling" — Load when test passes intermittently (1/3 or 2/3 passes on retry).
 
 ---
 
 ## Deferred E2E Test Flow
 
-> 📚 **SKILL: test-e2e-flow** → "Deferred E2E Test Flow (Post-PRD-Completion)"
->
-> Load the `test-e2e-flow` skill for the complete deferred E2E workflow including:
-> - Runtime verification (devPort check)
-> - Source identification (builder-state.json → pendingTests.e2e)
-> - Branch detection and checkout
-> - Test execution with fix loop
-> - PRD status updates (awaiting_e2e → completed)
-> - Result reporting and skip handling
+> 📚 **SKILL: test-e2e-flow** → "Deferred E2E Test Flow" — Load when running deferred E2E tests post-PRD-completion.
 
 ---
 
