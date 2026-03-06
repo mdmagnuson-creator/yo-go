@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-03-06T01:00:00Z",
+  "generatedAt": "2026-03-05T23:00:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -1011,6 +1011,54 @@
       {
         "date": "2026-03-05",
         "changes": [
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "replace playwright-required config gate with automatic UI project detection via isUIProject() in test-ui-verification (PRD mandatory-playwright-between-stories US-003)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "remove E2E deferral for UI projects — deferred resolves as immediate when isUIProject() in test-activity-resolution and test-e2e-flow (PRD mandatory-playwright-between-stories US-002)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "wire postChangeWorkflow into PRD per-story quality checks loop in prd-workflow and test-quality-checks (PRD mandatory-playwright-between-stories US-001/004)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "add Playwright installation check with install/skip prompt and session caching to prd-workflow (PRD mandatory-playwright-between-stories US-005)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "add story-scoped Playwright test selection with 1-hop dependency edges to prd-workflow (PRD mandatory-playwright-between-stories US-006)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "add 5-attempt Playwright retry strategy with skip-and-log to prd-workflow (PRD mandatory-playwright-between-stories US-007)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "builder",
+            "description": "add story-scoped Playwright (Step 5) and retry strategy (Step 6) to Verification Pipeline Resolution in builder agent (PRD mandatory-playwright-between-stories US-006/007)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "align adhoc-workflow UI Verification Enforcement with automatic isUIProject() detection (PRD mandatory-playwright-between-stories US-003)",
+            "hash": "pending"
+          },
           {
             "type": "refactor",
             "scope": "templates",

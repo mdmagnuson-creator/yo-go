@@ -7,14 +7,49 @@ description: "Playwright-based UI verification for UI projects. Use when verifyi
 
 > Load this skill when: verifying UI changes in browser, generating verification tests, or managing playwright-required mode.
 
-## UI Verification (Playwright Required Mode)
+## UI Verification (Automatic for UI Projects)
 
 > 🎯 **For UI projects, Playwright browser verification is MANDATORY for UI changes.**
 >
-> When `project.json → agents.verification.mode` is `playwright-required`:
-> - All UI changes must be visually verified in a browser before task completion
+> UI verification is **automatic** — no opt-in config required. It triggers when the project
+> has Playwright in its `postChangeWorkflow`, `apps.*.testing.framework`, or `apps.*.type`
+> is `frontend`/`desktop`. See "UI Project Detection" below.
+>
+> - All UI changes must be visually verified in a browser/app before task completion
 > - Verification generates reusable test scripts in `tests/ui-verify/`
 > - Screenshots are captured for visual confirmation
+
+### UI Project Detection
+
+A project is a "UI project" (requiring automatic Playwright verification) when **any** of:
+
+1. `postChangeWorkflow.steps[]` contains a step with `playwright` in its `name` or `command`
+2. `apps.*.testing.framework` contains `playwright` (e.g., `playwright-electron`)
+3. `apps.*.type` is `frontend` or `desktop`
+
+```
+function isUIProject(project):
+  # Check postChangeWorkflow for Playwright steps
+  if project.postChangeWorkflow?.steps:
+    for step in project.postChangeWorkflow.steps:
+      if "playwright" in step.name?.toLowerCase() or "playwright" in step.command?.toLowerCase():
+        return true
+
+  # Check apps for Playwright testing framework or UI app type
+  for appName, appConfig in project.apps:
+    if "playwright" in (appConfig.testing?.framework or "").toLowerCase():
+      return true
+    if appConfig.type in ["frontend", "desktop"]:
+      return true
+
+  return false
+```
+
+This is **not a heuristic** — it reads explicit project configuration that the user already set up.
+
+> ℹ️ **Backward compatibility:** `agents.verification.mode: "playwright-required"` is still respected
+> if set, but is no longer required. Projects WITHOUT it but WITH Playwright in their pipeline
+> now get mandatory verification automatically.
 
 ### Configuration
 
@@ -24,7 +59,6 @@ Read verification settings from `project.json`:
 {
   "agents": {
     "verification": {
-      "mode": "playwright-required",
       "selectorStrategy": "strict",
       "testDir": "tests/ui-verify",
       "screenshotDir": "ai-tmp/verification/screenshots",
@@ -36,7 +70,7 @@ Read verification settings from `project.json`:
 
 | Setting | Values | Description |
 |---------|--------|-------------|
-| `mode` | `playwright-required` / `no-ui` | Whether UI verification is mandatory |
+| `mode` | `playwright-required` / `no-ui` | Legacy setting. Still respected if set, but no longer required for UI verification |
 | `selectorStrategy` | `strict` / `flexible` | `strict` requires data-testid attributes |
 | `testDir` | path | Where to save generated verification tests |
 | `screenshotDir` | path | Where to save verification screenshots |
@@ -190,11 +224,15 @@ Task complete (file changes detected)
 ┌─────────────────────────────────────────────────────────────────────┐
 │ STEP 1: Check if UI verification required                           │
 │                                                                     │
-│ Read project.json → agents.verification.mode                        │
-│   • "playwright-required" → Continue                                │
-│   • "no-ui" → Return { status: "not-required" }                     │
+│ Check 1: agents.verification.mode == "no-ui" → Skip                 │
 │                                                                     │
-│ Check changed files:                                                │
+│ Check 2: Is this a UI project? (isUIProject from above)             │
+│   • postChangeWorkflow has Playwright step → Continue                │
+│   • apps.*.testing.framework has Playwright → Continue               │
+│   • apps.*.type is frontend/desktop → Continue                       │
+│   • None of the above → Return { status: "not-required" }           │
+│                                                                     │
+│ Check 3: Changed files                                               │
 │   • UI files (*.tsx, *.jsx, *.vue) → Continue                       │
 │   • Non-UI files only → Return { status: "not-required" }           │
 └─────────────────────────────────────────────────────────────────────┘
@@ -246,7 +284,7 @@ interface VerificationResult {
 | `verified` | UI change verified via Playwright | ✅ Yes |
 | `unverified` | UI change not yet verified | ❌ No (blocked) |
 | `skipped` | User explicitly skipped verification | ⚠️ Yes (with debt) |
-| `not-required` | No UI changes, or mode is `no-ui` | ✅ Yes |
+| `not-required` | No UI changes, not a UI project, or mode is `no-ui` | ✅ Yes |
 
 ---
 
@@ -599,7 +637,7 @@ Probes are **skipped** (not failed) when:
 
 | Condition | Skip Reason | Dashboard Note |
 |-----------|-------------|----------------|
-| `agents.verification.mode: "no-ui"` | Project has no UI | `➖ Probe skipped: no-ui project` |
+| `agents.verification.mode: "no-ui"` | Project explicitly opted out of UI verification | `➖ Probe skipped: no-ui project` |
 | Dev server unreachable | Cannot probe without running app | `➖ Probe skipped: dev server not reachable` |
 | No page assertions generated | Analysis is purely backend | `➖ Probe skipped: no UI assertions to verify` |
 | `project.json` → `agents.analysisProbe: false` | User opted out | `➖ Probe skipped: disabled in project.json` |

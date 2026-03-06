@@ -110,6 +110,10 @@ function resolveActivities(changedFiles, diffContent, project):
           activities.e2eAreas.add(file)
         
         if rule.e2e === "deferred" and hasUI:
+          # UI project override: if project has Playwright in postChangeWorkflow
+          # or apps.*.testing, resolve as "immediate" instead of "deferred"
+          if isUIProject(project):
+            activities.e2e = "immediate"
           activities.e2eAreas.add(file)
         
         # Dependent smoke testing
@@ -150,6 +154,22 @@ function resolveActivities(changedFiles, diffContent, project):
   
   return activities
 
+function isUIProject(project):
+  # A project requires per-story Playwright verification when ANY of:
+  # 1. postChangeWorkflow has a step with "playwright" in name or command
+  # 2. apps.*.testing.framework contains "playwright"
+  # 3. apps.*.type is "frontend" or "desktop"
+  if project.postChangeWorkflow?.steps:
+    for step in project.postChangeWorkflow.steps:
+      if "playwright" in step.name?.toLowerCase() or "playwright" in step.command?.toLowerCase():
+        return true
+  for appName, appConfig in project.apps:
+    if "playwright" in (appConfig.testing?.framework or "").toLowerCase():
+      return true
+    if appConfig.type in ["frontend", "desktop"]:
+      return true
+  return false
+
 function inferUnitTester(file):
   if file.endsWith(".tsx") or file.endsWith(".jsx"):
     return "react-tester"
@@ -188,9 +208,15 @@ Running:
 | Timing | Meaning | When |
 |--------|---------|------|
 | `immediate` | Run E2E now, before task marked complete | Auth, payment, API, middleware, database |
-| `deferred` | Queue for PRD/batch completion | Components, hooks, pages, styling |
+| `immediate` (UI override) | Run E2E now for UI projects | Components, hooks, pages, styling — when project has Playwright in `postChangeWorkflow` or `apps.*.testing` |
+| `deferred` | Queue for PRD/batch completion | Components, hooks, pages, styling — only for non-UI projects |
 | `skip` | No E2E for this file type | Type definitions, tests, docs, config |
 | `skip-no-ui` | Project has no UI | CLI tools, libraries, backend-only |
+
+> ℹ️ **UI Project Override:** For projects with Playwright in `postChangeWorkflow.steps[]` or
+> `apps.*.testing.framework`, files that would normally resolve as `deferred` (components, hooks,
+> pages, styling) instead resolve as `immediate`. This ensures per-story Playwright verification
+> in both PRD and ad-hoc modes. Non-UI projects retain the original deferral behavior.
 
 ## Skip Playwright Entirely
 

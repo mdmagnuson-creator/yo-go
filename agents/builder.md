@@ -1176,6 +1176,14 @@ The verification pipeline can be skipped when ALL changed files match one of:
 - dependency lockfile-only changes (`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`)
 - user explicitly says "skip verification"
 
+**Step 5: Story-scoped Playwright (PRD mode)**
+
+In PRD mode, Playwright runs are **story-scoped**: only tests covering changed files and their 1-hop import consumers are executed. Full suite is never auto-run. See `prd-workflow` skill → "Story-Scoped Playwright Test Selection" for the scoping algorithm. If scoping cannot be determined, fall back to the full Playwright command from `postChangeWorkflow`.
+
+**Step 6: Playwright retry strategy (PRD mode)**
+
+In PRD mode, Playwright failures use a **5-attempt retry** with fix attempts between each retry. After 5 failures, the Playwright step is **skipped and logged** — Builder continues to the next story. This differs from the general `test-verification-loop` (3 attempts, stop and ask). Each attempt is logged with what was tried, and the skip includes full failure detail in `builder-state.json` → `activePrd.playwrightSkips[]`. See `prd-workflow` skill → "Playwright Retry Strategy (5 attempts, skip and log)".
+
 ---
 
 ## Commit Strategy Configuration

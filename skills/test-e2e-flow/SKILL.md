@@ -18,8 +18,16 @@ After the mandatory checks pass, PRD mode handles E2E based on **automatic activ
 | E2E Resolution | Behavior |
 |----------------|----------|
 | `immediate` | Run E2E tests now, before marking story complete |
-| `deferred` | Queue E2E tests for PRD completion |
+| `immediate` (UI override) | For UI projects: run scoped Playwright tests per-story via `postChangeWorkflow` pipeline |
+| `deferred` | Queue E2E tests for PRD completion (non-UI projects only) |
 | `skip` | No E2E (docs, config, type definitions) |
+
+> ℹ️ **UI Project Override:** For projects with Playwright in `postChangeWorkflow.steps[]`,
+> `apps.*.testing.framework`, or `apps.*.type` of `frontend`/`desktop`, E2E resolves as
+> `immediate` for ALL file types (not just auth/payment/API). This means components, hooks,
+> pages, and styling changes trigger per-story Playwright verification instead of being deferred.
+> `testing.autoGenerate` is NOT a gate — if the project has existing Playwright tests, they run
+> regardless of the autoGenerate setting.
 
 ### PRD Story Completion Flow
 
@@ -43,6 +51,7 @@ Story complete
     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │ If E2E = deferred: Queue for PRD completion                          │
+│ (Non-UI projects only — UI projects never defer, they run per-story) │
 └─────────────────────────────────────────────────────────────────────┘
     │
     ▼

@@ -242,17 +242,395 @@ After @developer completes each story, Builder automatically runs:
 2. **Lint** — `npm run lint` (or project equivalent)
 3. **Unit tests** — Auto-generate with @tester, then `CI=true npm test`
 4. **Critic** — Run @critic for code review (batched per `criticMode` setting)
-5. **UI Verification** — Playwright browser verification (if mode is `playwright-required`)
+5. **`postChangeWorkflow` pipeline** — If project has `postChangeWorkflow`, execute ALL steps including Playwright (see below)
+6. **UI Verification fallback** — If no `postChangeWorkflow` but project is a UI project (via `apps` detection), auto-infer rebuild + Playwright steps
 
-If any check fails, Builder runs a fix loop (max 3 attempts). If still failing, STOP and report to user.
+If any check fails, Builder runs a fix loop (max 3 attempts for steps 1-4, max 5 attempts for Playwright — see "Playwright Retry Strategy" below). After 5 Playwright failures, skip and log, then continue to next story. For steps 1-4, if still failing after 3 attempts, STOP and report to user.
+
+### postChangeWorkflow Execution (Step 5)
+
+> 🎯 **The project's `postChangeWorkflow` is the source of truth for what runs after each story.**
+>
+> This is the same pipeline that ad-hoc mode uses. PRD mode runs it per-story.
+
+```
+After steps 1-4 pass:
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Check: Does project.json have postChangeWorkflow?                    │
+│                                                                     │
+│ YES → Execute postChangeWorkflow.steps[] in order                   │
+│   • Each step runs its command                                       │
+│   • Steps with required: true must pass to continue                 │
+│   • Steps with condition: "files-changed-in:path/" are evaluated    │
+│     per-story based on that story's changed files                   │
+│   • Playwright steps are story-scoped (see US-006)                  │
+│                                                                     │
+│ NO → Check if UI project (apps.*.type or apps.*.testing.framework)  │
+│   • UI project → Auto-infer rebuild + Playwright from apps[] config │
+│     (same as ad-hoc's Architecture-Aware Rebuild/Relaunch)          │
+│   • Not UI → Steps 1-4 are sufficient, continue to next story      │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ For Playwright steps specifically:                                    │
+│                                                                     │
+│ • Scope tests to changed files + 1-hop consumers (US-006)           │
+│ • Use authentication config from project.json (same as ad-hoc)      │
+│ • Use apps.*.testing for framework details (executable path, etc.)  │
+│ • On failure: retry up to 5 times with fix attempts                │
+│ •   (see "Playwright Retry Strategy" section below)                │
+│ • After 5 failures: skip and log, continue to next story            │
+└─────────────────────────────────────────────────────────────────────┘
+    │
+    ▼
+Story pipeline complete → mark story done, proceed to next
+```
+
+**Step execution rules:**
+
+| Step Field | Behavior |
+|------------|----------|
+| `required: true` | Must pass to mark story complete |
+| `required: false` | Warning on failure, continue |
+| `condition: "files-changed-in:path/"` | Only runs if story changed files in that path |
+| `condition: "always"` or no condition | Always runs |
+
+**Existing skip patterns still apply** — if all changed files match skip patterns (docs-only, config-only, test-only), the Playwright step is skipped with reason logged.
+
+**Logging:** Builder clearly logs which pipeline steps ran, which tests were scoped in, and their results in the story completion message:
+
+```
+✅ STORY US-003 COMPLETE
+
+Summary: Added password reset flow
+
+postChangeWorkflow:
+  ✅ typecheck: passed
+  ✅ lint: passed
+  ✅ test: passed (12 tests)
+  ✅ build: passed
+  ✅ relaunch-app: app restarted
+  ✅ playwright-verify: 2 scoped tests passed
+     Scoped: e2e/desktop/auth.spec.ts, e2e/desktop/settings.spec.ts
+     Reason: Changed src/auth/reset.ts → consumers: settings page, auth flow
+
+Files changed: 4
+```
+
+### Playwright Installation Check (Once Per Session)
+
+> ⛔ **Before running any Playwright step, verify Playwright is installed. Check once per session, not per-story.**
+
+```
+Before first Playwright step in session:
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Check: Is Playwright installed?                                      │
+│                                                                     │
+│ Run: npx playwright --version 2>/dev/null                           │
+│ Or check: node_modules/.bin/playwright exists                        │
+│                                                                     │
+│ INSTALLED → Cache result, skip check for remaining stories          │
+│                                                                     │
+│ NOT INSTALLED → Show explanation and offer to install:               │
+│                                                                     │
+│   ⚠️ PLAYWRIGHT NOT INSTALLED                                       │
+│                                                                     │
+│   This project requires Playwright for UI verification.             │
+│   Playwright is a browser/app testing framework that verifies       │
+│   your UI works as a real user would see it.                        │
+│                                                                     │
+│   Without it, Builder cannot verify that UI changes actually work   │
+│   after each story.                                                 │
+│                                                                     │
+│   [I] Install Playwright (npx playwright install)                   │
+│   [S] Skip Playwright for this session                              │
+│                                                                     │
+│ If user chooses [I]:                                                │
+│   Run: npx playwright install                                       │
+│   Retry the Playwright step                                         │
+│                                                                     │
+│ If user chooses [S]:                                                │
+│   Log: "Playwright skipped: user declined install"                  │
+│   Skip ALL Playwright steps for remaining stories in this session   │
+│   Each story logs: "⚠️ Playwright: SKIPPED (not installed)"        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Session cache:** Store the installation check result in `builder-state.json`:
+
+```json
+{
+  "playwrightInstallCheck": {
+    "checked": true,
+    "installed": true,
+    "checkedAt": "2026-03-05T10:00:00Z"
+  }
+}
+```
+
+If `playwrightInstallCheck.checked` is `true`, skip the check for subsequent stories.
+
+### Story-Scoped Playwright Test Selection
+
+> 🎯 **Per-story Playwright runs are SCOPED, not full-suite.**
+>
+> Builder determines which tests to run by analyzing the story's changed files and their
+> 1-hop dependency consumers. The full suite is NEVER auto-run — users can request it manually.
+>
+> **Trigger:** After story implementation, before marking story complete.
+> **Failure behavior:** If scoping finds zero matching tests, log "no scoped tests found" and skip Playwright for that story (not a blocker).
+
+**Scoping algorithm:**
+
+```
+function scopePlaywrightTests(storyChangedFiles, project):
+  # Step 1: Find direct test files for changed source files
+  directTests = Set()
+  for file in storyChangedFiles:
+    # Match by path overlap (e.g., src/auth/reset.ts → e2e/auth.spec.ts)
+    # Match by route overlap (e.g., pages/checkout.tsx → e2e/checkout.spec.ts)
+    # Match by explicit test-to-source mapping if available
+    directTests.addAll(findMatchingTestFiles(file))
+
+  # Step 2: Follow import graph 1 hop to consumers
+  consumers = Set()
+  for file in storyChangedFiles:
+    # Find files that import/require this file (1 hop only)
+    consumers.addAll(getDirectImporters(file))
+
+  # Step 3: Find test files for consumers too
+  consumerTests = Set()
+  for consumer in consumers:
+    consumerTests.addAll(findMatchingTestFiles(consumer))
+
+  # Step 4: Combine all scoped tests
+  allScopedTests = directTests.union(consumerTests)
+
+  if allScopedTests.isEmpty():
+    # Scoping failed — fall back to full Playwright command
+    return {
+      scope: "full",
+      reason: "Could not determine test-to-source mapping for changed files",
+      tests: null  # Run full command from postChangeWorkflow
+    }
+
+  return {
+    scope: "story",
+    tests: allScopedTests,
+    reasoning: buildScopingReasoning(storyChangedFiles, directTests, consumers, consumerTests)
+  }
+```
+
+**Test file matching strategies** (in priority order):
+
+| Strategy | How It Works | Example |
+|----------|-------------|---------|
+| Path overlap | Source path maps to test path | `src/invoices/calc.ts` → `e2e/invoices.spec.ts` |
+| Route overlap | Page component maps to route test | `pages/checkout.tsx` → `e2e/checkout.spec.ts` |
+| Directory convention | Test directory mirrors source | `src/auth/**` → `e2e/desktop/auth.spec.ts` |
+| Explicit mapping | `playwright.config` or convention file | Custom test-to-source map |
+
+**1-hop dependency edge example:**
+
+```
+Story changes: calculateLineItem() in src/invoices/line-items.ts
+
+Direct tests:
+  → e2e/invoices/line-items.spec.ts
+
+1-hop consumers (files that import line-items.ts):
+  → src/invoices/invoice-total.ts (imports calculateLineItem)
+  → src/components/InvoiceEditor.tsx (imports calculateLineItem)
+
+Consumer tests:
+  → e2e/invoices/totals.spec.ts
+  → e2e/desktop/invoice-editor.spec.ts
+
+Scoped run: 3 test files
+```
+
+**Execution:**
+
+```bash
+# Story-scoped (preferred)
+pnpm exec playwright test e2e/invoices/line-items.spec.ts e2e/invoices/totals.spec.ts e2e/desktop/invoice-editor.spec.ts
+
+# Full fallback (when scoping fails)
+pnpm exec playwright test  # Runs full suite from postChangeWorkflow command
+```
+
+**Story completion message includes scoping detail:**
+
+```
+✅ playwright-verify: 3 scoped tests passed
+   Scoped: e2e/invoices/line-items.spec.ts, e2e/invoices/totals.spec.ts, e2e/desktop/invoice-editor.spec.ts
+   Reason: Changed src/invoices/line-items.ts
+     → direct: line-items.spec.ts
+     → consumer: invoice-total.ts → totals.spec.ts
+     → consumer: InvoiceEditor.tsx → invoice-editor.spec.ts
+```
+
+> ℹ️ **Full suite is user-initiated only.** Builder does NOT auto-run the full Playwright suite.
+> The user can request it at any time (e.g., "run full playwright suite").
+
+### Playwright Retry Strategy (5 attempts, skip and log)
+
+> 🔄 **On Playwright failure during per-story verification, retry up to 5 times with fix attempts. After 5 failures, skip and log — never block forever.**
+>
+> This strategy differs from the general `test-verification-loop` fix loop (3 attempts, then stop and ask user).
+> In PRD per-story mode, the goal is **momentum** — log the failure, continue to the next story.
+
+**Retry algorithm:**
+
+```
+MAX_PLAYWRIGHT_ATTEMPTS = 5
+attempt = 0
+attempts_log = []
+
+while attempt < MAX_PLAYWRIGHT_ATTEMPTS:
+    attempt += 1
+    
+    Run story-scoped Playwright tests (see US-006)
+    
+    if ALL pass:
+        Log: "✅ playwright-verify: passed on attempt {attempt}"
+        BREAK → story pipeline complete
+    
+    if tests fail:
+        failure = capture_failure(test_name, error_message, stack_trace)
+        
+        # Delegate fix to @developer
+        fix_description = delegate_fix_to_developer(failure, attempt)
+        
+        attempts_log.append({
+            attempt: attempt,
+            error: failure.error,
+            testFile: failure.testFile,
+            fix: fix_description
+        })
+        
+        Log: "Attempt {attempt}/5: {fix_description} → retrying..."
+
+# If all 5 attempts exhausted:
+Log skip with full detail (see below)
+Continue to next story
+```
+
+**Fix delegation per attempt:**
+
+Each retry delegates to @developer with increasing context:
+
+| Attempt | Context Given to @developer |
+|---------|----------------------------|
+| 1 | Error message, test file, changed files from story |
+| 2 | Attempt 1 fix description + result, error diff |
+| 3 | All prior attempts, pattern analysis ("same error" or "new error") |
+| 4 | All prior attempts, broader file context (1-hop consumers) |
+| 5 | All prior attempts, suggest alternative approach or workaround |
+
+**Skip and log format (after 5 failures):**
+
+```
+⚠️ PLAYWRIGHT SKIPPED (5 attempts exhausted) — Story US-003
+
+Test file: e2e/desktop/auth.spec.ts
+Scoped tests: 2 files
+Error: Timeout waiting for '[data-testid="reset-button"]'
+
+Attempts:
+  1. Added data-testid="reset-button" to ResetPassword component → ❌ Timeout persists
+  2. Increased wait timeout to 10s → ❌ Element not in DOM
+  3. Fixed conditional render — button was behind auth check → ❌ New error: navigation timeout
+  4. Added explicit page.waitForURL before assertion → ❌ URL never reached
+  5. Checked app server logs — route handler returns 404 → ❌ Route not registered
+
+Resolution: Could not resolve — route handler for /reset-password not wired.
+This needs manual investigation.
+
+Logged to: builder-state.json → activePrd.playwrightSkips[]
+```
+
+**Story completion message with skip:**
+
+```
+⚠️ STORY US-003 COMPLETE (with Playwright skip)
+
+Summary: Added password reset flow
+
+postChangeWorkflow:
+  ✅ typecheck: passed
+  ✅ lint: passed
+  ✅ test: passed (12 tests)
+  ✅ build: passed
+  ✅ relaunch-app: app restarted
+  ⚠️ playwright-verify: SKIPPED after 5 attempts
+     Test: e2e/desktop/auth.spec.ts
+     Last error: Route handler for /reset-password not wired
+     See: builder-state.json → activePrd.playwrightSkips[0]
+
+Files changed: 4
+```
+
+**State tracking:**
+
+Record each skip in `builder-state.json` for visibility and follow-up:
+
+```json
+{
+  "activePrd": {
+    "playwrightSkips": [
+      {
+        "storyId": "US-003",
+        "testFile": "e2e/desktop/auth.spec.ts",
+        "scopedTests": ["e2e/desktop/auth.spec.ts", "e2e/desktop/settings.spec.ts"],
+        "attempts": [
+          { "attempt": 1, "fix": "Added data-testid to ResetPassword", "error": "Timeout" },
+          { "attempt": 2, "fix": "Increased wait timeout", "error": "Element not in DOM" },
+          { "attempt": 3, "fix": "Fixed conditional render", "error": "Navigation timeout" },
+          { "attempt": 4, "fix": "Added waitForURL", "error": "URL never reached" },
+          { "attempt": 5, "fix": "Checked route handler", "error": "Route returns 404" }
+        ],
+        "lastError": "Route handler for /reset-password not wired",
+        "resolution": "Could not resolve — needs manual investigation",
+        "skippedAt": "2026-03-05T14:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+**Relationship to `test-verification-loop` skill:**
+
+| Aspect | `test-verification-loop` (general) | PRD per-story Playwright (US-007) |
+|--------|--------------------------------------|-------------------------------------|
+| Max attempts | 3 per component | 5 per story |
+| On exhaustion | Stop and ask user (M/S/A prompt) | Skip and log, continue to next story |
+| Stability check | 3 consecutive passes required | Single pass sufficient (scoped tests) |
+| Scope | All verification types | Playwright only, PRD mode only |
+
+> ℹ️ The general `test-verification-loop` skill still applies for ad-hoc mode and non-Playwright verification.
+> US-007's retry strategy ONLY governs Playwright steps during PRD per-story execution.
 
 ### UI Verification Enforcement
 
-> 🎯 **For UI projects with `playwright-required` mode, UI changes MUST be browser-verified before story completion.**
+> 🎯 **For UI projects, UI changes MUST be browser-verified before story completion.**
 >
-> **Trigger:** After steps 1-4 pass, check if UI verification is required.
+> UI verification is **automatic** — no opt-in config required. It triggers based on
+> `postChangeWorkflow`, `apps.*.testing.framework`, or `apps.*.type` detection.
 >
-> **Check:** Read `project.json` → `agents.verification.mode`
+> **Trigger:** After steps 1-4 pass, check if this is a UI project.
+>
+> **Detection (any of these = UI project):**
+> 1. `postChangeWorkflow.steps[]` has a step with `playwright` in name or command
+> 2. `apps.*.testing.framework` contains `playwright`
+> 3. `apps.*.type` is `frontend` or `desktop`
+>
+> **Explicit opt-out:** `agents.verification.mode: "no-ui"` skips verification.
 >
 > **Failure behavior:** If verification status is `unverified`, BLOCK story completion. The story remains `in_progress` until verified or explicitly skipped.
 
@@ -408,15 +786,15 @@ Builder: ⚠️ Story US-003 completing WITHOUT verification.
 
 ### Step 2: Automatic Testing After Story (US-003)
 
-> ⚠️ **Quality checks already ran above. This step handles E2E test generation and deferral.**
+> ⚠️ **Quality checks (including postChangeWorkflow pipeline) already ran above. This step handles additional E2E test generation and deferral for non-UI projects.**
 
 Use `test-flow` as the canonical source for all test behavior.
 
 1. Read effective story intensity from `builder-state.json` (`activePrd.storyAssessments[storyId].effective`).
-2. Execute **PRD Mode Test Flow (US-003)** from `test-flow` for E2E handling.
+2. Execute **PRD Mode Test Flow (US-003)** from `test-flow` for any remaining E2E handling.
 3. Do not duplicate test logic here. Follow `test-flow` for:
    - E2E test generation based on story intensity
-   - E2E deferral to PRD completion (default behavior)
+   - E2E deferral to PRD completion (non-UI projects only — UI projects already ran Playwright per-story)
    - Retry/fix loops and failure handling
    - `builder-state.json` updates for queued tests
 4. After test-flow completes for the story, update `activePrd.storiesCompleted` and continue.

@@ -22,9 +22,9 @@ After @developer completes a task, run resolved activities in this order:
 | 1 | **Typecheck** | Always (baseline) | Yes, max 3 attempts |
 | 2 | **Lint** | Always (baseline) | Yes, max 3 attempts |
 | 3 | **Unit Tests** | Resolved testers | Yes, max 3 attempts |
-| 3.5 | **Rebuild/Relaunch** | Auto-inferred from `apps[]` or `postChangeWorkflow` | Yes, max 3 attempts |
+| 3.5 | **Rebuild/Relaunch** | `postChangeWorkflow` steps (or auto-inferred from `apps[]`) | Yes, max 3 attempts |
 | 4 | **Critics** | Resolved from patterns | Report findings, @developer fixes |
-| 5 | **E2E Tests** | If `immediate` | Yes, max 3 attempts |
+| 5 | **E2E / Playwright** | `postChangeWorkflow` Playwright step, or `immediate` from activity resolution | Yes, max 5 attempts (see retry strategy) |
 | 6 | **Quality** | Resolved quality critics | Report findings |
 
 ### Flow Diagram
@@ -71,14 +71,15 @@ Task/Story complete
     │
     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│ 3.5. Rebuild/Relaunch (architecture-aware)                          │
+│ 3.5. Rebuild/Relaunch (postChangeWorkflow or architecture-aware)     │
 │                                                                     │
-│ Check apps[] in project.json:                                       │
+│ If postChangeWorkflow exists → execute non-Playwright steps          │
+│   (typecheck, lint, test, build, relaunch — per step order)          │
+│                                                                     │
+│ If no postChangeWorkflow, check apps[] in project.json:              │
 │   • No apps[] or web-only → Skip (HMR handles it)                  │
 │   • Desktop + bundled/hybrid → Build + relaunch Electron            │
 │   • Desktop + remote → Ensure Electron running (no rebuild)         │
-│                                                                     │
-│ If postChangeWorkflow exists → execute its steps instead            │
 │                                                                     │
 │ CRITICAL: Desktop → always Playwright-Electron, never browser       │
 └─────────────────────────────────────────────────────────────────────┘
@@ -97,9 +98,20 @@ Task/Story complete
     │
     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│ 5. E2E Tests (if immediate)                                         │
-│    - @e2e-reviewer identifies areas + finds dependents              │
-│    - @e2e-playwright writes and runs tests                          │
+│ 5. E2E / Playwright                                                  │
+│                                                                     │
+│ For UI projects (postChangeWorkflow has Playwright, or               │
+│ apps.*.testing.framework has Playwright, or apps.*.type is           │
+│ frontend/desktop):                                                   │
+│   - Run scoped Playwright tests (changed files + 1-hop consumers)   │
+│   - Use authentication config for login flows                        │
+│   - Use apps.*.testing for framework details                         │
+│   - On failure: retry up to 5 times with fix attempts               │
+│   - After 5 failures: skip and log full detail, continue            │
+│                                                                     │
+│ For non-UI projects: run E2E only if resolved as `immediate`        │
+│   - @e2e-reviewer identifies areas + finds dependents               │
+│   - @e2e-playwright writes and runs tests                           │
 └─────────────────────────────────────────────────────────────────────┘
     │
     ├─── PASS (or deferred/skip) ──► Continue

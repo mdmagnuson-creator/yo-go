@@ -950,11 +950,16 @@ CRITICAL: Desktop apps ALWAYS use Playwright-Electron for step 5, never browser-
 
 ### UI Verification Enforcement
 
-> 🎯 **For UI projects with `playwright-required` mode, UI changes MUST be browser-verified.**
+> 🎯 **For UI projects, UI changes MUST be browser-verified.**
 >
-> **Trigger:** After steps 1-4 pass, check if UI verification is required.
+> **Trigger:** After steps 1-4 pass, check if this is a UI project.
 >
-> **Check:** Read `project.json` → `agents.verification.mode`
+> **Detection (any of these = UI project):**
+> 1. `postChangeWorkflow.steps[]` has a step with `playwright` in name or command
+> 2. `apps.*.testing.framework` contains `playwright`
+> 3. `apps.*.type` is `frontend` or `desktop`
+>
+> **Explicit opt-out:** `agents.verification.mode: "no-ui"` skips verification.
 >
 > **Failure behavior:** If verification status is `unverified`, BLOCK story completion.
 
@@ -967,9 +972,13 @@ Steps 1-4 pass
 ┌─────────────────────────────────────────────────────────────────────┐
 │ Check if UI verification required:                                   │
 │                                                                     │
-│ Read project.json → agents.verification.mode                        │
-│   • "no-ui" → Skip verification, proceed to completion              │
-│   • "playwright-required" → Check changed files                     │
+│ Check 1: agents.verification.mode == "no-ui" → Skip                 │
+│                                                                     │
+│ Check 2: Is this a UI project?                                       │
+│   • postChangeWorkflow has Playwright step → Continue                │
+│   • apps.*.testing.framework has Playwright → Continue               │
+│   • apps.*.type is frontend/desktop → Continue                       │
+│   • None of the above → Skip verification                           │
 │                                                                     │
 │ Check changed files against SKIP PATTERNS:                          │
 │   • *.md (documentation) → Skip with reason                         │
