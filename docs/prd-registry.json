@@ -167,6 +167,16 @@
       "createdAt": "2026-03-06",
       "stories": 17,
       "notes": "Part 1: Adds Step 0.1c (implementation decisions) and Step 0.1d (Playwright analysis confirmation) to ad-hoc analysis. Builder detects implicit decisions, asks user, then visually confirms analysis via Playwright before showing dashboard. Integrates planning.considerations. Answers flow into Task Spec acceptance criteria. Part 2: Consolidates 4 duplicated quality-check pipeline definitions into a single canonical test-flow skill. Removes isUIProject() gate entirely — all projects get full Playwright verification unconditionally. Deduplicates E2E URL resolution and shared detection functions. Part 3: Unifies PRD and ad-hoc state models into single activeWork object, defines mandatory story processing pipeline (implement → test-flow → auto-commit), adds flow chart dashboard option, enables session resume from unified state."
+    },
+    {
+      "id": "prd-mandatory-probe-enforcement",
+      "title": "Mandatory Playwright Probe Enforcement — Remove All Skip Paths",
+      "status": "complete",
+      "filePath": "docs/prds/prd-mandatory-probe-enforcement.md",
+      "createdAt": "2026-03-06",
+      "completedAt": "2026-03-06",
+      "stories": 13,
+      "notes": "Eliminates all probe skip paths (skipped, degraded-no-auth, config opt-out). Makes probe truly mandatory with user-assisted auth escalation, re-probe loop for contradictions, and user-skipped as the only skip path (requires explicit user acceptance)."
     }
   ]
 }

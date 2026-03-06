@@ -359,27 +359,27 @@ Ask: "Was the user's original issue visible in the browser or app UI?"
 >
 > **Evidence:** Probe results MUST appear in the ANALYSIS COMPLETE dashboard.
 >
-> **Failure behavior:** If proceeding to Step 0.2 without running the probe (when applicable), STOP and run the probe first.
+> **Failure behavior:** If proceeding to Step 0.2 without running the probe, STOP and run the probe first.
 
-> ⛔ **NO-BYPASS RULE: The probe cannot be skipped through rationalization.**
+> ⛔ **NO-BYPASS RULE: The probe is mandatory. There are no skip conditions. There is no config opt-out. The probe always runs.**
 >
 > The following are NOT valid reasons to skip the probe:
 >
-> | Invalid Rationalization | Why It's Wrong |
-> |------------------------|----------------|
-> | "This is an Electron/desktop app" | Electron apps have web content — probe the web UI |
-> | "The analysis is clear from the code" | Code analysis misses runtime state, CSS, route guards |
-> | "This is a UX flow restructuring, not element verification" | UX changes affect visible elements — probe them |
-> | "The user described the issue clearly" | User descriptions are input, not verification |
-> | "I already took a screenshot" | Screenshots show current state; probes verify specific assertions |
-> | "This is a backend/config change" | If no UI assertions exist, the probe is skipped via valid skip conditions — don't preemptively decide |
+> | Invalid Rationalization | Why It's Wrong | Mandatory Resolution |
+> |------------------------|----------------|----------------------|
+> | "This is an Electron/desktop app" | Electron apps have web content — probe the web UI | Start the app, probe web content |
+> | "The analysis is clear from the code" | Code analysis misses runtime state, CSS, route guards | Run the probe — it catches what code analysis misses |
+> | "This is a UX flow restructuring, not element verification" | UX changes affect visible elements — probe them | Generate assertions for the affected UX elements |
+> | "The user described the issue clearly" | User descriptions are input, not verification | Run the probe — user descriptions don't replace automated verification |
+> | "I already took a screenshot" | Screenshots show current state; probes verify specific assertions | Run the probe — screenshots ≠ assertion verification |
+> | "This is a backend/config change" | If the change has any runtime UI impact, probe the affected pages | Generate assertions for affected pages — don't preemptively decide there are none |
+> | "Dev server is unreachable" | Start it using `start-dev-server` skill. If the app is not installed, install it. | Start the dev server or install the app — there is always a way |
+> | "No page assertions generated" | If analysis cannot produce assertions, the analysis is incomplete | Re-analyze and generate assertions |
+> | "Auth is not configured / auth failed" | Exhaust autonomous auth approaches, then ask the user for help | Follow the Auth Resolution Escalation protocol below |
 >
-> **The ONLY valid skip conditions** are listed in `test-ui-verification` skill → "Skip Conditions":
-> - Dev server unreachable (after attempting to start it)
-> - No page assertions generated (purely backend analysis)
-> - `agents.analysisProbe: false` in project.json (explicit user opt-out)
+> **The ONLY way a probe can be skipped is if the user explicitly accepts a skip after Builder has exhausted all options and asked for assistance.** This sets `probeStatus: "user-skipped"` — Builder cannot set this status autonomously.
 >
-> **If you catch yourself about to skip the probe for any other reason — STOP.** Run the probe.
+> **If you catch yourself about to skip the probe for any reason — STOP.** Run the probe.
 
 **After Step 0.1 code analysis and Step 0.0a screenshot, run the Playwright probe:**
 
@@ -443,12 +443,27 @@ Ask: "Was the user's original issue visible in the browser or app UI?"
    |-------------|--------|
    | `confirmed` | Proceed to Step 0.2 with `✅ Playwright-confirmed` badge |
    | `partially-confirmed` | Update analysis with corrections from discrepancies, note in dashboard |
-   | `contradicted` | **Re-analyze:** Revise code analysis using probe data, lower confidence to MEDIUM minimum |
-   | `skipped` | Proceed to Step 0.2 with `➖ Probe skipped: [reason]` note |
+   | `contradicted` | **Re-probe loop:** Revise code analysis using probe data → generate new assertions → re-run probe (max 2 retries, see below) |
+   | `user-skipped` | Proceed to Step 0.2 with `⚠️ User accepted skip` badge — user explicitly chose to skip probe on authenticated pages |
 
-4. **On contradiction — mandatory re-analysis:**
+4. **On contradiction — mandatory re-probe loop:**
 
-   When probe results contradict the code analysis:
+   When probe results contradict the code analysis, Builder MUST revise the analysis AND re-probe to confirm the revision is correct — not just revise and proceed.
+
+   **Re-probe loop (max 2 attempts):**
+
+   ```
+   contradicted → revise analysis → generate new assertions → re-run probe
+                   ↑                                              ↓
+                   └──── still contradicted (attempt < 2) ────────┘
+   ```
+
+   **Loop limit:** Maximum 2 re-probe attempts. If still `contradicted` after 2 retries:
+   - Lower confidence to LOW
+   - Force clarifying questions (which restarts analysis)
+   - `contradicted` is a **transient state** — it can never be the final `probeStatus` at the gate
+
+   Each re-probe iteration is logged in the progress indicator:
 
    ```
    ═══════════════════════════════════════════════════════════════════════
@@ -463,14 +478,21 @@ Ask: "Was the user's original issue visible in the browser or app UI?"
      ❌ Expected .form-container visible at /checkout
         Actual: hidden (display: none, gated by feature flag)
 
-   Revising analysis with probe data...
+   ⏳ Revising analysis with probe data...
+   ⏳ Re-probing after analysis revision (attempt 1/2)...
+   ✅ Re-probe confirmed: 3/3 assertions match
    ═══════════════════════════════════════════════════════════════════════
    ```
 
-   After revision:
-   - Confidence is lowered to MEDIUM (minimum), forcing clarifying questions
+   After successful re-probe resolution:
    - The revised analysis replaces the original in the dashboard
    - Discrepancies are listed in a new `🔍 PROBE RESULTS` section
+   - `probeStatus` is updated to `confirmed` or `partially-confirmed`
+
+   After exhausting retries (still contradicted):
+   - Confidence is set to LOW, forcing clarifying questions
+   - The contradictions are shown to the user with the clarifying questions
+   - Answering questions restarts analysis from Step 0.1 (which re-runs the probe)
 
 5. **Progress indicator:**
 
@@ -494,12 +516,7 @@ Ask: "Was the user's original issue visible in the browser or app UI?"
    ═══════════════════════════════════════════════════════════════════════
    ```
 
-#### Autonomous Auth Resolution (for probing authenticated pages)
-
-> ⛔ **NEVER ask the user for credentials, env vars, or auth help when probing.**
-> Builder has auth skills and project config — use them autonomously.
-> The user already configured auth (or it can be auto-detected). Asking them
-> "Do you have SUPABASE_SERVICE_ROLE_KEY?" is a failure of autonomy.
+#### Auth Resolution Escalation (for probing authenticated pages)
 
 When the probe targets pages that require authentication, resolve auth **before** invoking `@e2e-playwright`:
 
@@ -527,22 +544,40 @@ When the probe targets pages that require authentication, resolve auth **before*
    - It writes the `authentication` config to `project.json`
    - Then loop back to step 2 with the new config
 
-4. **If `setup-auth` fails** (truly no auth infrastructure detectable):
-   - Proceed with probe on public pages only
-   - Mark `probeStatus: "degraded-no-auth"` (NOT "partially-confirmed")
-   - Show prominent warning in the analysis dashboard:
-     ```
-     ⚠️ AUTH RESOLUTION FAILED — probe could not authenticate
-     Attempted: [list what was tried]
-     Protected pages NOT probed: /dashboard, /settings
-     ```
+4. **If `setup-auth` fails** → **Ask the user for help:**
+   - "What auth provider does this project use?"
+   - "Can you provide test credentials?"
+   - "Are there env vars I should check?"
+
+5. **If user provides info** → Try again with user-provided guidance (loop back to step 2)
+
+6. **If user cannot help or says "skip"** → Present skip acceptance prompt:
+
+   ```
+   ⚠️ AUTH RESOLUTION FAILED — cannot authenticate for probe
+
+   Attempted:
+     1. project.json auth config → [result]
+     2. setup-auth auto-detection → [result]
+     3. Asked user for help → [result]
+
+   Protected pages NOT probed: /dashboard, /settings
+
+   [S] Skip probe on authenticated pages (proceed with public pages only)
+   [H] Help me configure auth (provide credentials/guidance)
+   [C] Cancel this request
+   ```
+
+   - Only `[S]` from the user sets `probeStatus: "user-skipped"` — Builder cannot set this status autonomously
+   - `[H]` loops back to step 4 with additional user guidance
+   - `[C]` cancels the entire request
 
 **What to NEVER do:**
-- ❌ Ask "Do you have a test user email I can use?"
-- ❌ Ask "Do you have SUPABASE_SERVICE_ROLE_KEY available?"
-- ❌ Present options like "Option A: provide credentials, Option B: skip auth"
+- ❌ Ask the user for credentials BEFORE trying autonomous approaches first (steps 1-3)
 - ❌ Suggest the user run `/setup-auth` — Builder should run it itself
 - ❌ Fall back to probing only public pages without attempting all auth approaches first
+- ❌ Set `probeStatus: "user-skipped"` without the user explicitly choosing `[S]`
+- ❌ Silently degrade to public-only probing (the old `degraded-no-auth` behavior)
 
 ### Step 0.1c: Implementation Decision Detection (NEW)
 
@@ -849,10 +884,9 @@ TSK-004: Add unit tests
 > - Offer options: `[R] Retry screenshot`, `[S] Skip screenshot (not recommended)`, `[C] Cancel`
 > - If user chooses `[S]`, proceed but note "⚠️ Analysis based on code only — visual state not verified"
 
-> ⚠️ **The Playwright probe is NOT optional.** If probe was skipped:
-> - Show skip reason in dashboard (e.g., "dev server not reachable", "no UI assertions")
-> - If probe was skipped due to a fixable issue (dev server), offer `[R] Retry probe`
-> - See `test-ui-verification` skill → "Skip Conditions" for valid skip reasons
+> ⚠️ **The Playwright probe is mandatory.** If the probe has not run, do not show the dashboard — go back and run the probe.
+> The probe always runs. There are no skip conditions. There is no config opt-out.
+> Exception: if `probeStatus` is `user-skipped`, the dashboard may be shown (user already explicitly accepted the skip).
 
 **Probe results display in dashboard:**
 
@@ -861,7 +895,7 @@ TSK-004: Add unit tests
 | `confirmed` | `Confidence: HIGH ✅ Playwright-confirmed` | `🔍 PROBE RESULTS  N/N ✅` |
 | `partially-confirmed` | `Confidence: HIGH ⚠️ Playwright: N/M confirmed` | `🔍 PROBE RESULTS  N/M ⚠️` with discrepancies listed |
 | `contradicted` | `Confidence: MEDIUM 🔴 Playwright contradicted` | `🔍 PROBE RESULTS  N/M 🔴` with contradictions expanded |
-| `skipped` | `Confidence: [original] ➖ Probe skipped` | `🔍 PROBE: ➖ Skipped ([reason])` |
+| `user-skipped` | `Confidence: [original] ⚠️ User accepted skip` | `🔍 PROBE: ⚠️ User accepted skip (auth pages unverified)` |
 
 **Dashboard rules:**
 - **Confidence:** HIGH (clear request) / MEDIUM (some ambiguity) / LOW (needs clarification)
@@ -1863,7 +1897,6 @@ Read from `docs/project.json`:
     "prdRecommendationThreshold": "medium",
     "analysisTimeoutMs": 10000,
     "taskSpecEnabled": true,
-    "analysisProbe": true,
     "analysisProbeTimeoutMs": 5000
   }
 }
@@ -1874,8 +1907,9 @@ Read from `docs/project.json`:
 | `prdRecommendationThreshold` | `"medium"` | Scope at which PRD is recommended: `small`, `medium`, `large` |
 | `analysisTimeoutMs` | `10000` | Max analysis time in milliseconds |
 | `taskSpecEnabled` | `true` | Set `false` for legacy behavior (not recommended) |
-| `analysisProbe` | `true` | Enable Playwright analysis probe during Phase 0 |
 | `analysisProbeTimeoutMs` | `5000` | Timeout per page for Playwright probe |
+
+> ⛔ **There is no `analysisProbe` toggle.** The probe is mandatory and cannot be disabled via configuration.
 
 ---
 

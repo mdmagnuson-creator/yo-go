@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-03-06T22:00:00Z",
+  "generatedAt": "2026-03-07T04:00:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 64,
@@ -1005,84 +1005,162 @@
             "type": "feat",
             "scope": "skills",
             "description": "add design decision detection (Step 0.1c) with planning considerations integration to adhoc-workflow (PRD adhoc-design-decisions US-001/US-003)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "feat",
             "scope": "skills",
             "description": "add design decision questions UI with lettered options and skip detection for trivial tasks (PRD adhoc-design-decisions US-002/US-006)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "feat",
             "scope": "skills",
             "description": "add IMPLEMENTATION DECISIONS section to ANALYSIS COMPLETE dashboard (PRD adhoc-design-decisions US-004)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "feat",
             "scope": "skills",
             "description": "add implementation decisions to Task Spec acceptance criteria and mandatory Playwright analysis confirmation (PRD adhoc-design-decisions US-005/US-007)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "refactor",
             "scope": "skills",
             "description": "merge test-quality-checks and test-activity-resolution into test-flow (~698 lines), delete merged skills (PRD adhoc-design-decisions US-008)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "refactor",
             "scope": "skills",
             "description": "replace inline quality checks in adhoc-workflow with test-flow reference, 232-line reduction (PRD adhoc-design-decisions US-009)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "refactor",
             "scope": "skills",
             "description": "replace inline quality checks in prd-workflow with skill references, 439-line reduction (PRD adhoc-design-decisions US-010)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "refactor",
             "scope": "agents",
             "description": "replace builder.md verification pipeline with single test-flow call, 43-line reduction (PRD adhoc-design-decisions US-011)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "refactor",
             "scope": "skills",
             "description": "remove isUIProject() gate — all projects get full Playwright verification across 7 files (PRD adhoc-design-decisions US-012)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "feat",
             "scope": "schemas",
             "description": "add unified activeWork state model to builder-state.schema.json, remove activePrd/activeTask/adhocQueue (PRD adhoc-design-decisions US-014)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "feat",
             "scope": "agents",
             "description": "add mandatory Story Processing Pipeline to builder.md, migrate all state references to activeWork (PRD adhoc-design-decisions US-015)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "feat",
             "scope": "skills",
             "description": "add [F] flow chart option to ANALYSIS COMPLETE dashboards in adhoc-workflow and prd-workflow (PRD adhoc-design-decisions US-016)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "feat",
             "scope": "agents",
             "description": "add activeWork session resume dashboard with failed/in-progress story handling to builder.md and builder-state (PRD adhoc-design-decisions US-017)",
-            "hash": "pending"
+            "hash": "61b8c05"
           },
           {
             "type": "fix",
             "scope": "skills",
             "description": "split ANALYSIS COMPLETE dashboard into separate Recommended Approach and Alternatives sections in adhoc-workflow",
+            "hash": "ce54491"
+          },
+          {
+            "type": "feat",
+            "scope": "agents",
+            "description": "remove skipped from builder.md probe gate — accept only confirmed, partially-confirmed, user-skipped (PRD mandatory-probe-enforcement US-001)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "agents",
+            "description": "remove Electron-specific qualifier from builder.md prohibitions — universal never-skip language (PRD mandatory-probe-enforcement US-002)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "replace Skip Conditions with Mandatory Enforcement section in test-ui-verification (PRD mandatory-probe-enforcement US-003)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "remove skipped from probe results tables, add user-skipped in test-ui-verification (PRD mandatory-probe-enforcement US-004)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "expand NO-BYPASS RULE with invalid rationalizations table and mandatory resolutions in adhoc-workflow (PRD mandatory-probe-enforcement US-005)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "remove skipped from probe results processing, add user-skipped in adhoc-workflow (PRD mandatory-probe-enforcement US-006)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "replace probe-was-skipped dashboard handling with mandatory enforcement statement in adhoc-workflow (PRD mandatory-probe-enforcement US-007)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "remove skipped from dashboard display table, add user-skipped in adhoc-workflow (PRD mandatory-probe-enforcement US-008)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "add contradicted → re-probe loop (max 2 attempts) in adhoc-workflow (PRD mandatory-probe-enforcement US-009)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "agents",
+            "description": "add contradicted as gate-blocking status with state machine documentation in builder.md (PRD mandatory-probe-enforcement US-010)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "remove agents.analysisProbe config option from test-ui-verification and adhoc-workflow, keep analysisProbeTimeoutMs (PRD mandatory-probe-enforcement US-011)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "replace Autonomous Auth Resolution with Auth Resolution Escalation with user-assisted [S]/[H]/[C] prompt in adhoc-workflow (PRD mandatory-probe-enforcement US-012)",
+            "hash": "pending"
+          },
+          {
+            "type": "feat",
+            "scope": "skills",
+            "description": "add 6-step auth escalation ladder with user assistance to test-ui-verification (PRD mandatory-probe-enforcement US-013)",
             "hash": "pending"
           },
           {

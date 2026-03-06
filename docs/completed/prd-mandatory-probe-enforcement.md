@@ -1,7 +1,7 @@
 ---
 id: prd-mandatory-probe-enforcement
 title: Mandatory Playwright Probe Enforcement — Remove All Skip Paths
-status: ready
+status: complete
 priority: critical
 createdAt: 2026-03-06T22:00:00Z
 ---

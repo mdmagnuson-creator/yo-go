@@ -503,8 +503,8 @@ Builder passes probe-spec to @e2e-playwright
 │ STEP 1: Validate probe spec                                          │
 │   • Ensure baseUrl is reachable                                      │
 │   • Validate assertion format                                        │
-│   • If baseUrl unreachable → return { status: "skipped",             │
-│     reason: "Dev server not reachable" }                             │
+│   • If baseUrl unreachable → return { status: "error",               │
+│     reason: "Dev server not reachable — Builder must start it" }     │
 └─────────────────────────────────────────────────────────────────────┘
     │
     ▼
@@ -541,7 +541,7 @@ Return ProbeResult to Builder
 
 ```typescript
 interface ProbeResult {
-  status: "confirmed" | "partially-confirmed" | "contradicted" | "skipped";
+  status: "confirmed" | "partially-confirmed" | "contradicted" | "user-skipped";
   reason?: string;
   assertions: ProbeAssertionResult[];
   discrepancies: ProbeDiscrepancy[];
@@ -574,7 +574,7 @@ interface ProbeDiscrepancy {
 | `confirmed` | Analysis proceeds as-is | `Confidence: HIGH ✅ Playwright-confirmed` |
 | `partially-confirmed` | Analysis updated with corrections; confidence may remain or lower | `Confidence: HIGH ⚠️ Playwright: N/M assertions confirmed` |
 | `contradicted` | Analysis MUST be revised; confidence lowered to MEDIUM minimum | `Confidence: MEDIUM 🔴 Playwright contradicted analysis` |
-| `skipped` | Analysis proceeds without probe (note shown) | `Confidence: [original] ➖ Playwright probe skipped: [reason]` |
+| `user-skipped` | User explicitly accepted skip on authenticated pages after Builder exhausted all auth approaches and asked for help | `Confidence: [original] ⚠️ User accepted skip` |
 
 ### Confidence Impact Rules
 
@@ -589,38 +589,39 @@ interface ProbeDiscrepancy {
 | MEDIUM | `contradicted` | LOW |
 | LOW | any | LOW (already at minimum) |
 
-### Skip Conditions
+### Mandatory Enforcement
 
-Probes are **skipped** (not failed) when:
+> ⛔ **The probe always runs. There are no skip conditions. There is no config opt-out.**
 
-| Condition | Skip Reason | Dashboard Note |
-|-----------|-------------|----------------|
-| Dev server unreachable | Cannot probe without running app | `➖ Probe skipped: dev server not reachable` |
-| No page assertions generated | Analysis is purely backend | `➖ Probe skipped: no UI assertions to verify` |
-| `project.json` → `agents.analysisProbe: false` | User opted out | `➖ Probe skipped: disabled in project.json` |
+**Resolution rules for common obstacles:**
 
-**Important:** When probes are skipped, analysis proceeds normally — skipping is NOT a failure. The probe is an enhancement that catches discrepancies when available.
+| Obstacle | Resolution |
+|----------|------------|
+| Dev server unreachable | Start the dev server using `start-dev-server` skill. If the target is a desktop app, download and install it. There must always be a way to get the target running. |
+| No page assertions generated | Generate assertions. If analysis cannot produce assertions, the analysis is incomplete — re-analyze. |
+| Auth fails | Exhaust all autonomous auth approaches, then ask the user for help. See "Integration with Authentication" below. |
 
-> ⛔ **NOT valid skip conditions (common mistakes):**
+> ⛔ **Common rationalization attempts (Builder MUST reject all of these):**
 >
-> | Condition | Why It's NOT a Valid Skip |
-> |-----------|--------------------------|
+> | Rationalization | Why It's Wrong |
+> |-----------------|----------------|
 > | Electron/Tauri/desktop app | Desktop apps with `webContent: "remote"` or `"bundled"` have web UI — probe it |
 > | "Code analysis is clear" | Probes verify runtime state, not code correctness |
 > | "UX/flow restructuring" | If the change affects visible pages, probe those pages |
 > | "Screenshot already captured" | Screenshots ≠ probes — probes verify specific assertions |
+> | "Backend/config change only" | If the change has any runtime UI impact, probe the affected pages — don't preemptively decide |
+> | "Auth is not configured" | Ask the user for help configuring auth — do not skip |
 >
 > **Rule:** If the app has web content (any `webContent` value or web-based app), the probe MUST run.
 > The probe target URL depends on app type — see "Architecture-Aware Verification" above.
 
 ### Project Configuration
 
-Projects can configure probe behavior in `project.json`:
+Projects can configure probe timeout in `project.json`:
 
 ```json
 {
   "agents": {
-    "analysisProbe": true,
     "analysisProbeTimeoutMs": 5000
   }
 }
@@ -628,14 +629,15 @@ Projects can configure probe behavior in `project.json`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `analysisProbe` | `true` | Enable/disable analysis probes |
 | `analysisProbeTimeoutMs` | `5000` | Timeout per page probe in milliseconds |
+
+> ⛔ **There is no `analysisProbe` toggle.** The probe is mandatory and cannot be disabled via configuration.
 
 ### Integration with Authentication
 
 > ⛔ **Authenticated pages are NOT optional probe targets.**
 > If the pages being changed require auth, you MUST authenticate before probing.
-> Skipping authenticated pages is a **last resort**, not a default.
+> Skipping authenticated pages requires **explicit user acceptance** after all auth approaches are exhausted.
 
 **Authentication escalation ladder** (try each step before moving to the next):
 
@@ -647,16 +649,12 @@ Projects can configure probe behavior in `project.json`:
    - `headless: true` → load `auth-headless` skill for faster API-based auth
    - Other providers → load `auth-generic` skill
 3. **If NOT configured:** Load the `setup-auth` skill to detect and configure auth autonomously
-4. **Only if all auth approaches fail** (no config, no env vars, no service keys, setup-auth cannot resolve):
-   ```
-   ⚠️ PROBE DEGRADED: Cannot authenticate for /dashboard, /settings
-   
-   Attempted: [list what was tried]
-   Reason: [specific failure reason]
-   
-   Probing public pages only. Authenticated page assertions are UNVERIFIED.
-   Do NOT report probeStatus as "confirmed" — use "degraded-no-auth".
-   ```
+4. **If `setup-auth` fails** → **Ask the user for help** with specific questions:
+   - "What auth provider does this project use?"
+   - "Can you provide test credentials?"
+   - "Are there env vars I should check?"
+5. **If user provides info** → Try again with user-provided guidance
+6. **If user cannot help or says "skip"** → Set `probeStatus: "user-skipped"` and proceed with public pages only. Builder cannot set `user-skipped` autonomously — it requires user's explicit `[S]` acceptance.
 
 **Page routing:**
 
