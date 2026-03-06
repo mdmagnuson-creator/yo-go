@@ -87,7 +87,8 @@ Per user direction, design decisions should surface **before the ANALYSIS COMPLE
 0.1a  → Task Type Classification
 0.1b  → Playwright Analysis Confirmation (probe)
 0.1c  → Implementation Decision Detection & Questions (NEW)
-0.2   → Show ANALYSIS COMPLETE dashboard (now reflects user's design choices)
+0.1d  → Playwright Analysis Validation (NEW — confirm analysis matches visual reality)
+0.2   → Show ANALYSIS COMPLETE dashboard (now reflects user's design choices + visual confirmation)
 0.3   → Clarifying Questions (MEDIUM/LOW only — unchanged)
 0.4   → PRD Recommendation (medium/large scope — unchanged)
 0.5   → Generate Task Spec (now includes decisions as acceptance criteria)
@@ -202,6 +203,23 @@ Example: If `planning.considerations` includes `{ id: "permissions", appliesWhen
 - [ ] `builder-state.json` records `implementationDecisions: null` (skipped) vs `implementationDecisions: { ... }` (detected)
 - [ ] Validate scripts pass
 
+### US-007: Mandatory Playwright Analysis Confirmation
+
+**Description:** As Builder, before presenting the ANALYSIS COMPLETE dashboard, I use Playwright to visually confirm that my analysis makes sense from the user's perspective — verifying that the current UI state matches my understanding of what needs to change.
+
+**Acceptance Criteria:**
+
+- [ ] New step added to Phase 0 between implementation decision detection (0.1c) and the dashboard (0.2) — this becomes Step 0.1d
+- [ ] Builder opens the relevant page(s) in Playwright and captures the current visual state
+- [ ] Builder validates that the analysis (affected components, scope, suggested changes) aligns with what's actually rendered — catches stale analysis, wrong page assumptions, or misidentified components
+- [ ] If Playwright confirmation contradicts the analysis (e.g., the component described doesn't exist visually, the page layout is different than assumed), Builder adjusts the analysis before showing the dashboard
+- [ ] This step runs for every request — no `isUIProject()` gate or skip conditions (all projects are treated as UI projects)
+- [ ] If dev server is not running, Builder starts it (using `start-dev-server` skill) before probing
+- [ ] Results of the Playwright confirmation are reflected in the dashboard's PROBE RESULTS section
+- [ ] Validate scripts pass
+
+**Rationale:** Without this step, Builder's analysis is based purely on code reading. Code can be misleading — a component might exist in code but not be rendered, or the visual layout might differ from what the code structure suggests. Playwright confirmation grounds the analysis in the user's actual experience.
+
 ---
 
 ## Functional Requirements
@@ -216,6 +234,8 @@ Example: If `planning.considerations` includes `{ id: "permissions", appliesWhen
 - FR-8: The step MUST be silently skipped when no meaningful decisions are detected
 - FR-9: User can opt out of decisions with "you decide" — Builder proceeds with best judgment and shows choices in dashboard
 - FR-10: Decisions the user already specified in their request MUST be omitted from questions (not shown as "pre-resolved")
+- FR-11: Builder MUST use Playwright to visually confirm that the analysis matches the actual UI state before showing the ANALYSIS COMPLETE dashboard (Step 0.1d)
+- FR-12: Playwright analysis confirmation MUST run for every request — no `isUIProject()` gate (all projects are treated as UI projects throughout the toolkit)
 
 ## Non-Goals (Out of Scope)
 
@@ -266,7 +286,7 @@ The toolkit has accumulated significant duplication in its testing and quality-c
 
 Additional duplication exists for:
 
-- **`isUIProject()` detection** — defined in both `test-ui-verification` and `test-activity-resolution`
+- **`isUIProject()` detection** — defined in both `test-ui-verification` and `test-activity-resolution` (being removed entirely — all projects get full verification)
 - **E2E URL resolution** — full implementation in `test-url-resolution`, duplicated inline in `test-e2e-flow` and `tester.md`
 - **Architecture-aware rebuild/relaunch** — full implementation in `test-ui-verification`, duplicated in `adhoc-workflow` and summarized in `builder.md`
 - **UI verification enforcement with skip patterns** — defined in `test-ui-verification`, duplicated in `adhoc-workflow` and `prd-workflow`
@@ -325,7 +345,7 @@ The 11 test skills break into two tiers:
 ## Non-Goals (Part 2)
 
 - Changing test behavior or adding new test types
-- Modifying the 8 Tier 2 conditional skills (beyond deduplicating `isUIProject()` and URL resolution if they appear inline)
+- Modifying the 8 Tier 2 conditional skills (beyond removing `isUIProject()` gates and deduplicating URL resolution where they appear inline)
 - Changing how Builder delegates to `@tester` — that agent's orchestration role is unchanged
 - Changing how `@developer` runs quality checks via project.json commands
 
@@ -333,7 +353,7 @@ The 11 test skills break into two tiers:
 
 ## User Stories (Part 2: Testing Consolidation)
 
-### US-007: Merge Always-Needed Skills into test-flow
+### US-008: Merge Always-Needed Skills into test-flow
 
 **Description:** As the test-flow skill, I absorb the content from `test-quality-checks` and `test-activity-resolution` so that a single skill load provides the complete quality-check pipeline. I also absorb the skip-gate logic currently in `builder.md` Step 4, making test-flow the single unconditional entry point that Builder calls for every story/task completion.
 
@@ -341,14 +361,14 @@ The 11 test skills break into two tiers:
 
 - [ ] `test-flow/SKILL.md` contains a **skip-gate** as its first step: checks changed files against skip patterns (docs-only, config-only, test-only, CI/build config, lockfile-only, user explicit skip) and exits early if all files match — moved from `builder.md` Step 4
 - [ ] `test-flow/SKILL.md` contains the full quality-check pipeline (typecheck → lint → test → rebuild → critic → Playwright) currently in `test-quality-checks`
-- [ ] `test-flow/SKILL.md` contains the activity resolution logic (file-pattern-based test selection, `isUIProject()`, CI mode) currently in `test-activity-resolution`
+- [ ] `test-flow/SKILL.md` contains the activity resolution logic (file-pattern-based test selection, CI mode) currently in `test-activity-resolution` — note: `isUIProject()` is NOT merged; it is removed entirely per US-012
 - [ ] `test-flow/SKILL.md` is organized with clear sections: Skip Gate, Activity Resolution, Quality Check Pipeline, Completion Prompt, Tier 2 Skill Loading
 - [ ] `test-quality-checks/SKILL.md` is deleted — thorough grep audit confirms no remaining references
 - [ ] `test-activity-resolution/SKILL.md` is deleted — thorough grep audit confirms no remaining references
 - [ ] All existing references to `test-quality-checks` and `test-activity-resolution` in other agents/skills are updated to point to `test-flow`
 - [ ] Validate scripts pass
 
-### US-008: Replace adhoc-workflow Inline Quality Checks
+### US-009: Replace adhoc-workflow Inline Quality Checks
 
 **Description:** As the adhoc-workflow skill, my ~213-line "Per-Task Quality Checks" section is replaced with a skill reference to `test-flow`, eliminating the largest source of quality-check duplication.
 
@@ -360,9 +380,10 @@ The 11 test skills break into two tiers:
 - [ ] Architecture-aware rebuild/relaunch definitions that duplicate `test-ui-verification` are removed (reference that skill instead)
 - [ ] UI verification enforcement that duplicates `test-ui-verification` is removed (reference that skill instead)
 - [ ] Net reduction of ≥150 lines from `adhoc-workflow/SKILL.md`
+- [ ] **Note:** Story iteration logic in adhoc-workflow is NOT modified in this story — that moves to the unified pipeline in US-015
 - [ ] Validate scripts pass
 
-### US-009: Replace prd-workflow Inline Quality Checks
+### US-010: Replace prd-workflow Inline Quality Checks
 
 **Description:** As the prd-workflow skill, my "Per-Story Quality Checks" section is replaced with a skill reference to `test-flow`, and my "UI Verification Enforcement" section references `test-ui-verification` instead of duplicating it.
 
@@ -373,9 +394,10 @@ The 11 test skills break into two tiers:
 - [ ] PRD-specific context (story ID, PRD reference, 5-attempt retry strategy) is described as parameters in the reference
 - [ ] The 5-attempt vs 3-attempt retry difference between PRD and ad-hoc modes is documented in one canonical location (either `test-flow` or `test-verification-loop`)
 - [ ] Net reduction of ≥100 lines from `prd-workflow/SKILL.md`
+- [ ] **Note:** Story iteration logic in prd-workflow is NOT modified in this story — that moves to the unified pipeline in US-015
 - [ ] Validate scripts pass
 
-### US-010: Update builder.md Verification Pipeline References
+### US-011: Update builder.md Verification Pipeline References
 
 **Description:** As builder.md, my "Verification Pipeline Resolution" section (Steps 1-7) is replaced with a single unconditional call to `test-flow`. Builder no longer decides *when* or *how* to verify — it always calls test-flow, which owns the full decision tree including skip conditions.
 
@@ -390,26 +412,40 @@ The 11 test skills break into two tiers:
 - [ ] Net reduction of ≥40 lines from `builder.md`
 - [ ] Validate scripts pass
 
-### US-011: Deduplicate isUIProject() and Shared Detection Functions
+### US-012: Remove isUIProject() Gate — All Projects Get Full Verification
 
-**Description:** As the toolkit, shared detection functions that are duplicated across skills are consolidated to a single canonical location.
+**Description:** As the toolkit, the `isUIProject()` detection function and all conditional skips based on "is this a UI project?" are removed entirely. All projects are treated as UI projects — Playwright verification, analysis probes, and UI-related quality checks always run. This eliminates a distinction that adds complexity but never applies in practice.
 
 **Acceptance Criteria:**
 
-- [ ] `isUIProject()` detection logic exists in exactly one skill (canonical location: `test-flow` since it's always loaded)
-- [ ] `test-ui-verification/SKILL.md` references the canonical `isUIProject()` from `test-flow` instead of redefining it
-- [ ] `test-activity-resolution` (now merged into `test-flow`) no longer has a separate `isUIProject()` definition
-- [ ] E2E URL resolution logic exists canonically in `test-url-resolution/SKILL.md` only — inline duplicates in `test-e2e-flow` and `tester.md` are replaced with skill references
-- [ ] Test execution mode (CI/non-watch) logic exists canonically in `test-flow` only — inline duplicate in `tester.md` is replaced with a skill reference
+- [ ] `isUIProject()` function is removed from `test-ui-verification/SKILL.md` and `test-activity-resolution/SKILL.md` (and from `test-flow` after merge)
+- [ ] All conditional branches that check "is this a UI project?" and skip Playwright are removed — verification always runs
+- [ ] `agents.verification.mode: "no-ui"` option is removed from the schema and all references
+- [ ] Skip conditions in `test-ui-verification` that gate on project type are removed (skip conditions for "dev server unreachable" or "no page assertions" remain — those are runtime conditions, not project type conditions)
+- [ ] Activity resolution in `test-flow` no longer conditionally adds Playwright — it's always included
+- [ ] The `skip-no-ui` activity resolution outcome is removed — there is no "no UI" path
+- [ ] E2E URL resolution is canonicalized in `test-url-resolution/SKILL.md` only — inline duplicates in `test-e2e-flow` and `tester.md` replaced with skill references
+- [ ] Test execution mode (CI/non-watch) logic is canonicalized in `test-flow` only — inline duplicate in `tester.md` replaced with a skill reference
+- [ ] **Known affected files** (minimum — all must be updated):
+  - `skills/test-activity-resolution/SKILL.md` — `isUIProject()` definition, `skip-no-ui` outcome, UI/non-UI branching
+  - `skills/test-ui-verification/SKILL.md` — `isUIProject()` definition, Check 2 gate, `no-ui` skip condition
+  - `skills/test-quality-checks/SKILL.md` — "For UI projects" / "For non-UI projects" conditional logic
+  - `skills/adhoc-workflow/SKILL.md` — `no-ui` skip, UI project detection block, verification gate
+  - `skills/prd-workflow/SKILL.md` — UI project check, `no-ui` opt-out, non-UI E2E deferral
+  - `skills/project-bootstrap/SKILL.md` — `no-ui` mode option during project setup (remove the option; all projects get verification)
+  - `skills/builder-verification/SKILL.md` — `not-required` status for non-UI changes
+  - `agents/builder.md` — "Never skip the Playwright probe for UI projects" (reword: never skip the Playwright probe)
+- [ ] **Independent audit required:** Beyond the known files above, Builder MUST grep the entire toolkit for `isUIProject`, `no-ui`, `not.*UI project`, `skip.*UI`, `UI project`, and `non-UI` to find any additional references not listed here
+- [ ] All agents and skills that reference "UI project" skip conditions are updated
 - [ ] Validate scripts pass
 
-### US-012: Verify Consolidation Preserves Behavior
+### US-013: Verify Consolidation Preserves Behavior
 
 **Description:** As the toolkit maintainer, I verify that the consolidated testing pipeline produces identical behavior to the pre-consolidation definitions, with no quality checks dropped or added.
 
 **Acceptance Criteria:**
 
-- [ ] Create a verification document (`docs/testing-consolidation-verification.md`) that maps each pre-consolidation quality check step to its post-consolidation location
+- [ ] Create a permanent reference document (`docs/testing-consolidation-verification.md`) that maps each pre-consolidation quality check step to its post-consolidation location — this document persists as ongoing documentation for "where did X go?"
 - [ ] Every quality check in the pre-consolidation `adhoc-workflow` "Per-Task Quality Checks" section has a corresponding step in `test-flow`
 - [ ] Every quality check in the pre-consolidation `prd-workflow` "Per-Story Quality Checks" section has a corresponding step in `test-flow`
 - [ ] Every step in the pre-consolidation `builder.md` "Verification Pipeline Resolution" is accounted for, including: skip conditions (Step 4), postChangeWorkflow override (Step 1), auto-inference (Step 2), story-scoped Playwright (Step 5), retry strategy (Step 6), and ops-only verification (Step 7)
@@ -422,32 +458,33 @@ The 11 test skills break into two tiers:
 
 ## Functional Requirements (Part 2)
 
-- FR-11: `test-flow` MUST be the single canonical skill loaded for quality checks in both ad-hoc and PRD modes
-- FR-12: `adhoc-workflow` and `prd-workflow` MUST NOT contain inline quality check pipeline definitions — they reference `test-flow`
-- FR-13: `builder.md` Verification Pipeline MUST be reduced to a single unconditional call to `test-flow` — all skip logic, pipeline resolution, and retry strategies live in test-flow or its sub-skills
-- FR-14: `isUIProject()` MUST be defined in exactly one location and referenced elsewhere
-- FR-15: E2E URL resolution MUST be defined canonically in `test-url-resolution` and NOT duplicated inline in other skills
-- FR-16: The consolidated pipeline MUST produce identical behavior to the current separate definitions — no quality checks dropped or added
-- FR-17: PRD mode's 5-attempt retry and ad-hoc mode's 3-attempt retry MUST both be supported via a single retry mechanism with configurable attempt count
-- FR-18: Tier 2 conditional skills MUST remain separate and loaded on demand — do NOT merge them into `test-flow`
+- FR-13: `test-flow` MUST be the single canonical skill loaded for quality checks in both ad-hoc and PRD modes
+- FR-14: `adhoc-workflow` and `prd-workflow` MUST NOT contain inline quality check pipeline definitions — they reference `test-flow`
+- FR-15: `builder.md` Verification Pipeline MUST be reduced to a single unconditional call to `test-flow` — all skip logic, pipeline resolution, and retry strategies live in test-flow or its sub-skills
+- FR-16: `isUIProject()` MUST be removed entirely — all projects get full Playwright verification, analysis probes, and UI quality checks unconditionally
+- FR-17: E2E URL resolution MUST be defined canonically in `test-url-resolution` and NOT duplicated inline in other skills
+- FR-18: The consolidated pipeline MUST produce identical behavior to the current separate definitions — no quality checks dropped or added (except the removal of `isUIProject()` skip gates, which is intentional)
+- FR-19: PRD mode's 5-attempt retry and ad-hoc mode's 3-attempt retry MUST both be supported via a single retry mechanism with configurable attempt count
+- FR-20: Tier 2 conditional skills MUST remain separate and loaded on demand — do NOT merge them into `test-flow`
 
 ## Technical Considerations (Part 2)
 
 - **File size risk:** Merging 3 skills plus the skip-gate logic into `test-flow` will make it ~850 lines. This is within acceptable range for a skill that is always loaded, but should be monitored. If it grows beyond 1000 lines, consider re-splitting.
 - **Skip-gate ownership:** The skip conditions currently in `builder.md` Step 4 move into `test-flow`. This means test-flow is truly unconditional from Builder's perspective — Builder always calls it, test-flow decides whether to actually run.
+- **isUIProject() removal:** Removing the `isUIProject()` gate means Playwright is always included in activity resolution. This simplifies test-flow but means projects that genuinely have no UI (pure CLI tools, libraries) will attempt Playwright verification and hit "no page assertions" — which is handled gracefully by existing runtime skip conditions.
 - **Skill trigger updates:** `opencode.json` skill triggers for `test-quality-checks` and `test-activity-resolution` need to be redirected to `test-flow` or removed
-- **Cross-reference audit:** After consolidation, grep for `test-quality-checks` and `test-activity-resolution` references across ALL agents and skills to ensure none were missed
-- **Ordering dependency:** US-007 must be completed before US-008, US-009, and US-010 (they depend on the consolidated `test-flow` existing)
+- **Cross-reference audit:** After consolidation, grep for `test-quality-checks`, `test-activity-resolution`, and `isUIProject` references across ALL agents and skills to ensure none were missed
+- **Ordering dependency:** US-008 must be completed before US-009, US-010, and US-011 (they depend on the consolidated `test-flow` existing)
 
 ## Implementation Order
 
 ```
-US-007 (merge into test-flow)
-  ├── US-008 (adhoc-workflow cleanup)     ─── can run in parallel
-  ├── US-009 (prd-workflow cleanup)       ─── can run in parallel
-  ├── US-010 (builder.md cleanup)         ─── can run in parallel
-  └── US-011 (shared function dedup)      ─── can run in parallel
-         └── US-012 (verification)        ─── must run last
+US-008 (merge into test-flow)
+  ├── US-009 (adhoc-workflow cleanup)     ─── can run in parallel
+  ├── US-010 (prd-workflow cleanup)       ─── can run in parallel
+  ├── US-011 (builder.md cleanup)         ─── can run in parallel
+  └── US-012 (remove isUIProject gate)    ─── can run in parallel
+         └── US-013 (verification)        ─── must run last
 ```
 
 ## Success Metrics (Part 2)
@@ -456,9 +493,9 @@ US-007 (merge into test-flow)
 - `adhoc-workflow/SKILL.md` reduced by ≥150 lines
 - `prd-workflow/SKILL.md` reduced by ≥100 lines
 - `builder.md` reduced by ≥40 lines
-- `isUIProject()` defined in exactly 1 location (down from 2)
+- `isUIProject()` removed entirely — all projects get full verification unconditionally
 - E2E URL resolution defined in exactly 1 location (down from 3)
-- Zero behavioral differences between pre- and post-consolidation quality checks
+- Zero behavioral differences between pre- and post-consolidation quality checks (except intentional removal of UI project skip gates)
 
 ## Credential & Service Access Plan (Parts 1 & 2)
 
@@ -521,13 +558,12 @@ Three different shapes, three different tracking mechanisms, different resume se
 - Changing how stories are *generated* (PRD has them upfront from Planner, ad-hoc generates them from Task Spec analysis) — only how they're *processed*
 - Removing the Task Spec analysis phase for ad-hoc mode — that stays as-is
 - Changing the PRD lifecycle (draft → ready → in-progress → complete) — that's Planner's domain
-- Migrating historical `builder-state.json` files — new sessions use the new shape, old sessions continue with old shape until naturally completed
 
 ---
 
 ## User Stories (Part 3: Unified Pipeline & State)
 
-### US-013: Unified activeWork State Model
+### US-014: Unified activeWork State Model
 
 **Description:** As builder-state.json, the three separate work-tracking mechanisms (`activePrd`, `activeTask`, `adhocQueue`) are replaced with a single `activeWork` object that uses the same story state shape regardless of source.
 
@@ -562,14 +598,14 @@ Three different shapes, three different tracking mechanisms, different resume se
     }
   }
   ```
-- [ ] `activePrd`, `activeTask`, and `adhocQueue` marked as deprecated in the schema (kept for backward compatibility but not used by new sessions)
+- [ ] `activePrd`, `activeTask`, and `adhocQueue` are removed from the schema entirely (no backward compatibility — this is dev-only tooling)
+- [ ] `storyAssessments` (planned/effective test intensity per story) is removed — not needed; test-flow handles all testing decisions at runtime
 - [ ] Builder reads `activeWork` on session resume to determine where to pick up
-- [ ] If `activeWork` is null but `activePrd` or `activeTask` exists, Builder treats it as a legacy session and processes using old logic (graceful migration)
 - [ ] Each story has a `status` field that the pipeline updates as it progresses
 - [ ] Each story tracks `filesChanged`, `testFlowResult`, `committedAt`, and `commitHash` for full audit trail
 - [ ] Validate scripts pass
 
-### US-014: Mandatory Story Processing Pipeline in builder.md
+### US-015: Mandatory Story Processing Pipeline in builder.md
 
 **Description:** As builder.md, I define a single mandatory story processing pipeline that runs identically for every story regardless of whether the source is a PRD or ad-hoc Task Spec. This pipeline is the canonical definition of "how Builder processes one story."
 
@@ -578,19 +614,19 @@ Three different shapes, three different tracking mechanisms, different resume se
 - [ ] `builder.md` contains a new "Story Processing Pipeline (MANDATORY)" section with this exact sequence:
   1. **Set story status** → `in_progress` in `activeWork.stories[n]`
   2. **Delegate implementation** → @developer with story context
-  3. **Run test-flow** → unconditional (test-flow owns skip-gate, pipeline, retry)
+  3. **Run test-flow** → unconditional call; test-flow owns the full quality cycle including: skip-gate evaluation, activity resolution, quality checks (typecheck/lint/test/rebuild/critic/Playwright), fix loop (redelegation to @developer, re-check, retry — up to configured attempt limit), and completion prompt. This is NOT a single pass — it includes the entire fix/critic/redelegation loop until pass or exhaustion.
   4. **Auto-commit** → mandatory after test-flow passes, using story ID in commit message
   5. **Update story status** → `completed` with `committedAt`, `commitHash`, `testFlowResult`
   6. **Advance to next story** → increment `currentStoryIndex`
 - [ ] Pipeline is marked MANDATORY — no agent may skip steps or reorder them
-- [ ] Auto-commit is unconditional — not gated on `git.autoCommit` setting (auto-commit is always `onStoryComplete` for the pipeline; the `git.autoCommit` setting only affects *additional* commit granularity like `onFileChange`)
+- [ ] Auto-commit is unconditional and mandatory — always commits after each story completes, regardless of any `git.autoCommit` setting. The pipeline requires per-story commits for resumability and audit trail. The `git.autoCommit` setting governs *additional* commit behavior (e.g., `onFileChange` for intra-story commits), not the story-level commit which is always performed.
 - [ ] If test-flow fails and exhausts retries, story status is set to `failed` and pipeline stops — Builder reports failure to user
 - [ ] If implementation fails (developer returns error), story status is set to `failed` and pipeline stops
 - [ ] Pipeline handles the loop: `for each story in activeWork.stories where status == "pending"`
 - [ ] The existing scattered pipeline definitions in `adhoc-workflow` and `prd-workflow` are replaced with references to this canonical pipeline
 - [ ] Validate scripts pass
 
-### US-015: Flow Chart Dashboard Option
+### US-016: Flow Chart Dashboard Option
 
 **Description:** As a user, I can choose a "show me a flow chart" option on the ANALYSIS COMPLETE dashboard, and Builder generates an ASCII flow chart of the full implementation plan — stories, pipeline steps, and overall flow — so I can understand what's about to happen before approving.
 
@@ -605,7 +641,7 @@ Three different shapes, three different tracking mechanisms, different resume se
 - [ ] Option is available in both PRD and ad-hoc modes (since both now use the same pipeline)
 - [ ] Validate scripts pass
 
-### US-016: Session Resume from activeWork
+### US-017: Session Resume from activeWork
 
 **Description:** As Builder, when I start a new session and find an existing `activeWork` with incomplete stories, I resume from the first incomplete story — regardless of whether the work originated from a PRD or ad-hoc request.
 
@@ -613,39 +649,44 @@ Three different shapes, three different tracking mechanisms, different resume se
 
 - [ ] On session start, Builder checks `builder-state.json` → `activeWork`
 - [ ] If `activeWork` exists with any story status != `completed`:
-  - Show resume dashboard with: mode (PRD/ad-hoc), stories completed vs remaining, last story's status, files changed so far
-  - User can [R] Resume, [A] Abort (mark remaining as cancelled), or [S] Start fresh (archive current work)
-- [ ] Resume starts from the first story with status `pending` or `failed` (retry failed stories)
+  - Show resume dashboard with: mode (PRD/ad-hoc), stories completed vs remaining, each story's status, files changed so far
+  - User can [R] Resume (continue from next pending story), [A] Abort (mark remaining as cancelled), or [S] Start fresh (archive current work)
+- [ ] If any stories have status `failed`, the resume dashboard lists each failed story separately with options:
+  - `[R] Retry` — reset status to `pending` and re-run the full pipeline
+  - `[S] Skip` — set status to `skipped` and move on
+  - `[A] Abort` — stop all work, mark remaining stories as `cancelled`
+  - User must explicitly choose for each failed story — no automatic retry
+- [ ] Resume starts from the first story with status `pending` (after user has resolved any `failed` stories above)
 - [ ] If story status is `in_progress` (interrupted mid-implementation), Builder re-runs the full pipeline for that story from the beginning (implementation is not resumable mid-story)
-- [ ] Legacy sessions (`activePrd` or `activeTask` without `activeWork`) show the existing resume behavior
+- [ ] If `builder-state.json` contains old-format fields (`activePrd`, `activeTask`, `adhocQueue`) with no `activeWork`, Builder clears them and starts fresh (no backward compatibility migration — user starts over)
 - [ ] Validate scripts pass
 
 ---
 
 ## Functional Requirements (Part 3)
 
-- FR-19: `activeWork` MUST use an identical story state shape for both PRD and ad-hoc modes — the only difference is `source.mode`
-- FR-20: The story processing pipeline (implement → test-flow → auto-commit → advance) MUST be defined once in `builder.md` and referenced by both modes
-- FR-21: Auto-commit after each story MUST be mandatory and unconditional — not gated on `git.autoCommit` configuration
-- FR-22: Session resume MUST work identically for PRD and ad-hoc interrupted sessions by reading `activeWork.stories[].status`
-- FR-23: The flow chart option MUST reflect the actual stories from analysis, not a generic template
-- FR-24: The `builder-state.schema.json` MUST be updated with the `activeWork` schema and `activePrd`/`activeTask`/`adhocQueue` marked deprecated
+- FR-21: `activeWork` MUST use an identical story state shape for both PRD and ad-hoc modes — the only difference is `source.mode`
+- FR-22: The story processing pipeline (implement → test-flow → auto-commit → advance) MUST be defined once in `builder.md` and referenced by both modes
+- FR-23: Auto-commit after each story MUST be mandatory and unconditional — not gated on `git.autoCommit` configuration
+- FR-24: Session resume MUST work identically for PRD and ad-hoc interrupted sessions by reading `activeWork.stories[].status`
+- FR-25: The flow chart option MUST reflect the actual stories from analysis, not a generic template
+- FR-26: The `builder-state.schema.json` MUST be updated with the `activeWork` schema and `activePrd`/`activeTask`/`adhocQueue` removed entirely (no backward compatibility)
 
 ## Technical Considerations (Part 3)
 
-- **Schema migration:** `builder-state.schema.json` gets a major update. The old fields (`activePrd`, `activeTask`, `adhocQueue`) stay for backward compatibility but are deprecated. New sessions use `activeWork` exclusively.
+- **Schema change:** `builder-state.schema.json` gets a major update. The old fields (`activePrd`, `activeTask`, `adhocQueue`, `storyAssessments`) are removed entirely — no backward compatibility needed since this is dev-only tooling. New sessions use `activeWork` exclusively.
 - **adhoc-workflow impact:** The ad-hoc workflow skill currently manages its own story iteration. After this change, it generates stories (from Task Spec) and hands them to the unified pipeline in builder.md. It no longer iterates stories itself.
 - **prd-workflow impact:** Same — prd-workflow loads stories from the PRD and populates `activeWork.stories[]`, then builder.md's pipeline processes them.
-- **Auto-commit and git.autoCommit:** The `onStoryComplete` auto-commit becomes unconditional in the pipeline. The `git.autoCommit` setting's `onFileChange` option (if used) would mean *additional* commits within a story, not a replacement for the story-level commit. The `manual` setting would need to be reconsidered — it may mean "don't push" rather than "don't commit" since the pipeline requires commits for resumability.
+- **Auto-commit and git.autoCommit:** Story-level auto-commit is unconditional and mandatory — the pipeline always commits after each story for resumability and audit trail. The `git.autoCommit` setting governs *additional* intra-story commit behavior only: `onFileChange` means additional commits within a story, `manual` means "don't push" (not "don't commit" — the pipeline commit is required). This distinction needs to be documented clearly in AGENTS.md and the schema.
 - **Flow chart rendering:** The flow chart is generated from `activeWork.stories[]` at dashboard time. No new skill needed — it's inline logic in the dashboard rendering.
 
 ## Implementation Order (Part 3)
 
 ```
-US-013 (unified state model)
-  ├── US-014 (mandatory pipeline — depends on US-013 + US-007 from Part 2)
-  ├── US-015 (flow chart option — depends on US-013 for story data)
-  └── US-016 (session resume — depends on US-013 for state shape)
+US-014 (unified state model)
+  ├── US-015 (mandatory pipeline — depends on US-014 + US-008 from Part 2)
+  ├── US-016 (flow chart option — depends on US-014 for story data)
+  └── US-017 (session resume — depends on US-014 for state shape)
 ```
 
 ## Success Metrics (Part 3)
