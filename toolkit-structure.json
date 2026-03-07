@@ -1002,13 +1002,13 @@
         "type": "feat",
         "scope": "skills",
         "description": "add oauth-callback-diagnostic skill — generalized OAuth redirect_uri mismatch diagnostic for any provider/app type",
-        "hash": "pending"
+        "hash": "f7bf6ab"
       },
       {
         "type": "docs",
         "scope": "prds",
         "description": "add draft PRD prd-electron-build-deploy — automate Electron build-deploy cycle in test-flow",
-        "hash": "pending"
+        "hash": "f7bf6ab"
       },
       {
         "type": "fix",
