@@ -1002,37 +1002,37 @@
         "type": "fix",
         "scope": "skills",
         "description": "add launchTarget resolution to e2e-electron skill — tests now read project.json to determine test directory, launch pattern (dev vs installed-app), and Playwright config",
-        "hash": "pending"
+        "hash": "b82557e"
       },
       {
         "type": "fix",
         "scope": "agents",
         "description": "add launchTarget/testDir/playwrightConfig/executablePath to tester.md Electron E2E delegation prompt",
-        "hash": "pending"
+        "hash": "b82557e"
       },
       {
         "type": "fix",
         "scope": "agents",
         "description": "add mandatory launchTarget awareness to e2e-playwright.md Electron detection (step 0d)",
-        "hash": "pending"
+        "hash": "b82557e"
       },
       {
         "type": "fix",
         "scope": "skills",
         "description": "consolidate E2E write+run into atomic operation in test-flow — eliminate separate [R]/[S] prompt after test generation",
-        "hash": "pending"
+        "hash": "b82557e"
       },
       {
         "type": "fix",
         "scope": "skills",
         "description": "add condition evaluation to postChangeWorkflow handler in test-ui-verification — steps with files-changed-in conditions are now skipped when unmatched",
-        "hash": "pending"
+        "hash": "b82557e"
       },
       {
         "type": "fix",
         "scope": "skills",
         "description": "strengthen webContent remote no-rebuild rule in test-ui-verification and test-flow — explicit table mapping change types to actions for remote desktop apps",
-        "hash": "pending"
+        "hash": "b82557e"
       },
       {
         "type": "fix",
