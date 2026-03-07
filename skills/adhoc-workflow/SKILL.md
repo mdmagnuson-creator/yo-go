@@ -321,6 +321,17 @@ Based on the analysis, determine the task type:
 | `ops-with-runtime-impact` | Fix requires only CLI/ops commands (deploy, secrets, infra) AND the original issue is **browser-visible** (CORS, auth, API errors, UI behavior) | Reduced: skip typecheck/build, but **run Playwright** against affected behavior |
 | `ops-only` | Fix requires only CLI/ops commands AND has **no browser-visible impact** (CI config, log rotation, secret rotation for non-app services) | None: mark complete after ops commands succeed |
 
+> ⛔ **`ops-only` GUARD: If the implementation modifies ANY source file, the task is NOT `ops-only`.**
+>
+> `ops-only` is reserved for tasks where the ONLY actions are CLI commands (deploy, secret rotation, config changes via CLI).
+> If you modify `.ts`, `.tsx`, `.js`, `.go`, `.py`, `.rs`, `.java`, or any other source/config file in the project repo, the task is `source-change` — even if the change is to "infrastructure" code like IPC handlers, main process files, build config, or native API wrappers.
+>
+> **Common misclassification attempts:**
+> - ❌ "This is an IPC handler change, it's infrastructure" → It's a source file → `source-change`
+> - ❌ "This is a main process change, not web content" → It's a source file → `source-change`
+> - ❌ "This is a build/config change" → If it modifies a source file → `source-change`
+> - ✅ `ops-only` examples: `supabase secrets set`, `vercel env add`, `gh secret set`, restarting a service
+
 **How to determine runtime impact:**
 
 Ask: "Was the user's original issue visible in the browser or app UI?"
@@ -376,6 +387,10 @@ Ask: "Was the user's original issue visible in the browser or app UI?"
 > | "Dev server is unreachable" | Start it using `start-dev-server` skill. If the app is not installed, install it. | Start the dev server or install the app — there is always a way |
 > | "No page assertions generated" | If analysis cannot produce assertions, the analysis is incomplete | Re-analyze and generate assertions |
 > | "Auth is not configured / auth failed" | Exhaust autonomous auth approaches, then ask the user for help | Follow the Auth Resolution Escalation protocol below |
+> | "This change cannot be verified via Playwright" | Every source code change has observable effects. If you can't generate assertions, your analysis is incomplete — not the probe | Re-analyze: identify what the change affects in the rendered UI, then generate assertions for those effects |
+> | "This is a main process / IPC / native API change" | Main process changes affect what the renderer shows. IPC handlers serve data to web content. Native API calls gate UI behavior | Identify the web-visible effects of the main process change (data displayed, UI state, navigation, error handling), then probe those |
+> | "Code analysis is definitive / the fix is confirmed from source" | Code analysis is *input* to the probe, not a *replacement* for it. Runtime behavior diverges from source in ways code analysis cannot detect | Run the probe — "definitive" code analysis is exactly what the probe is designed to validate |
+> | "The critical path cannot be verified in a browser" | If the app has ANY web content, there are browser-observable effects of every code change. If truly no web content exists, it's not a web app and shouldn't be in the Playwright pipeline | Identify the web-side effects and probe them. If there genuinely are none, get explicit user confirmation via `[S]` |
 >
 > **The ONLY way a probe can be skipped is if the user explicitly accepts a skip after Builder has exhausted all options and asked for assistance.** This sets `probeStatus: "user-skipped"` — Builder cannot set this status autonomously.
 >
@@ -408,7 +423,7 @@ Ask: "Was the user's original issue visible in the browser or app UI?"
    > - ❌ Do NOT generate assertions only for `/login` because it's the only public page
    >
    > If the target pages require authentication:
-   > 1. Follow the **Autonomous Auth Resolution** protocol below to authenticate
+   > 1. Follow the **Auth Resolution Escalation** protocol below to authenticate
    > 2. Authenticate in the probe's Playwright context BEFORE navigating to protected pages
    > 3. Generate assertions for the actual protected pages being modified
    >
