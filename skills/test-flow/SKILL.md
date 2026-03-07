@@ -317,10 +317,27 @@ Task/Story complete
 │ 3.5. Rebuild/Relaunch                                               │
 │                                                                     │
 │ If apps.desktop.buildDeploy exists in project.json:                 │
-│   → Load `electron-build-deploy` skill                              │
-│   → Skill handles: build → kill → copy → relaunch                  │
-│   → Do NOT proceed to Playwright until skill reports success        │
-│   → On failure: treat as test-flow failure (fix loop, max 3)       │
+│                                                                     │
+│   1. Read buildDeploy.triggerPaths (array of glob patterns)          │
+│   2. Match changedFiles against triggerPaths:                        │
+│                                                                     │
+│      function shouldRebuild(changedFiles, triggerPaths):             │
+│        for file in changedFiles:                                     │
+│          for pattern in triggerPaths:                                 │
+│            if globMatch(file, pattern):                               │
+│              return { rebuild: true, trigger: file, pattern }        │
+│        return { rebuild: false }                                     │
+│                                                                     │
+│   3a. If NO match → Skip build-deploy with message:                 │
+│       "⏭️ Build-deploy skipped: no changed files match              │
+│        triggerPaths (changed: [N] files, patterns: [M])"            │
+│       → Proceed to Step 4 (critics)                                 │
+│                                                                     │
+│   3b. If ANY match → Load `electron-build-deploy` skill:            │
+│       "🔨 Build-deploy triggered: {file} matched {pattern}"         │
+│       → Skill handles: build → kill → copy → relaunch              │
+│       → Do NOT proceed to Playwright until skill reports success    │
+│       → On failure: treat as test-flow failure (fix loop, max 3)   │
 │                                                                     │
 │ Else if postChangeWorkflow exists → evaluate step conditions first, │
 │   then execute matching non-Playwright steps                        │
@@ -376,9 +393,10 @@ Task/Story complete
 │                                                                     │
 │ Pipeline resolution:                                                 │
 │   1. If apps.desktop.buildDeploy configured:                         │
-│     → Load `electron-build-deploy` skill (MANDATORY)                │
-│     → Skill executes: build → kill → copy → relaunch               │
-│     → Block Playwright until skill reports success                  │
+│     → Build-deploy already handled in Step 3.5 (triggerPaths gate)  │
+│     → If Step 3.5 succeeded → proceed to Playwright                │
+│     → If Step 3.5 was skipped (no trigger match) → proceed         │
+│     → If Step 3.5 failed → pipeline already stopped                │
 │   2. Else check for postChangeWorkflow override                      │
 │   3. Else auto-infer from apps[] configuration:                      │
 │     • Desktop + bundled → build → relaunch → playwright-electron    │
@@ -561,6 +579,27 @@ Options:
 > _
 ═══════════════════════════════════════════════════════════════════════
 ```
+
+#### Build & Deploy Section (Conditional)
+
+When `apps.desktop.buildDeploy` is configured, include a **Build & Deploy** section in the completion report after "Quality checks":
+
+**If build-deploy ran successfully:**
+```
+Build & Deploy:
+  ✅ Test app updated
+     Build command: {buildCommand}
+     Build time: {elapsed}s
+     Deploy target: {testApp}
+```
+
+**If build-deploy was skipped (no trigger paths matched):**
+```
+Build & Deploy:
+  ⚠️ Build skipped (no changed files matched triggerPaths)
+```
+
+**If `buildDeploy` is not configured:** Omit the "Build & Deploy" section entirely.
 
 ### Handle Response
 

@@ -49,6 +49,16 @@
       "interactive": true,
       "createdAt": "2026-03-07",
       "templatePath": "templates/updates/configure-test-verify-settings.md"
+    },
+    {
+      "id": "2026-03-07-configure-electron-build-deploy",
+      "description": "Configure buildDeploy for Electron apps — automates build → kill → copy → relaunch before Playwright verification",
+      "affinityRule": "electron-apps",
+      "priority": "normal",
+      "updateType": "schema",
+      "interactive": true,
+      "createdAt": "2026-03-07",
+      "templatePath": "templates/updates/configure-electron-build-deploy.md"
     }
   ]
 }

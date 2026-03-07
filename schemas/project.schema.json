@@ -420,6 +420,43 @@
                 }
               }
             }
+          },
+          "buildDeploy": {
+            "type": "object",
+            "description": "Build-deploy cycle configuration for desktop apps. Declares paths so the agent can automate build → kill → copy → relaunch before Playwright verification. The agent handles the deploy commands — no custom interpolation needed.",
+            "properties": {
+              "buildCommand": {
+                "type": "string",
+                "description": "Command to build the desktop app (e.g., 'pnpm build', 'npm run build:electron'). Run from the project root."
+              },
+              "buildOutputApp": {
+                "type": "string",
+                "description": "Path to the built .app bundle, relative to project root (e.g., 'apps/desktop/dist/mac-universal/Helm.app')"
+              },
+              "testApp": {
+                "type": "string",
+                "description": "Absolute path to the installed test app on macOS (e.g., '/Applications/Helm Preview.app'). The agent will kill, overwrite, and relaunch this app during the deploy step."
+              },
+              "autoDeployAfterStory": {
+                "type": "boolean",
+                "description": "Whether to automatically run the build-deploy cycle after each story/task completes. Default: true.",
+                "default": true
+              },
+              "buildTimeoutMs": {
+                "type": "integer",
+                "description": "Build timeout in milliseconds. Electron builds with electron-builder can take 2+ minutes. Default: 300000 (5 minutes).",
+                "default": 300000,
+                "minimum": 30000
+              },
+              "triggerPaths": {
+                "type": "array",
+                "description": "Glob patterns for files that trigger a rebuild when changed. If no changed files match, the build-deploy step is skipped. For remote webContent apps, only include main process paths (e.g., 'apps/desktop/electron/**') — UI-only changes don't require a rebuild.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["buildCommand", "buildOutputApp", "testApp", "triggerPaths"]
           }
         }
       }
