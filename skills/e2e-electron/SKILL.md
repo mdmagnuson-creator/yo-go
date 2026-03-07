@@ -14,6 +14,69 @@ Load this skill when:
 - `apps[*].testing.framework === 'playwright-electron'`
 - `apps[*].type === 'desktop'` and Electron detected in `package.json`
 
+## Launch Target Resolution (MANDATORY)
+
+> ⛔ **CRITICAL: Before writing ANY Electron E2E test, read `project.json → apps[].testing` to determine the launch target.**
+>
+> The launch target determines EVERYTHING: test directory, launch pattern, Playwright config, and binary path.
+> Getting this wrong produces tests that compile but test the wrong thing.
+
+### Step 1: Read Launch Configuration
+
+```
+function resolveLaunchConfig(project):
+  for appName, appConfig in project.apps:
+    if appConfig.type == "desktop" and appConfig.testing:
+      testing = appConfig.testing
+      return {
+        launchTarget: testing.launchTarget or "dev",      # "installed-app" | "dev"
+        executablePath: testing.executablePath or null,    # platform-specific paths
+        testDir: testing.testDir or "e2e/desktop/",       # where tests live
+        playwrightConfig: testing.playwrightConfig or null # which config to use
+      }
+  return { launchTarget: "dev", executablePath: null, testDir: "e2e/", playwrightConfig: null }
+```
+
+### Step 2: Apply Launch Target Rules
+
+| `launchTarget` | Test Directory | Launch Pattern | Playwright Config |
+|----------------|---------------|----------------|-------------------|
+| `"installed-app"` | `{testDir}` (often `e2e/desktop/installed-app/`) | `_electron.launch({ executablePath: ... })` with binary path | `{playwrightConfig}` (often `playwright.installed-app.config.ts`) |
+| `"dev"` (default) | `e2e/desktop/` or `e2e/` | `electron.launch({ args: ['./path/to/main.js'] })` from source | `playwright.electron.config.ts` or `playwright.config.ts` |
+
+### Step 3: Resolve Executable Path
+
+When `launchTarget: "installed-app"`:
+
+```typescript
+// Read executablePath from project.json → apps[].testing.executablePath
+// It's platform-specific — use the correct one for the current OS
+
+function getAppPath(executablePath: Record<string, string>): string {
+  const platform = process.platform;
+  const path = executablePath[platform === 'darwin' ? 'darwin' : platform === 'win32' ? 'win32' : 'linux'];
+  if (!path) throw new Error(`No executablePath configured for platform: ${platform}`);
+  
+  // Expand ~ to home directory
+  return path.replace(/^~/, os.homedir());
+}
+```
+
+> ⛔ **NEVER use `launchElectronApp()` or `electron.launch({ args: [...] })` when `launchTarget: "installed-app"`.**
+> These launch from dev source — you must use `_electron.launch({ executablePath: ... })` with the installed binary.
+
+### Step 4: Verify Before Writing
+
+Before creating any test file:
+
+```
+□ Read project.json → apps[].testing.launchTarget
+□ If "installed-app": test goes in installed-app subdirectory, uses binary launch
+□ If "dev" or missing: test goes in standard directory, uses source launch  
+□ Playwright config resolved from project.json or filesystem search
+□ executablePath resolved for current platform (if installed-app)
+```
+
 ## Zombie Process Cleanup (CRITICAL)
 
 > ⛔ **Electron apps leave zombie processes when tests fail or are interrupted.**
@@ -212,8 +275,9 @@ test('app window opens', async () => {
 });
 ```
 
-### Launch Options
+### Launch Options (Choose Based on `launchTarget`)
 
+**When `launchTarget: "dev"` (or not set):**
 ```typescript
 // Development mode (from source)
 electronApp = await electron.launch({
@@ -223,17 +287,28 @@ electronApp = await electron.launch({
     NODE_ENV: 'test',
   },
 });
+```
 
-// Production mode (packaged app)
-electronApp = await electron.launch({
-  executablePath: '/path/to/YourApp.app/Contents/MacOS/YourApp',
-});
+**When `launchTarget: "installed-app"` (read `executablePath` from project.json):**
+```typescript
+import os from 'os';
 
-// With custom args
+// Read executablePath from project.json → apps[].testing.executablePath
+// The paths are platform-specific — resolve for current OS
+function getAppPath(executablePaths: Record<string, string>): string {
+  const key = process.platform === 'darwin' ? 'darwin' : process.platform === 'win32' ? 'win32' : 'linux';
+  const p = executablePaths[key];
+  if (!p) throw new Error(`No executablePath for platform: ${key}`);
+  return p.replace(/^~/, os.homedir());
+}
+
+// Production mode — launch the installed binary
 electronApp = await electron.launch({
-  args: ['./main.js', '--disable-gpu', '--enable-logging'],
+  executablePath: getAppPath(executablePaths),
 });
 ```
+
+> ⛔ **NEVER mix these patterns.** If `launchTarget: "installed-app"`, you MUST use `executablePath`. Using `args` launches from dev source and tests a completely different build.
 
 ## Common Test Patterns
 

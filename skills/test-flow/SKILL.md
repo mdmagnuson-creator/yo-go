@@ -332,8 +332,9 @@ Task/Story complete
 ┌─────────────────────────────────────────────────────────────────────┐
 │ 3.5. Rebuild/Relaunch (postChangeWorkflow or architecture-aware)    │
 │                                                                     │
-│ If postChangeWorkflow exists → execute non-Playwright steps          │
-│   (typecheck, lint, test, build, relaunch — per step order)          │
+│ If postChangeWorkflow exists → evaluate step conditions first,      │
+│   then execute matching non-Playwright steps                        │
+│   (condition: "files-changed-in:..." checked against changedFiles)  │
 │                                                                     │
 │ If no postChangeWorkflow, check apps[] in project.json:              │
 │   • No apps[] or web-only → Skip (HMR handles it)                  │
@@ -341,6 +342,7 @@ Task/Story complete
 │   • Desktop + remote → Ensure Electron running (no rebuild)         │
 │                                                                     │
 │ CRITICAL: Desktop → always Playwright-Electron, never browser       │
+│ CRITICAL: webContent "remote" → NEVER frontend build for UI changes │
 └─────────────────────────────────────────────────────────────────────┘
     │
     ├─── PASS (or skipped) ──► Continue
@@ -531,23 +533,36 @@ Options:
 
 | Choice | Action |
 |--------|--------|
-| **E** | Run @playwright-dev to generate E2E tests |
+| **E** | Write AND run E2E tests (atomic operation — see below) |
 | **C** | Commit the changes |
 | **N** | Return to task prompt |
 
 ### E2E Sub-flow (When User Chooses "E")
 
-1. Run @playwright-dev to generate E2E tests
-2. Show prompt:
-   ```
-   📝 E2E tests generated:
-      • e2e/[test-name].spec.ts
+> ⛔ **E2E write+run is ONE atomic operation. Writing a test without running it is never a valid stopping point.**
 
-   [R] Run E2E tests now
-   [S] Save for later (queue tests, return to task prompt)
+1. Delegate to @playwright-dev (or @e2e-playwright for Electron) to write E2E tests
+2. **Immediately after writing**, run the tests — no user prompt between write and run
+3. If tests pass:
    ```
-3. If "R": Start dev server if needed, run tests, handle failures
-4. If "S": Queue tests in `builder-state.json`
+   ✅ E2E tests written and passing:
+      • e2e/[test-name].spec.ts — [N] tests, all passing
+   
+   [C] Commit all changes (including E2E tests)
+   [N] Next task
+   ```
+4. If tests fail: enter fix loop (delegate fix to @developer, re-run, max 3 attempts)
+5. If tests still fail after fix loop:
+   ```
+   ⚠️ E2E tests written but failing after 3 fix attempts:
+      • e2e/[test-name].spec.ts — [failures summary]
+   
+   [F] Try more fixes
+   [S] Save tests as-is (commit with known failures)
+   [D] Discard tests
+   ```
+
+> **Why atomic?** A test that hasn't been run is unverified — it could have selector mismatches, timing issues, or assertion errors. The user should never see "test written, want me to run it?" — that's two steps for what is logically one operation.
 
 ### Ad-hoc During PRD Completion Prompt
 

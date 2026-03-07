@@ -59,6 +59,14 @@ See AGENTS.md. Never truncate test failure output — show complete errors and s
         - IPC communication testing
         - App lifecycle handling
         - Native dialog mocking
+      
+      **⛔ MANDATORY for Electron apps:** After loading `e2e-electron` skill, read `project.json → apps[].testing`:
+      - `launchTarget` — determines whether to launch from source (`"dev"`) or installed binary (`"installed-app"`)
+      - `testDir` — where test files must be placed
+      - `playwrightConfig` — which Playwright config to use
+      - `executablePath` — platform-specific paths to the installed binary
+      
+      > These fields override ALL defaults. If `launchTarget: "installed-app"`, tests MUST go in the installed-app subdirectory and use `_electron.launch({ executablePath: ... })`. See `e2e-electron` skill for full rules.
    
    e. **Resolve test base URL:**
       

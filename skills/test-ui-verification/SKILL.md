@@ -119,13 +119,33 @@ function determineVerificationStrategy(project, changedFiles):
 >
 > Even `webContent: "remote"` (where HMR delivers changes via dev server) requires connecting Playwright to the Electron process. Opening `localhost` in a browser is NOT the same as testing inside Electron — Electron has its own window chrome, IPC, and process model.
 
+> ⛔ **`webContent: "remote"` means NEVER run a frontend build step for UI/renderer changes.**
+>
+> HMR (Hot Module Replacement) delivers code changes to the running app in real-time via the dev server.
+> The only time an Electron app with `webContent: "remote"` needs a rebuild is for **main process changes** (electron main, preload scripts, IPC handlers) — and even then, only a relaunch, not a frontend build.
+>
+> | Change Type | webContent: "remote" Action |
+> |-------------|----------------------------|
+> | UI/renderer (components, styles, services) | **Nothing** — HMR delivers changes automatically |
+> | Main process (electron main, preload, IPC) | **Relaunch Electron only** — no frontend build |
+> | Shared packages (if compiled to dist/) | **Rebuild package** → HMR picks up changes |
+
 ### Custom Workflow Override
 
-When `postChangeWorkflow` exists in `project.json`, execute its steps verbatim instead of auto-inferring:
+When `postChangeWorkflow` exists in `project.json`, execute its steps instead of auto-inferring.
+
+> ⛔ **CRITICAL: Evaluate `condition` fields on each step.** Do NOT run all steps unconditionally.
+> Many projects have conditional steps (e.g., "only rebuild UI if UI files changed"). Ignoring conditions wastes time and causes confusion.
 
 ```
 if strategy == "custom-workflow":
   for step in steps:
+    # Check condition BEFORE executing
+    if step.condition:
+      if !evaluateCondition(step.condition, changedFiles):
+        log("Skipping step '{step.name}': condition not met ({step.condition})")
+        continue
+    
     match step.type:
       case "command":
         run(step.command)
@@ -136,6 +156,25 @@ if strategy == "custom-workflow":
       case "playwright-check":
         runPlaywrightVerification()
         if step.required and failed: BLOCK
+```
+
+#### Condition Evaluation
+
+| Condition Pattern | Meaning | Example |
+|-------------------|---------|---------|
+| `files-changed-in:{path}` | At least one changed file matches `{path}/**` | `files-changed-in:packages/ui/src/` |
+| `always` | Always run (same as no condition) | `always` |
+
+```
+function evaluateCondition(condition, changedFiles):
+  if condition starts with "files-changed-in:":
+    prefix = condition.removePrefix("files-changed-in:")
+    return changedFiles.any(f => f.startsWith(prefix))
+  if condition == "always":
+    return true
+  # Unknown condition → run the step (fail open)
+  log("WARNING: Unknown condition format '{condition}' — running step")
+  return true
 ```
 
 ### Rebuild + Relaunch Flow (for `bundled` and `hybrid`)

@@ -710,6 +710,15 @@ E2E tests needed for Electron desktop app
 - Load skill: e2e-electron
 - Testing framework: playwright-electron
 
+## Launch Target Configuration
+- launchTarget: {apps[].testing.launchTarget}
+- testDir: {apps[].testing.testDir}
+- playwrightConfig: {apps[].testing.playwrightConfig}
+- executablePath: {apps[].testing.executablePath[platform]}
+
+⚠️ MANDATORY: Read project.json → apps[].testing BEFORE writing any test file.
+The launchTarget determines test directory, launch pattern, and config file.
+
 ## What Was Implemented
 [Story description]
 
@@ -719,6 +728,9 @@ E2E tests needed for Electron desktop app
 ## Acceptance Criteria
 [From story]
 ```
+
+> ⛔ **CRITICAL:** Always include the `Launch Target Configuration` block when delegating Electron E2E work.
+> Without this, the sub-agent defaults to dev-mode patterns which produce tests in the wrong directory with the wrong launcher.
 
 ### Mutation Testing Requirements
 
