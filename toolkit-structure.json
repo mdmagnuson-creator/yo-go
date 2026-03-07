@@ -1005,25 +1005,25 @@
             "type": "fix",
             "scope": "skills",
             "description": "add probe-inapplicability rationalizations to NO-BYPASS RULE \u2014 close IPC/main-process/code-analysis-is-definitive bypass paths in adhoc-workflow",
-            "hash": "pending"
+            "hash": "c56851f"
           },
           {
             "type": "fix",
             "scope": "skills",
             "description": "add ops-only guard \u2014 source file modifications can never be classified as ops-only to avoid probe in adhoc-workflow",
-            "hash": "pending"
+            "hash": "c56851f"
           },
           {
             "type": "fix",
             "scope": "agents",
             "description": "add probe-inapplicability and ops-only misclassification prohibitions to builder.md gate",
-            "hash": "pending"
+            "hash": "c56851f"
           },
           {
             "type": "fix",
             "scope": "skills",
             "description": "fix stale Autonomous Auth Resolution reference to Auth Resolution Escalation in adhoc-workflow",
-            "hash": "pending"
+            "hash": "c56851f"
           },
           {
             "type": "feat",
