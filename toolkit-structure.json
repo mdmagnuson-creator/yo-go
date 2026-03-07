@@ -997,19 +997,19 @@
         "type": "refactor",
         "scope": "skills",
         "description": "remove all competing Playwright gate mechanisms — testVerifySettings is now sole gate (US-001 through US-013)",
-        "hash": "pending"
+        "hash": "e1c442f"
       },
       {
         "type": "refactor",
         "scope": "schemas",
         "description": "remove rigorProfile, storyAssessment, e2e/e2eScope from project and test-activity-rules schemas",
-        "hash": "pending"
+        "hash": "e1c442f"
       },
       {
         "type": "feat",
         "scope": "data",
         "description": "add configure-test-verify-settings update template and registry entry for all-projects migration",
-        "hash": "pending"
+        "hash": "e1c442f"
       },
       {
         "type": "fix",
