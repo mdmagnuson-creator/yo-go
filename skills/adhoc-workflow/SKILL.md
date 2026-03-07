@@ -445,6 +445,10 @@ Ask: "Was the user's original issue visible in the browser or app UI?"
    > Desktop apps have NO browser-accessible web server. Using browser transport against localhost
    > will probe the wrong thing (or nothing at all) and produce false results.
    > If `architecture.deployment` is `electron-only`, you MUST use `transport: electron`.
+   >
+   > **Failure behavior:** If the generated probe spec contains `baseUrl` for a project with
+   > `architecture.deployment` of `electron-only`/`desktop`/`tauri`, STOP — discard the spec
+   > and regenerate using `transport: electron` with paths from `project.json` → `apps.desktop.testing`.
 
 3. **Build probe spec and invoke `@e2e-playwright` with `mode: "analysis-probe"`:**
 
@@ -470,12 +474,15 @@ Ask: "Was the user's original issue visible in the browser or app UI?"
 
    **Electron Probe Spec** (desktop apps — use when `architecture.deployment` is `electron-only`):
 
+   > All paths and launch config come from `project.json` → `apps.desktop.testing`.
+   > Never hardcode paths — always read `executablePath`, `launchTarget`, and `devLaunchArgs` from project settings.
+
    ```yaml
    <probe-spec>
      mode: analysis-probe
      transport: electron
-     launchTarget: "{apps.desktop.testing.launchTarget}"
-     executablePath: "{apps.desktop.testing.executablePath}"
+     launchTarget: # from project.json → apps.desktop.testing.launchTarget
+     executablePath: # from project.json → apps.desktop.testing.executablePath[platform]
      timeout: 10000
      zombieCleanup: true
      assertions:
@@ -489,7 +496,7 @@ Ask: "Was the user's original issue visible in the browser or app UI?"
              description: "No loading indicator yet"
      electronChecks:
        - type: "ipc-response"
-         channel: "{relevant IPC channel if applicable}"
+         channel: # relevant IPC channel for the change being analyzed
          expect: "defined"
    </probe-spec>
    ```
