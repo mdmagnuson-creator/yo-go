@@ -1007,19 +1007,19 @@
         "type": "feat",
         "scope": "schemas",
         "description": "add buildDeploy configuration to project.schema.json — buildCommand, buildOutputApp, testApp, triggerPaths, autoDeployAfterStory, buildTimeoutMs",
-        "hash": "pending"
+        "hash": "37fb22b"
       },
       {
         "type": "feat",
         "scope": "skills",
         "description": "add triggerPaths glob matching algorithm to test-flow Step 3.5 and build-deploy completion report section",
-        "hash": "pending"
+        "hash": "37fb22b"
       },
       {
         "type": "feat",
         "scope": "data",
         "description": "add configure-electron-build-deploy update template and registry entry with electron-apps affinity",
-        "hash": "pending"
+        "hash": "37fb22b"
       },
       {
         "type": "feat",
