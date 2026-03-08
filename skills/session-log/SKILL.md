@@ -361,14 +361,33 @@ touch "$CHUNK_DIR/log.jsonl"
    - Update `lastHeartbeat`
 5. **Commit:** `git add -A && git commit -m "feat: [message]"`
 
-### Transitioning Between Chunks
+### Transitioning Between Chunks (Lean Execution)
 
 After committing the completed chunk:
 
-1. **Shed context** — Completed chunk details exist only on disk
-2. **Carry forward only:** `session.json` + `decisions.md` + next chunk's `plan.md`
-3. **Load next chunk** — Read acceptance criteria from PRD, create `plan.md`, begin work
-4. **Log transition:** `"✅ US-001 complete. Starting US-002: [title]"`
+1. **Log transition:** `"✅ US-001 complete. Starting US-002: [title]"`
+
+2. **Shed context** — Completed chunk details (code files, test output, delegation results) exist only on disk in the chunk folder. Builder does NOT carry them in working context.
+
+3. **Carry forward ONLY these files (total ~5-9KB / ~2K tokens):**
+
+   | File | Size | Purpose |
+   |------|------|---------|
+   | `session.json` | ~2-4KB | Manifest with chunk summaries, currentAction, currentChunk |
+   | `decisions.md` | ~1-3KB | Cross-cutting decisions spanning chunks |
+   | Next chunk's `plan.md` | ~1-2KB | Acceptance criteria and approach |
+
+   **Nothing else.** No source files, no test output, no previous chunk details.
+
+4. **Load next chunk:**
+   - Read acceptance criteria from PRD (or ad-hoc task description)
+   - Create `plan.md` in the new chunk folder
+   - Read relevant source files fresh (not carried over from previous chunk)
+   - Create `chunk.json` with clean state (per-chunk verification isolation)
+
+5. **Update right-panel todos** — Derive from `session.json` → `chunks[]`
+
+**Why this matters:** Without lean execution, Builder accumulates context across stories until compaction forces a reset (~128K tokens). With lean execution, each chunk starts with ~5-9KB of context, making compaction rare.
 
 ## UI Todo Derivation
 

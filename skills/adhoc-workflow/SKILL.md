@@ -1381,6 +1381,32 @@ during form submission, disabled state to prevent double-submit.
 > This flag is the technical checkpoint that prevents implementation without approval.
 > If this flag is `false`, @developer delegation is BLOCKED.
 
+### Multi-Task Chunk Grouping
+
+When the user provides multiple unrelated tasks in a single ad-hoc request, Builder groups them into logical chunks before starting. Each chunk becomes an independent unit of work with its own context boundary.
+
+**Show grouping to user before proceeding:**
+
+```
+I'll work through these in 3 chunks:
+  1. TSK-001: Fix header alignment + update nav styles (related files)
+  2. TSK-002: Add error handling to API endpoints (related domain)
+  3. TSK-003: Update documentation (independent)
+
+Override grouping? (Enter to accept, or describe different grouping)
+```
+
+**Grouping heuristics (in priority order):**
+
+1. **Related files** — tasks touching the same files go together
+2. **Dependency** — tasks that depend on each other go in sequence
+3. **Logical domain** — tasks in the same feature area group together
+4. **Default** — if no clear grouping, each task is its own chunk
+
+**Single-task optimization:** For single-task requests, the entire request is one chunk. No grouping prompt — no overhead.
+
+**User can override:** regroup, reorder, or accept the default.
+
 ---
 
 ## Phase 1: Task Execution

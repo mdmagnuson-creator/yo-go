@@ -1237,6 +1237,89 @@ When pipeline stops due to failure, Builder shows the failure context and waits 
 
 ---
 
+## Lean Execution Mode (AUTOMATIC)
+
+> ⛔ **Lean execution is Builder's DEFAULT operating mode — not a toggle.**
+>
+> Builder works chunk-by-chunk from session start. After each chunk completes, Builder sheds the chunk's working context and carries forward only the lean manifest. No user prompt activates this — it's how Builder always works.
+
+### Why This Matters
+
+Without lean execution, Builder accumulates context across stories until compaction forces a reset. With lean execution, each chunk starts with a small, predictable context footprint (~5-9KB / ~2K tokens), making compaction rare and recovery trivial when it does happen.
+
+### What Builder Carries Forward Between Chunks (ALWAYS in memory)
+
+| File | Size | Content |
+|------|------|---------|
+| `session.json` | ~2-4KB | Lean manifest with chunk summaries, `currentAction`, `currentChunk` |
+| `decisions.md` | ~1-3KB | Cross-cutting decisions spanning chunks |
+| Current chunk's `plan.md` | ~1-2KB | Acceptance criteria and planned approach |
+| **Total** | **~5-9KB** | **~1.5-2.5K tokens — negligible** |
+
+### Chunk Transition Protocol
+
+After a chunk completes (Step 5 of Story Processing Pipeline) and is committed (Step 4):
+
+1. **Log transition message:**
+   ```
+   ✅ US-001 complete. Starting US-002: [title]
+   ```
+
+2. **Shed context** — The completed chunk's details (code files read, test output, delegation results) exist only on disk in the chunk folder. Builder does NOT carry them forward in working context.
+
+3. **Load next chunk** — Read only:
+   - Next chunk's acceptance criteria from the PRD (or ad-hoc task description)
+   - Create `plan.md` in the new chunk folder
+   - Read relevant source files for the new chunk (not carry-over from previous)
+
+4. **Update right-panel todos** — Derive from `session.json` → `chunks[]`
+
+### Within a Chunk
+
+- Work normally — read files, write code, run tests, delegate to specialists
+- Update `currentAction` in `session.json` on every tool call
+- Append to `log.jsonl` on every significant tool call
+- No special context management needed — a single story rarely exceeds context limits
+- If the chunk is unusually large, write `changes.md` incrementally
+
+### Single-Task Ad-hoc Optimization
+
+For single-task ad-hoc requests, the entire request is one chunk. No grouping overhead — works exactly like today but with session logging.
+
+### Multi-Task Ad-hoc Grouping
+
+For multi-task ad-hoc requests, Builder groups tasks into logical chunks before starting:
+
+1. **Show grouping to user:**
+   ```
+   I'll work through these in 3 chunks:
+     1. TSK-001: Fix header alignment + update nav styles (related files)
+     2. TSK-002: Add error handling to API endpoints (related domain)
+     3. TSK-003: Update documentation (independent)
+   
+   Override grouping? (Enter to accept, or describe different grouping)
+   ```
+
+2. **Grouping heuristics:**
+   - **Related files** — tasks touching the same files go together
+   - **Dependency** — tasks that depend on each other go in order
+   - **Logical domain** — tasks in the same feature area group together
+   - **Default** — if no clear grouping, each task is its own chunk
+
+3. **User can override** — regroup, reorder, or accept the default
+
+### Context Overflow Protection
+
+> 📚 **SKILL: session-log** → "Context Overflow Handling"
+>
+> Load the `session-log` skill for 75% warning and 90% stop protocols.
+
+If context grows unexpectedly within a chunk:
+- **At 75%:** Write incremental checkpoint (`changes.md`), warn
+- **At 90%:** Write final checkpoint, stop current chunk, report progress
+
+---
+
 ## Commit Strategy Configuration
 
 Commit behavior is controlled by `git.autoCommit` in `docs/project.json`:
