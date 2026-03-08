@@ -1017,85 +1017,85 @@
         "type": "feat",
         "scope": "agents",
         "description": "add Step 4.5 (postChangeActions) to builder Story Processing Pipeline — mandatory post-commit execution with trigger evaluation and failure modes",
-        "hash": "pending"
+        "hash": "b63cc1b"
       },
       {
         "type": "feat",
         "scope": "skills",
         "description": "add Step 1.5 (postChangeActions) to adhoc-workflow Phase 2 Ship — mirrors Pipeline Step 4.5 for ad-hoc commit flow",
-        "hash": "pending"
+        "hash": "b63cc1b"
       },
       {
         "type": "refactor",
         "scope": "skills",
         "description": "strengthen test-flow Section 5.5 with MANDATORY gate, pipeline step reference, and all-commit-paths applicability",
-        "hash": "pending"
+        "hash": "b63cc1b"
       },
       {
         "type": "refactor",
         "scope": "skills",
         "description": "update prd-workflow pipeline summary and postChangeActions reference to use canonical Step 4.5",
-        "hash": "pending"
+        "hash": "b63cc1b"
       },
       {
         "type": "feat",
         "scope": "schemas",
         "description": "add postChangeActions configuration to project.schema.json — pending-update, agent, command, notify action types with trigger conditions (always, files-changed-in, feature-change, user-facing-change)",
-        "hash": "pending"
+        "hash": "37faa43"
       },
       {
         "type": "refactor",
         "scope": "schemas",
         "description": "remove support-article, tools, marketing from workflow step enums in project.schema.json and workflow-defaults.schema.json — replaced by postChangeActions",
-        "hash": "pending"
+        "hash": "37faa43"
       },
       {
         "type": "refactor",
         "scope": "data",
         "description": "remove support-article/tools/marketing conditionalSteps and stepReference entries from workflow-defaults.json — replaced by postChangeActions",
-        "hash": "pending"
+        "hash": "37faa43"
       },
       {
         "type": "feat",
         "scope": "skills",
         "description": "add Section 5.5 Post-Change Actions (After Commit) to test-flow — trigger evaluation, action execution, and error handling",
-        "hash": "pending"
+        "hash": "37faa43"
       },
       {
         "type": "refactor",
         "scope": "skills",
         "description": "replace hardcoded supportArticleRequired/toolsRequired/marketingRequired story flags with postChangeActions reference in prd-workflow",
-        "hash": "pending"
+        "hash": "37faa43"
       },
       {
         "type": "refactor",
         "scope": "skills",
         "description": "replace Step B (support articles) and Step D (copy review) with postChangeActions verification in post-completion",
-        "hash": "pending"
+        "hash": "37faa43"
       },
       {
         "type": "feat",
         "scope": "skills",
         "description": "add Post-Change Actions section to canonical source example in builder-delegation",
-        "hash": "pending"
+        "hash": "37faa43"
       },
       {
         "type": "feat",
         "scope": "data",
         "description": "add 2026-03-08-migrate-to-post-change-actions entry to update-registry.json with all-projects affinity",
-        "hash": "pending"
+        "hash": "37faa43"
       },
       {
         "type": "feat",
         "scope": "templates",
         "description": "create migrate-to-post-change-actions.md interactive migration template for all projects",
-        "hash": "pending"
+        "hash": "37faa43"
       },
       {
         "type": "refactor",
         "scope": "schemas",
         "description": "fix toolkit-structure.json schema entries — replace deleted builder-state.schema with session.schema, chunk.schema, builder-config.schema (total 16→18)",
-        "hash": "pending"
+        "hash": "37faa43"
       },
       {
         "type": "feat",
