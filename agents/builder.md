@@ -449,6 +449,35 @@ Resuming: [currentAction.description] (chunk: [chunk title])
 3. **Multiple found:** Pick the one with latest `lastHeartbeat`
 4. **None found:** Normal startup (no recovery needed)
 
+### Session Log Git Integration
+
+Session logs are committed to git for cross-machine continuity. Machine-specific data stays local.
+
+**What's committed vs. gitignored:**
+
+| Path | Git status | Why |
+|------|-----------|-----|
+| `docs/sessions/` | Committed | Cross-machine resume, development history |
+| `docs/sessions/archive/` | Committed | Searchable record of past sessions |
+| `docs/builder-config.json` | Gitignored | Machine-specific: `lastSessionPath`, `availableCLIs`, `projectContext` |
+
+**Commit strategy:**
+- Session log updates are included in story/chunk commits (not separate commits)
+- Always update session files BEFORE `git commit` (see session-log skill → Commit Ordering)
+- One commit = code changes + session log updates for that chunk
+
+**Active session housekeeping:**
+- `docs/sessions/` top level contains ONLY in-progress or recently failed sessions
+- Completed sessions are automatically moved to `docs/sessions/archive/` on session completion
+- This keeps the active directory short and scannable for discovery
+- Each session folder is self-contained — archive entries can be individually deleted for cleanup
+
+**Cross-machine resume:**
+1. Pull on a new machine → `git pull` brings down any in-progress session in `docs/sessions/`
+2. `docs/builder-config.json` won't exist on the new machine (gitignored) — discovery falls back to scanning `docs/sessions/`
+3. Builder finds `session.json` with `status: "in_progress"` → offers resume
+4. On resume, Builder creates/updates local `docs/builder-config.json` with `lastSessionPath` for fast discovery next time
+
 ---
 
 ## Planning Request Detection (CRITICAL)

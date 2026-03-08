@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-03-08T01:00:00Z",
+  "generatedAt": "2026-03-08T06:00:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 63,
@@ -1003,6 +1003,54 @@
   "changelog": {
     "generatedFrom": "git log --since=30 days",
     "entries": [
+      {
+        "type": "feat",
+        "scope": "agents",
+        "description": "add session log git integration section to builder — cross-machine resume, active session housekeeping, commit strategy (US-005)",
+        "hash": "pending"
+      },
+      {
+        "type": "feat",
+        "scope": "agents",
+        "description": "add unified compaction recovery protocol to builder — single protocol for compaction + resume, session discovery (US-004)",
+        "hash": "e3deacc"
+      },
+      {
+        "type": "feat",
+        "scope": "skills",
+        "description": "add compaction recovery section to session-log skill — targeted file reads, recovery message format (US-004)",
+        "hash": "e3deacc"
+      },
+      {
+        "type": "feat",
+        "scope": "agents",
+        "description": "add lean execution mode to builder — automatic context shedding, chunk transitions, carry-forward rules (US-003)",
+        "hash": "23577f7"
+      },
+      {
+        "type": "feat",
+        "scope": "skills",
+        "description": "add chunk transition protocol and context shedding to session-log skill — max context budget, multi-task grouping (US-003)",
+        "hash": "23577f7"
+      },
+      {
+        "type": "feat",
+        "scope": "schemas",
+        "description": "create session.schema.json, chunk.schema.json, builder-config.schema.json for session log system (US-001)",
+        "hash": "d931c4e"
+      },
+      {
+        "type": "feat",
+        "scope": "skills",
+        "description": "create session-log skill — replaces builder-state with persistent session logs, commit ordering, heartbeat, branchless trunk semantics (US-002)",
+        "hash": "d931c4e"
+      },
+      {
+        "type": "refactor",
+        "scope": "agents",
+        "description": "migrate builder, developer, toolkit from builder-state to session-log — delete builder-state schema and skill (US-002)",
+        "hash": "d931c4e"
+      },
       {
         "type": "feat",
         "scope": "schemas",
