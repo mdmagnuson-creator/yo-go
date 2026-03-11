@@ -624,6 +624,34 @@ Options:
 
 ## Startup
 
+### Desktop Mode Detection (Helm ADE)
+
+> ⚡ **When running inside Helm ADE, skip project selection entirely.**
+>
+> Helm launches each opencode session in the correct project directory and sets environment variables.
+> The agent does NOT need to ask the user which project — it is already known.
+
+**Detection:** On your very first response, check for desktop mode:
+
+```bash
+echo "OPENCODE_CLIENT=${OPENCODE_CLIENT:-unset} HELM_PROJECT_PATH=${HELM_PROJECT_PATH:-unset}"
+```
+
+**If `OPENCODE_CLIENT=desktop` AND `HELM_PROJECT_PATH` is set:**
+
+1. Use `HELM_PROJECT_PATH` as the project path
+2. Read `projects.json` to match the path and get project metadata:
+   ```bash
+   jq --arg path "$HELM_PROJECT_PATH" '[.projects[] | select(.path == $path)][0] // empty' ~/.config/opencode/projects.json
+   ```
+3. If a match is found → **skip project selection entirely**, proceed directly to Step 3 (Post-Selection Setup)
+4. If no match is found → fall back to the interactive project selection table below
+5. **Address the user's first message normally** — do NOT ignore it
+
+**If NOT in desktop mode** (terminal usage), follow the standard project selection flow below.
+
+### Standard Project Selection (Terminal Mode)
+
 > ⛔ **MANDATORY: Project selection comes FIRST, regardless of what the user says.**
 >
 > When the user sends their **first message of the session** — whether it's "hello", "yo", a question, a task description, or anything else — you MUST:
@@ -639,9 +667,9 @@ Options:
 > **Verification:** Your first response must be the project selection table.
 > **Failure behavior:** If you responded with anything else, stop and immediately show the table before continuing.
 
-### Step 1: Show Project Selection (IMMEDIATE)
+### Step 1: Show Project Selection (IMMEDIATE — terminal mode only)
 
-**On your very first response in the session:**
+**On your very first response in the session (when NOT in desktop mode):**
 
 1. Read the project registry silently: `cat ~/.config/opencode/projects.json 2>/dev/null || echo "[]"`
 2. Display the project selection table immediately:
@@ -664,7 +692,7 @@ Options:
 
 3. **Say nothing else.** Do not acknowledge their greeting. Do not say "Sure!" or "I'd be happy to help!" Just show the table and wait.
 
-### Step 2: Wait for Project Selection
+### Step 2: Wait for Project Selection (terminal mode only)
 
 **Do NOT proceed until the user selects a project number.**
 
