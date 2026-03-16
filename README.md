@@ -6,7 +6,7 @@ Toolkit repository for OpenCode agents, skills, schemas, and scaffolds.
 
 | Directory | Description |
 |-----------|-------------|
-| [`agents/`](#agents) | 63 autonomous agents for planning, implementation, testing, review, and operations |
+| [`agents/`](#agents) | 65 autonomous agents for planning, implementation, testing, review, and operations |
 | [`skills/`](#skills) | 68 reusable skills for workflow guidance and generation |
 | [`schemas/`](#schemas) | 18 JSON schemas for manifests and workflow artifacts |
 | [`scaffolds/`](#scaffolds) | 3 project scaffold templates |

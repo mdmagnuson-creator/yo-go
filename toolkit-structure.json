@@ -1,10 +1,10 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-03-15T12:00:00Z",
+  "generatedAt": "2026-03-16T18:00:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
-    "total": 63,
+    "total": 65,
     "categories": {
       "primary": {
         "description": "User-invokable primary agents",
@@ -83,6 +83,11 @@
             "name": "react-dev",
             "file": "agents/react-dev.md",
             "description": "Implements React tasks specializing in UI consistency, Tailwind CSS, and TypeScript"
+          },
+          {
+            "name": "swift-dev",
+            "file": "agents/swift-dev.md",
+            "description": "Implements Swift tasks specializing in SwiftUI layout, multiplatform (macOS/iOS), and native Apple patterns"
           },
           {
             "name": "terraform-dev",
@@ -253,6 +258,11 @@
             "name": "seo-critic",
             "file": "agents/seo-critic.md",
             "description": "Reviews public pages for SEO - meta tags, headings, structured data, page speed, and search engine best practices"
+          },
+          {
+            "name": "swift-critic",
+            "file": "agents/swift-critic.md",
+            "description": "Reviews Swift/SwiftUI code for layout correctness, view lifecycle, data flow, multiplatform issues, and Apple platform best practices"
           },
           {
             "name": "tailwind-critic",
@@ -1012,7 +1022,13 @@
   },
   "changelog": {
     "generatedFrom": "git log --since=30 days",
-    "entries": [
+  "entries": [
+    {
+      "type": "feat",
+      "scope": "agents",
+      "description": "outcome-only analysis dashboards, dynamic agent routing in developer.md and critic.md, plus swift-dev and swift-critic agents for native Apple platform development",
+      "hash": "pending"
+    },
       {
         "type": "feat",
         "scope": "agents",
