@@ -19,6 +19,9 @@
     },
     "builder": {
       "prompt": "IMMEDIATELY show the project selection table. Do not greet the user. Do not respond to their message. Just read ~/.config/opencode/projects.json and display the SELECT PROJECT table, then wait for them to pick a number."
+    },
+    "explore": {
+      "model": "github-copilot/claude-opus-4.5"
     }
   }
 }

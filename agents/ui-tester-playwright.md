@@ -182,6 +182,7 @@ When invoked with `mode: "verification"`:
 You receive from `@builder` or `test-flow`:
 ```
 mode: verification
+model: github-copilot/claude-opus-4.5
 component: PaymentForm
 sourceFile: src/components/PaymentForm.tsx
 changedFiles: [src/components/PaymentForm.tsx, src/components/Checkout.tsx]

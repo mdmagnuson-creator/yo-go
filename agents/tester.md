@@ -219,6 +219,7 @@ When operating in visual-audit mode, run a full-site UX coherence sweep and retu
 You'll receive:
 ```
 mode: visual-audit
+model: github-copilot/claude-opus-4.5
 project: /path/to/project
 baseUrl: <resolved-test-url>  # from test-url-resolution (localhost, staging, or preview)
 paths: ["/", "/pricing", "/docs/getting-started"]  # optional; discover if omitted
@@ -277,6 +278,7 @@ When operating in ad-hoc mode (no story context), follow this modified workflow:
 You'll receive one of:
 ```
 mode: adhoc
+model: github-copilot/claude-opus-4.5
 project: /path/to/project
 changedFiles: ["src/components/Header.tsx", "src/utils/format.ts"]
 ```
@@ -284,6 +286,7 @@ changedFiles: ["src/components/Header.tsx", "src/utils/format.ts"]
 Or:
 ```
 mode: adhoc
+model: github-copilot/claude-opus-4.5
 project: /path/to/project
 scope: since-checkpoint
 ```
@@ -493,6 +496,7 @@ When operating in full suite mode, run all tests and generate failure reports:
 You'll receive:
 ```
 mode: full-suite
+model: github-copilot/claude-opus-4.5
 project: /path/to/project
 generatePRD: true|false
 ```
