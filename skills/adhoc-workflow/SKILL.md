@@ -49,7 +49,7 @@ Ad-hoc mode now includes a **mandatory Analysis Phase** that generates **Task Sp
    - `agents.analysisTimeoutMs` — analysis time limit (default: 10000)
    - `agents.taskSpecEnabled` — whether Task Specs are enabled (default: true)
 
-2. Read `docs/CONVENTIONS.md` and prepare a 2-5 sentence summary of key patterns
+2. Read `docs/CONVENTIONS.md` in full — do NOT summarize or compress it. Keep the full content in session context and pass it to sub-agents via context blocks. If CONVENTIONS.md contains a `## TL;DR for Agents` section, use it as a quick-reference anchor but do NOT treat it as a substitute for the full file.
 
 3. Store this context for the session — you'll pass it to @developer, @tester, @critic
 
