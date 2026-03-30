@@ -1032,7 +1032,7 @@
         "type": "fix",
         "scope": "agents",
         "description": "add code-first investigation order to builder.md — require @explore to read source code before grepping logs during bug investigation",
-        "hash": "pending"
+        "hash": "6749764"
       },
       {
         "type": "fix",
