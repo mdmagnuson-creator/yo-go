@@ -1322,6 +1322,21 @@ RIGHT (preserves context):
 
 Builder should NEVER do step 2 itself. The temptation to "just quickly check one file" always leads to reading 4-5 files and burning context.
 
+> ⚠️ **Investigation order: Code first, logs second.**
+>
+> When delegating to @explore, always ask about how the code works BEFORE
+> asking about log output. Logs show what happened in one run; code shows
+> how the system works. Log correlation without code understanding produces
+> plausible-sounding narratives that may be wrong.
+>
+> **Required order:**
+> 1. Delegate to @explore to read and trace the relevant source code
+> 2. Form a hypothesis based on code understanding
+> 3. Use logs only to confirm or deny the hypothesis
+>
+> **Failure behavior:** If you're about to ask @explore to grep logs before
+> understanding the relevant code — STOP and reformulate as a code question first.
+
 ---
 
 ## Story Processing Pipeline (MANDATORY)
