@@ -1041,6 +1041,12 @@
       },
       {
         "type": "fix",
+        "scope": "skills",
+        "description": "add multi-thread monitoring to session-monitor skill — clarify session= is opencode serve ID not thread ID, add thread disambiguation strategies, multi-thread state model, and updated troubleshooting",
+        "hash": "pending"
+      },
+      {
+        "type": "fix",
         "scope": "agents",
         "description": "add code-first investigation order to builder.md — require @explore to read source code before grepping logs during bug investigation",
         "hash": "6749764"

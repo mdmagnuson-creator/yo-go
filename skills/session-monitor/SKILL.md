@@ -192,7 +192,11 @@ When the user says "stop", "pause", "enough", or similar:
 
 ## State Model
 
-Builder maintains this mental model across polling cycles in conversation context:
+Builder maintains this mental model across polling cycles in conversation context.
+
+### Single-Thread Model (default)
+
+When monitoring a single Build tab:
 
 ```
 sessionState:        busy | idle
@@ -212,6 +216,37 @@ toolCallsSucceeded:  number                 # cumulative successful tool calls
 toolCallsFailed:     number                 # cumulative failed tool calls
 turnsCompleted:      number                 # cumulative turns completed
 ```
+
+### Multi-Thread Model
+
+When monitoring multiple concurrent Build tabs, promote per-thread state into a `threads` dictionary keyed by thread title. Track which thread is "active" based on the most recent `thread.titleChanged` event:
+
+```
+activeThread:        string | null          # title from most recent thread.titleChanged
+threads: {
+  [threadTitle]: {
+    state:             busy | idle
+    currentActivity:   string | null
+    messageCount:      number
+    streamingMessageId: string | null
+    activeToolCalls:   [{ tool, callId, startedAt }]
+    tokenUsage:        { total, input, output }
+    errors:            [{ timestamp, message }]
+    turnStartedAt:     timestamp | null
+    turnsCompleted:    number
+    toolCallsTotal:    number
+    toolCallsSucceeded: number
+    toolCallsFailed:   number
+    lastEventAt:       timestamp
+  }
+}
+lastLine:            number                 # shared — line number of last read line
+monitorStartedAt:    timestamp              # shared — when monitoring began
+cycleCount:          number                 # shared — number of completed polling cycles
+lastEventAt:         timestamp              # shared — timestamp of last [UI] event seen
+```
+
+**Thread attribution rule:** When a `thread.titleChanged` event arrives, set `activeThread` to the new title and create its entry in `threads` if absent. Route all subsequent events to `threads[activeThread]` until the next `thread.titleChanged`.
 
 **State update rules:**
 
@@ -250,6 +285,9 @@ To parse:
 3. **Key-value pairs:** Everything between action and `session=` — split on spaces, handle quoted values
 4. **Session ID:** Last `session=XXXXXXXX` field
 
+> ⚠️ **`session=` identifies the opencode serve session, NOT the Helm thread/tab.**
+> Multiple Build threads sharing the same opencode serve process (same port, same SSE stream) will emit events with the same `session=` value. See [Multi-Thread Monitoring](#multi-thread-monitoring) for disambiguation strategies.
+
 Example lines and their parsed meaning:
 
 ```
@@ -262,6 +300,54 @@ Example lines and their parsed meaning:
 [2026-04-11 14:32:17.789] [INFO] [UI] tokens.updated total=45231 input=38000 output=7231 session=12345678
 → Action: tokens.updated, total: 45231, input: 38000, output: 7231
 ```
+
+---
+
+## Multi-Thread Monitoring
+
+When multiple Build tabs are active in Helm, they may share a single opencode serve process. All threads on that process emit `[UI]` events with the **same `session=` value**, so events from different threads are interleaved and indistinguishable by session ID alone.
+
+### The Problem
+
+```
+[14:32:15.100] [INFO] [UI] tool.started tool=Write callId=abc session=12345678    ← Thread A
+[14:32:15.200] [INFO] [UI] message.new role=assistant msgId=xyz session=12345678   ← Thread B
+[14:32:15.300] [INFO] [UI] tool.completed tool=Write callId=abc session=12345678   ← Thread A
+```
+
+Without a thread identifier, there's no reliable way to attribute events to specific threads.
+
+### Disambiguation Strategies
+
+**1. `thread.titleChanged` as context switch marker (best available)**
+
+When Helm switches focus between threads, it emits `thread.titleChanged`. Use this as a heuristic to track which thread is "active":
+
+```
+[14:32:10.000] [INFO] [UI] thread.titleChanged title="Fix login bug" session=12345678
+← subsequent events likely belong to "Fix login bug" thread
+[14:33:45.000] [INFO] [UI] thread.titleChanged title="Add dark mode" session=12345678
+← context switch — subsequent events now belong to "Add dark mode" thread
+```
+
+**Limitations:** This is imprecise. Events from both threads can arrive in the same batch between `thread.titleChanged` markers, especially when both threads are actively processing.
+
+**2. `msgId` continuity (supplementary)**
+
+Messages within a single turn share temporal locality. When `message.new` produces a `msgId`, subsequent `tool.started` and `tool.completed` events belong to that message's turn until the next `message.new` or `message.finished`. This helps within a turn but doesn't solve cross-turn attribution.
+
+**3. Single-thread filtering (simplest)**
+
+If the user only cares about one thread, ask which thread title to watch and discard events that arrive between `thread.titleChanged` markers for other threads. This is lossy but clean.
+
+### Recommendations
+
+| Scenario | Strategy |
+|----------|----------|
+| Single Build tab active | No disambiguation needed — all events belong to one thread |
+| Two tabs, user watching one | Single-thread filtering by title |
+| Two tabs, watching both | Use multi-thread state model with `thread.titleChanged` heuristic |
+| Need precise attribution | Wait for `threadId=` field (see Future Enhancements) |
 
 ---
 
@@ -320,9 +406,11 @@ Between polling cycles, Builder can:
 
 ### Events from wrong session
 
-- The `session=XXXXXXXX` field identifies which session produced the event
-- If multiple sessions are active, filter by the session ID the user cares about
-- Ask the user which session to monitor if ambiguous
+- The `session=XXXXXXXX` field identifies the **opencode serve session**, not the Helm thread/tab
+- Multiple Build threads sharing the same opencode serve process will have the same session ID
+- If events appear interleaved from multiple threads, see [Multi-Thread Monitoring](#multi-thread-monitoring) for disambiguation
+- If multiple opencode serve processes are running (different ports), filter by the session ID the user cares about
+- Ask the user which thread to monitor if ambiguous
 
 ---
 
