@@ -1,11 +1,11 @@
 ---
 name: session-monitor
-description: "Monitor an active Helm session by tailing the debug log file. Provides real-time observability of session state, user actions, agent tool calls, errors, and token usage. Use when the user asks to monitor or watch a session. Triggers on: monitor session, watch session, check session, tail logs, session status, how's the session going."
+description: "Monitor what a user is doing in Helm by tailing the debug log. Tracks both user actions (navigation, task/PRD CRUD, panel toggles, model picks) via [COMMAND] logs and agent activity (messages, tool calls, tokens, errors) via [UI] logs. Use when the user asks to monitor, watch, or observe a Helm session. Triggers on: monitor session, watch session, check session, what's happening, tail logs, session status, how's the session going, watch what they're doing."
 ---
 
 # Session Monitor Skill
 
-> Load this skill when: the user asks to monitor, watch, or check on an active Helm session. Provides real-time observability by tailing `[UI]` and `[COMMAND]` debug logs.
+> Load this skill when: the user asks to monitor, watch, or observe what's happening in a Helm session. Provides full observability of both **user actions** (`[COMMAND]` logs) and **agent activity** (`[UI]` logs) by tailing the debug log file.
 
 ## Overview
 
