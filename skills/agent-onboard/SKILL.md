@@ -1,3 +1,8 @@
+---
+name: agent-onboard
+description: "Onboard new or modified agents to ensure they are project-context aware and follow toolkit conventions. Triggers on: onboard agent, new agent setup, agent conventions, agent context loading."
+---
+
 # Agent Onboard Skill
 
 Onboard new or modified agents to ensure they are project-context aware and follow the established conventions for the AI toolkit.

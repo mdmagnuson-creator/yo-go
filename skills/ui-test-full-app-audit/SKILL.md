@@ -1,3 +1,8 @@
+---
+name: ui-test-full-app-audit
+description: "Comprehensive E2E test audit of applications with manifest schema and resilient execution strategies. Triggers on: run e2e audit, comprehensive e2e test, full test coverage, full app audit."
+---
+
 # UI Test Full-App Audit Skill
 
 > Load this skill when performing comprehensive E2E test audits of applications.

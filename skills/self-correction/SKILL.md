@@ -1,3 +1,8 @@
+---
+name: self-correction
+description: "Recognize repetitive work patterns and switch to bulk fix strategies before getting stuck in a loop. Triggers on: stuck in a loop, same error, same fix, repetitive pattern, bulk fix."
+---
+
 # Self-Correction Skill
 
 > ⚠️ **Recognize repetitive work patterns BEFORE getting stuck in a loop.**

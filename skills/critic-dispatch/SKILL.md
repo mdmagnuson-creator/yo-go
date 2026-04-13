@@ -1,3 +1,8 @@
+---
+name: critic-dispatch
+description: "Control when @critic runs during PRD work to balance thoroughness vs speed. Triggers on: critic mode, when to review, code review batching, critic dispatch."
+---
+
 # Critic Dispatch Skill
 
 > Control when @critic runs during PRD work to balance thoroughness vs speed.

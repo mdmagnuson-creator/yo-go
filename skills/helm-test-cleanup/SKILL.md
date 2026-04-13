@@ -1,4 +1,7 @@
-# Skill: helm-test-cleanup
+---
+name: helm-test-cleanup
+description: "Purge all Helm ADE test data for a repo from Supabase and local filesystem. Use when you need to clean up after testing, reset to a clean state, or purge test data. Triggers on: clean up helm, reset test data, purge test data, helm cleanup, clean slate."
+---
 
 # Helm ADE Test Data Cleanup
 

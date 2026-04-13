@@ -1,3 +1,8 @@
+---
+name: session-state
+description: "Shared session state management for agents — right-panel todos, rate limit handling, and compaction recovery patterns. Triggers on: session state, restore session, rate limit recovery, compaction recovery, todo sync."
+---
+
 # Session State Skill
 
 > Shared session management for agents with state persistence.

@@ -1,3 +1,8 @@
+---
+name: auth-config-check
+description: "Check for authentication configuration before auth-dependent tasks like E2E tests, screenshots, or QA browser testing. Triggers on: auth config check, authentication check, pre-auth validation, auth prerequisite."
+---
+
 # Authentication Configuration Check Skill
 
 > ⛔ **CRITICAL: Check for authentication config BEFORE any auth-dependent task.**

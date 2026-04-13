@@ -1,3 +1,8 @@
+---
+name: electron-build-deploy
+description: "Build and deploy Electron app before Playwright verification so tests run against newly-built code. Triggered by test-flow when buildDeploy is configured. Triggers on: electron build, electron deploy, desktop app build, build before test."
+---
+
 # Electron Build-Deploy Skill
 
 > **Trigger:** test-flow Step 3.5 detects `apps.desktop.buildDeploy` in `project.json`

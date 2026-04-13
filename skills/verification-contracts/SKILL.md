@@ -1,3 +1,8 @@
+---
+name: verification-contracts
+description: "Generate verification contracts before delegating tasks to sub-agents, defining how success will be measured. Triggers on: verification contract, delegation contract, task verification, contract-first delegation."
+---
+
 # Verification Contracts Skill
 
 > 🎯 **Contract-first decomposition:** Only delegate a task if you can verify its completion.

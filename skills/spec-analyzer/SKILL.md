@@ -1,3 +1,8 @@
+---
+name: spec-analyzer
+description: "Extract structured requirements from unstructured project specifications, PRDs, or feature descriptions into a RequirementsManifest. Triggers on: analyze spec, extract requirements, parse spec, requirements manifest."
+---
+
 # Spec Analyzer Skill
 
 > Extract structured requirements from unstructured project specifications.

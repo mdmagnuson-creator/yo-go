@@ -1,3 +1,8 @@
+---
+name: stack-advisor
+description: "Recommend technology stacks based on project requirements by scoring stack archetypes against a RequirementsManifest. Triggers on: recommend stack, stack advice, technology recommendation, choose stack."
+---
+
 # Stack Advisor Skill
 
 > Recommend technology stacks based on project requirements.

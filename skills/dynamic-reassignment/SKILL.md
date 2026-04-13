@@ -1,3 +1,8 @@
+---
+name: dynamic-reassignment
+description: "Reassign tasks to alternative specialist agents when the primary specialist fails. Handles rate limits with backoff and persistent failures with agent switching. Triggers on: agent failure, delegation failure, rate limit during task, specialist crash."
+---
+
 # Dynamic Reassignment Skill
 
 > ⟳ **When specialists fail, try alternatives before escalating.**

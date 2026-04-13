@@ -1,3 +1,8 @@
+---
+name: vercel-supabase-alignment
+description: "Verify that Vercel environment variables point to the correct Supabase project for each environment to prevent staging/production cross-wiring. Triggers on: vercel supabase check, environment alignment, env var check, supabase environment."
+---
+
 # Vercel-Supabase Environment Alignment Check
 
 ## Purpose

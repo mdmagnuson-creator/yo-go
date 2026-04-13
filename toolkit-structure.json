@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-11T00:00:00Z",
+  "generatedAt": "2026-04-13T00:00:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 65,
@@ -359,7 +359,7 @@
     }
   },
   "skills": {
-    "total": 70,
+    "total": 71,
     "categories": {
       "workflow": {
         "description": "Workflow and lifecycle skills",
@@ -502,7 +502,7 @@
           {
             "name": "agent-onboard",
             "path": "skills/agent-onboard/SKILL.md",
-            "description": "No description provided"
+            "description": "Onboard new or modified agents to ensure they are project-context aware and follow toolkit conventions. Triggers on: onboard agent, new agent setup, agent conventions, agent context loading."
           },
           {
             "name": "project-bootstrap",
@@ -517,12 +517,12 @@
           {
             "name": "spec-analyzer",
             "path": "skills/spec-analyzer/SKILL.md",
-            "description": "No description provided"
+            "description": "Extract structured requirements from unstructured project specifications, PRDs, or feature descriptions into a RequirementsManifest. Triggers on: analyze spec, extract requirements, parse spec, requirements manifest."
           },
           {
             "name": "stack-advisor",
             "path": "skills/stack-advisor/SKILL.md",
-            "description": "No description provided"
+            "description": "Recommend technology stacks based on project requirements by scoring stack archetypes against a RequirementsManifest. Triggers on: recommend stack, stack advice, technology recommendation, choose stack."
           }
         ]
       },
@@ -733,6 +733,11 @@
             "name": "session-monitor",
             "path": "skills/session-monitor/SKILL.md",
             "description": "Monitor an active Helm session by tailing the debug log file. Provides real-time observability of session state, messages, tool calls, errors, and token usage. Triggers on: monitor session, watch session, check session, tail logs, session status."
+          },
+          {
+            "name": "helm-test-cleanup",
+            "path": "skills/helm-test-cleanup/SKILL.md",
+            "description": "Purge all Helm ADE test data for a repo from Supabase and local filesystem. Use when you need to clean up after testing, reset to a clean state, or purge test data. Triggers on: clean up helm, reset test data, purge test data, helm cleanup, clean slate."
           }
         ]
       }
@@ -1033,6 +1038,12 @@
   "changelog": {
     "generatedFrom": "git log --since=30 days",
     "entries": [
+      {
+        "type": "fix",
+        "scope": "skills",
+        "description": "add YAML frontmatter to 13 unregistered skills (helm-test-cleanup, agent-onboard, auth-config-check, critic-dispatch, dynamic-reassignment, electron-build-deploy, self-correction, session-state, spec-analyzer, stack-advisor, ui-test-full-app-audit, vercel-supabase-alignment, verification-contracts) so OpenCode skill loader discovers them",
+        "hash": "pending"
+      },
       {
         "type": "feat",
         "scope": "skills",
