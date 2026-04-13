@@ -269,7 +269,7 @@ After @developer completes a task, run resolved activities in this order:
 | 3 | **Unit Tests** | Resolved testers | Yes, max 3 attempts |
 | 3.5 | **Rebuild/Relaunch** | `electron-build-deploy` skill (if `buildDeploy` configured), `postChangeWorkflow` steps, or auto-inferred from `apps[]` | Yes, max 3 attempts |
 | 4 | **Critics** | Resolved from patterns | Report findings, @developer fixes |
-| 5 | **E2E / Playwright** | Gated by `testVerifySettings` (see Step 5 box below) | Yes, configurable attempts (see Retry Strategy) |
+| 5 | **E2E / Playwright** | PRD: gated by `testVerifySettings` (default on). Ad-hoc: opt-in only (user request or explicit `testVerifySettings` opt-in) | Yes, configurable attempts (see Retry Strategy) |
 | 6 | **Quality** | Resolved quality critics | Report findings |
 
 ### Pipeline Flow
@@ -384,10 +384,14 @@ Task/Story complete
 │   - If BOTH are false → skip entire Step 5                           │
 │                                                                     │
 │ Ad-hoc mode:                                                         │
-│   - Check testVerifySettings.adHocUIVerify_StoryTest (default: true) │
-│     If false → skip UI test writing with:                            │
-│     "⏭️ Skipping UI test writing: testVerifySettings                 │
-│      .adHocUIVerify_StoryTest is false"                              │
+│   - Default: Playwright is OPT-IN (does NOT run automatically)       │
+│   - Runs ONLY when:                                                  │
+│     a) User explicitly requests it ("verify in browser",             │
+│        "run playwright", "run e2e", selects [E])                     │
+│     b) testVerifySettings.adHocUIVerify_StoryTest is explicitly      │
+│        set to true in project.json (project opts in)                 │
+│   - If neither condition met → skip with:                            │
+│     "➖ Playwright: not requested (opt-in for ad-hoc mode)"          │
 │                                                                     │
 │ **After passing the settings gate:**                                 │
 │                                                                     │
@@ -464,8 +468,8 @@ See `test-verification-loop` skill for the detailed fix loop algorithm.
 
 When `taskType` is `ops-with-runtime-impact` (classified during analysis):
 - Standard pipeline (typecheck → build → test) is **skipped** (no source files changed)
-- Playwright verification runs **directly** against the affected runtime behavior after ops commands complete
-- This closes the gap where ops-only fixes to browser-visible issues were declared "done" without verification
+- In **PRD mode**: Playwright verification runs directly against the affected runtime behavior after ops commands complete
+- In **ad-hoc mode**: Playwright is opt-in — runs only if user explicitly requests verification
 
 When `taskType` is `ops-only`:
 - Entire pipeline is skipped — mark complete after ops commands succeed
@@ -614,12 +618,13 @@ Build & Deploy:
 
 > ⛔ **E2E write+run is ONE atomic operation. Writing a test without running it is never a valid stopping point.**
 
-> **`testVerifySettings` gate:** E2E runs automatically when the applicable setting is `true`:
-> - **Ad-hoc mode:** `testVerifySettings.adHocUIVerify_StoryTest` (default: `true` if absent)
-> - **PRD mode:** `testVerifySettings.prdUIVerify_StoryTest` (default: `true` if absent)
-> If `false` → skip with: `⏭️ Skipping UI test writing: testVerifySettings.{settingName} is false`
+> **`testVerifySettings` gate:**
+> - **PRD mode:** E2E runs automatically when `testVerifySettings.prdUIVerify_StoryTest` is `true` (default: `true` if absent)
+> - **Ad-hoc mode:** E2E is **opt-in** — runs ONLY when user explicitly requests it OR when `testVerifySettings.adHocUIVerify_StoryTest` is explicitly set to `true` in project.json.
+>   - If not explicitly set to `true` → skip with: `➖ Playwright: not requested (opt-in for ad-hoc mode)`
+>   - User can request at any time by saying "verify in browser", "run playwright", "run e2e", or selecting `[E]`
 
-E2E execution is automatic — no `[E]` prompt, no user choice. When `testVerifySettings` says to run:
+**When E2E is triggered** (by settings gate or user request):
 
 1. Delegate to @ui-tester-playwright to write E2E tests
 2. **Immediately after writing**, run the tests — no user prompt between write and run

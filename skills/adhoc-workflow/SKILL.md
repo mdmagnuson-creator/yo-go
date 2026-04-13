@@ -46,7 +46,6 @@ Ad-hoc mode now includes a **mandatory Analysis Phase** that generates **Task Sp
    - `styling` — CSS framework, dark mode
    - `testing` — test framework, patterns
    - `agents.prdRecommendationThreshold` — when to recommend PRD (default: `medium`)
-   - `agents.analysisTimeoutMs` — analysis time limit (default: 10000)
    - `agents.taskSpecEnabled` — whether Task Specs are enabled (default: true)
 
 2. Read `docs/CONVENTIONS.md` in full — do NOT summarize or compress it. Keep the full content in session context and pass it to sub-agents via context blocks. If CONVENTIONS.md contains a `## TL;DR for Agents` section, use it as a quick-reference anchor but do NOT treat it as a substitute for the full file.
@@ -83,10 +82,10 @@ User summaries are NOT verification evidence. They cannot:
 
 | NOT This | Why |
 |----------|-----|
-| Replace browser testing | User may not have tested all scenarios |
-| Confirm CORS works | CORS is browser-enforced — user may have tested with curl |
-| Prove security is correct | Security requires systematic verification |
-| Skip E2E tests | User summary ≠ automated test passing |
+| Replace quality checks | User may not have tested all scenarios |
+| Confirm the fix works | Self-reported testing is unreliable |
+| Prove correctness | Correctness requires automated verification (typecheck, lint, tests) |
+| Skip verification | User summary ≠ automated test passing |
 
 ### Correct Response to User Summaries
 
@@ -94,9 +93,8 @@ When user provides a summary like "I fixed the CORS issue by adding the header":
 
 ```
 ✅ CORRECT: 
-"Thanks for the context! I'll use this to focus my analysis on the CORS 
-middleware. Let me run browser verification to confirm the fix works 
-across different origins."
+"Thanks for the context! I'll use this to focus my investigation on the CORS 
+middleware. Let me run typecheck and tests to confirm the fix is correct."
 
 ❌ WRONG:
 "Great, since you've confirmed the fix works, I'll just commit it."
@@ -110,15 +108,8 @@ Watch for these patterns that indicate user-provided summaries:
 |---------|---------|---------------|
 | "I fixed..." | "I fixed the CORS issue" | Acknowledge, then verify |
 | "The change is..." | "The change is adding X-Custom-Header" | Acknowledge, then verify |
-| "It works now" | "I tested it and it works" | Ask HOW they tested, then verify with Playwright |
+| "It works now" | "I tested it and it works" | Ask HOW they tested, then verify with quality checks |
 | "Just need to commit" | "Can you just commit this?" | Verify first, then commit |
-
-### CORS-Specific Warning
-
-> ⚠️ **CORS is BROWSER-ENFORCED. curl/wget bypass CORS entirely.**
->
-> If user says "I tested with curl and it works" — this is NOT CORS verification.
-> CORS headers are only enforced by browsers. You MUST use Playwright to verify CORS fixes.
 
 ---
 
@@ -154,13 +145,13 @@ Task Specs follow the **same lifecycle as PRDs** but in a parallel folder struct
 
 ## Phase 0: Analysis & Task Spec Generation
 
-> ⛔ **MANDATORY: Every ad-hoc request goes through analysis.**
+> ⛔ **MANDATORY: Every ad-hoc request goes through deep-investigation analysis.**
 >
 > **Trigger:** User provides an ad-hoc task request.
 >
-> **Evidence:** Analysis output block with alternatives/consequences MUST appear in response.
+> **Evidence:** Investigation dashboard with CONFIRMED/INFERRED evidence MUST appear in response.
 >
-> **Failure behavior:** If proceeding to implementation without showing analysis output, STOP and run analysis first.
+> **Failure behavior:** If proceeding to implementation without showing investigation dashboard, STOP and run analysis first.
 
 ### Step 0.0: Initialize Analysis Gate (CRITICAL — First Step)
 
@@ -179,7 +170,6 @@ Task Specs follow the **same lifecycle as PRDs** but in a parallel folder struct
   "mode": "adhoc",
   "source": { "taskId": null },
   "analysisCompleted": false,
-  "probeStatus": null,
   "chunks": [],
   "currentChunk": null,
   "implementationDecisions": [],
@@ -190,516 +180,80 @@ Task Specs follow the **same lifecycle as PRDs** but in a parallel folder struct
 ```
 
 > Per-chunk verification isolation: each chunk has its own `verification` object in `chunk.json`. No top-level verification state to reset.
-> (e.g., `type: "advisory"` or `type: "skip"`) and skip real verification for the new task.
 
 **Why this matters:**
 - The `analysisCompleted: false` flag serves as a technical checkpoint
 - Even if behavioral guardrails are "forgotten" after context compaction, this flag persists
 - The flag is checked before EVERY @developer delegation (see builder.md)
 - The flag is ONLY set to `true` after user responds with `[G] Go ahead`
-- The verification state reset prevents stale contracts from causing verification skips
 
 **Compaction resilience:**
 - On session resume after compaction, Builder reads this flag
 - If `analysisCompleted === false`, Builder knows analysis approval is pending
 - If `analysisCompleted === true`, Builder can verify approval was received
 
+### Step 0.1: Load Deep Investigation (MANDATORY)
+
+> ⛔ **CRITICAL: Every ad-hoc request goes through deep-investigation — bugs, features, refactoring, everything.**
+>
+> Load the `deep-investigation` skill and follow its full flow (Steps 1-6).
+> There is no "shallow analysis" path. The deep-investigation skill IS the analysis.
+
 When user gives a task in ad-hoc mode:
 
-### Step 0.0a: Pre-Analysis Screenshot (MANDATORY)
+1. **Load `deep-investigation` skill**
+2. **Follow its flow:**
+   - **Step 1 (Observe):** Gather all available information — user request, error messages, context
+   - **Step 2 (Hypothesize):** Form 2-3 candidate hypotheses (bugs) or approaches (features)
+   - **Step 3 (Design Tests):** For each hypothesis/approach, define what confirms/contradicts it
+   - **Step 4 (Execute):** Launch 2-3 parallel @explore investigation tracks
+   - **Step 5 (Evaluate):** Score hypotheses against evidence (CONFIRMED/INFERRED/ASSUMED)
+   - **Step 6 (Conclude):** Present investigation dashboard with findings
 
-> ⛔ **CRITICAL: ALWAYS capture a screenshot BEFORE analyzing the request.**
->
-> This is NOT optional. Code analysis alone misses CSS inheritance, runtime state, and visual bugs.
-> The screenshot reveals what the user actually sees, preventing "I'll fix the blue button" when the button is actually gray.
+3. **Classify task type** based on investigation findings:
 
-**Why this matters:**
-- Visual issues are best caught visually — code analysis alone is insufficient
-- Prevents misunderstandings between Builder and user about current state
-- Catches CSS overrides, runtime state, and inheritance that code analysis misses
+   | Task Type | When | Post-Implementation Verification |
+   |-----------|------|----------------------------------|
+   | `source-change` | Implementation requires modifying source files | typecheck → lint → unit tests → rebuild |
+   | `ops-with-runtime-impact` | Fix requires only CLI/ops commands AND original issue is browser-visible | Skip typecheck/build — Playwright only if user explicitly requests |
+   | `ops-only` | Fix requires only CLI/ops commands AND has no browser-visible impact | None: mark complete after ops commands succeed |
 
-**Workflow:**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Ad-Hoc Request Received                                     │
-├─────────────────────────────────────────────────────────────┤
-│ 1. Determine app type from project.json                     │
-│ 2. Ensure app is running (auto-start if needed)             │
-│ 3. Take screenshot of current state                         │
-│ 4. Then proceed to code analysis (Step 0.1)                 │
-│ 5. Present BOTH screenshot AND code findings to user        │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Step 0.0a.1: Determine App Type**
-
-Read `project.json` to determine the app architecture:
-
-```bash
-# Check for desktop app configuration
-jq -r '.apps[] | select(.type == "desktop") | {framework, webContent, remoteUrl}' docs/project.json 2>/dev/null
-```
-
-| App Type | webContent | Action |
-|----------|------------|--------|
-| Web app | *(none)* | Start dev server if not running, screenshot localhost |
-| Desktop | `bundled` | Launch app if not running, screenshot app window |
-| Desktop | `remote` | Screenshot the deployed `remoteUrl` directly (no local app needed) |
-| Desktop | `hybrid` | Start dev server for local content, screenshot |
-
-**Step 0.0a.2: Ensure App is Running**
-
-| App Type | If Not Running |
-|----------|----------------|
-| Web app | Load `start-dev-server` skill, start dev server |
-| Desktop (bundled) | Load `start-dev-server` skill with `mode: desktop` |
-| Desktop (remote) | No startup needed — screenshot deployed URL directly |
-
-**Step 0.0a.3: Capture Screenshot**
-
-Load the `screenshot` skill and capture the current state:
-
-```
-Capturing current state...
-```
-
-- Use `screenshot` skill with the appropriate URL:
-  - Web app: `http://localhost:{devPort}`
-  - Desktop (bundled): Capture running app window
-  - Desktop (remote): `{apps[].remoteUrl}`
-- Capture BOTH light and dark modes if applicable
-- Store screenshots in `.tmp/screenshots/pre-analysis/`
-
-**Step 0.0a.4: Attach to Analysis**
-
-The screenshot will be attached to the analysis dashboard (Step 0.2). Do NOT show the screenshot separately — it's part of the analysis presentation.
-
-### Step 0.1: Behavior-Focused Analysis (10 seconds)
-
-Run analysis with visible progress indicator:
-
-```
-═══════════════════════════════════════════════════════════════════════
-                         ANALYZING REQUEST
-═══════════════════════════════════════════════════════════════════════
-
-"Add loading spinner to submit button"
-
-⏳ Identifying affected area...
-⏳ Checking for side effects...
-⏳ Estimating scope...
-
-═══════════════════════════════════════════════════════════════════════
-```
-
-**Analysis goal:** Understand **what** the current behavior is and **where** the change happens — not **how** to implement it. The specialist agent (@swift-dev, @react-dev, etc.) determines the implementation. Deep codebase exploration is their job, not yours.
-
-**Analysis methods (run in parallel, 10-second timeout):**
-
-Builder performs this analysis directly using search tools — no @explore delegation:
-
-- **`grep`** — Find files containing relevant keywords, function names, component names
-- **`glob`** — Find files by name pattern (e.g., `**/SubmitButton.*`, `**/checkout/**`)
-- **`semantic_search`** — Find related code by intent (if vectorization is enabled)
-
-These tools return file names, line numbers, and short snippets — not full file contents. They do not violate the Mandatory Delegation rule (which targets the Read tool on source files).
-
-1. **Locate the affected area** — Identify which files/components are involved (file names, not internals)
-2. **Side-effect check** — Quick scan for:
-   - Does this touch an API contract or shared type?
-   - Does this affect database schema?
-   - Are there other consumers of the affected component?
-3. **Scope estimate** — Small / Medium / Large based on file count and blast radius
-
-**What this step does NOT do:**
-- Does NOT read implementation details of affected files (the specialist does this)
-- Does NOT evaluate which APIs, patterns, or components to use
-- Does NOT trace call graphs or dependency chains in depth
-- Does NOT delegate to @explore — save that for implementation phases where deep code understanding is needed
-
-The Playwright probe (Step 0.1b) provides the primary evidence for current behavior. Code analysis here just identifies the *area* so the probe knows *where* to look.
-
-If analysis times out, show what was found with note: "⚠️ Analysis may be incomplete (timed out)"
-
-### Step 0.1a: Task Type Classification (MANDATORY)
-
-> ⛔ **CRITICAL: Classify the task type BEFORE proceeding to probe or dashboard.**
->
-> Some tasks require no source code changes — only CLI/ops commands (deploy, secrets, infrastructure).
-> These "ops-only" tasks can still have **runtime impact** that requires browser verification.
->
-> **Trigger:** After Step 0.1 analysis completes.
-> **Evidence:** `taskType` written to `session.json` → `taskType`.
-> **Failure behavior:** If task type is not classified, default to `source-change` (safest path).
-
-**Classification rules:**
-
-Based on the analysis, determine the task type:
-
-| Task Type | When | Verification Pipeline |
-|-----------|------|----------------------|
-| `source-change` | Implementation requires modifying source files (`.ts`, `.tsx`, `.go`, etc.) | Standard: typecheck → test → build → Playwright |
-| `bug-investigation` | Root cause is unknown — user reports unexpected behavior, data issues, or "it should work but doesn't" | Load `deep-investigation` skill — follows its own flow |
-| `ops-with-runtime-impact` | Fix requires only CLI/ops commands (deploy, secrets, infra) AND the original issue is **browser-visible** (CORS, auth, API errors, UI behavior) | Reduced: skip typecheck/build, but **run Playwright** against affected behavior |
-| `ops-only` | Fix requires only CLI/ops commands AND has **no browser-visible impact** (CI config, log rotation, secret rotation for non-app services) | None: mark complete after ops commands succeed |
-
-> **Bug investigation routing:** When `taskType` is `bug-investigation`, load the `deep-investigation` skill and follow its investigation flow (Steps 1-6) instead of continuing to Step 0.1b. The investigation dashboard replaces the standard ANALYSIS COMPLETE dashboard. After the user chooses `[G] Go ahead`, return to this workflow at Phase 1 for implementation with the investigation findings as context.
->
-> **Classification hint:** If the user's request matches any of these patterns, classify as `bug-investigation`:
-> - "Why doesn't X work?"
-> - "X is broken / not showing / returns wrong data"
-> - "Users are reporting [unexpected behavior]"
-> - The root cause is genuinely unclear from the initial analysis
->
-> **Do NOT classify as `bug-investigation` when:**
-> - The bug has an obvious fix (typo, missing import, wrong variable name)
-> - The error message directly points to the fix
-> - The user says "fix X" and the fix is clear from context
-
-> ⛔ **`ops-only` GUARD: If the implementation modifies ANY source file, the task is NOT `ops-only`.**
->
-> `ops-only` is reserved for tasks where the ONLY actions are CLI commands (deploy, secret rotation, config changes via CLI).
-> If you modify `.ts`, `.tsx`, `.js`, `.go`, `.py`, `.rs`, `.java`, or any other source/config file in the project repo, the task is `source-change` — even if the change is to "infrastructure" code like IPC handlers, main process files, build config, or native API wrappers.
->
-> **Common misclassification attempts:**
-> - ❌ "This is an IPC handler change, it's infrastructure" → It's a source file → `source-change`
-> - ❌ "This is a main process change, not web content" → It's a source file → `source-change`
-> - ❌ "This is a build/config change" → If it modifies a source file → `source-change`
-> - ✅ `ops-only` examples: `supabase secrets set`, `vercel env add`, `gh secret set`, restarting a service
-
-**How to determine runtime impact:**
-
-Ask: "Was the user's original issue visible in the browser or app UI?"
-
-| Original Issue | Runtime Impact? | Example |
-|---------------|-----------------|---------|
-| CORS error | Yes | Edge function returns 403 on preflight |
-| Auth failure | Yes | OAuth flow fails, login broken |
-| API 500 error | Yes | Backend returns error user can see |
-| Feature not working | Yes | Deployed function missing, feature 404s |
-| CI pipeline failing | No | GitHub Actions red, no user impact |
-| Secret rotation (internal) | No | Rotating API keys for monitoring service |
-| Log config change | No | Changing log levels, no user impact |
-
-**Write classification to `session.json`:**
-
-```json
-{
-  "taskType": "ops-with-runtime-impact",
-  "runtimeImpact": "GitHub OAuth flow fails — edge function not deployed",
-  "opsCommands": ["supabase secrets set", "supabase functions deploy"],
-  "verificationTarget": "Authenticate, open org creation wizard, click Connect GitHub — verify OAuth URL returned"
-}
-```
-
-**If `taskType` is `bug-investigation`:** Load the `deep-investigation` skill now and follow its flow. Do NOT proceed to Step 0.1b — the investigation skill has its own analysis process that replaces the standard Playwright probe and analysis dashboard.
-
-### Step 0.1b: Playwright Analysis Confirmation (MANDATORY)
-
-> **`testVerifySettings` gate:** Before running the probe, check `project.json` → `testVerifySettings.adHocUIVerify_Analysis` (default: `true` if absent).
-> If `false` → skip the entire probe with: `⏭️ Skipping Playwright analysis probe: testVerifySettings.adHocUIVerify_Analysis is false`
-> Proceed directly to Step 0.2 (dashboard).
-
-> ⛔ **CRITICAL: Code analysis MUST be confirmed via Playwright probe before showing the dashboard.**
->
-> Code-only analysis can miss runtime state, CSS inheritance, dynamic rendering, and route guards.
-> Playwright confirmation catches discrepancies between what the code *says* and what *actually* renders.
->
-> **Trigger:** After Step 0.1 code analysis completes, before Step 0.2 dashboard.
->
-> **Evidence:** Probe results MUST appear in the ANALYSIS COMPLETE dashboard.
->
-> **Failure behavior:** If proceeding to Step 0.2 without running the probe, STOP and run the probe first.
-
-> ⛔ **NO-BYPASS RULE: The probe is mandatory. There are no skip conditions. There is no config opt-out. The probe always runs.**
->
-> The following are NOT valid reasons to skip the probe:
->
-> | Invalid Rationalization | Why It's Wrong | Mandatory Resolution |
-> |------------------------|----------------|----------------------|
-> | "This is an Electron/desktop app" | Electron apps have web content — probe the web UI | Start the app, probe web content |
-> | "The analysis is clear from the code" | Code analysis misses runtime state, CSS, route guards | Run the probe — it catches what code analysis misses |
-> | "This is a UX flow restructuring, not element verification" | UX changes affect visible elements — probe them | Generate assertions for the affected UX elements |
-> | "The user described the issue clearly" | User descriptions are input, not verification | Run the probe — user descriptions don't replace automated verification |
-> | "I already took a screenshot" | Screenshots show current state; probes verify specific assertions | Run the probe — screenshots ≠ assertion verification |
-> | "This is a backend/config change" | If the change has any runtime UI impact, probe the affected pages | Generate assertions for affected pages — don't preemptively decide there are none |
-> | "Dev server is unreachable" | Start it using `start-dev-server` skill. If the app is not installed, install it. | Start the dev server or install the app — there is always a way |
-> | "No page assertions generated" | If analysis cannot produce assertions, the analysis is incomplete | Re-analyze and generate assertions |
-> | "Auth is not configured / auth failed" | Exhaust autonomous auth approaches, then ask the user for help | Follow the Auth Resolution Escalation protocol below |
-> | "This change cannot be verified via Playwright" | Every source code change has observable effects. If you can't generate assertions, your analysis is incomplete — not the probe | Re-analyze: identify what the change affects in the rendered UI, then generate assertions for those effects |
-> | "This is a main process / IPC / native API change" | Main process changes affect what the renderer shows. IPC handlers serve data to web content. Native API calls gate UI behavior | Identify the web-visible effects of the main process change (data displayed, UI state, navigation, error handling), then probe those |
-> | "Code analysis is definitive / the fix is confirmed from source" | Code analysis is *input* to the probe, not a *replacement* for it. Runtime behavior diverges from source in ways code analysis cannot detect | Run the probe — "definitive" code analysis is exactly what the probe is designed to validate |
-> | "The critical path cannot be verified in a browser" | If the app has ANY web content, there are browser-observable effects of every code change. If truly no web content exists, it's not a web app and shouldn't be in the Playwright pipeline | Identify the web-side effects and probe them. If there genuinely are none, get explicit user confirmation via `[S]` |
->
-> **The ONLY way a probe can be skipped is if the user explicitly accepts a skip after Builder has exhausted all options and asked for assistance.** This sets `probeStatus: "user-skipped"` — Builder cannot set this status autonomously.
->
-> **If you catch yourself about to skip the probe for any reason — STOP.** Run the probe.
-
-**After Step 0.1 code analysis and Step 0.0a screenshot, run the Playwright probe:**
-
-1. **Generate probe assertions** from code analysis findings:
-
-   For each key conclusion in the analysis, create a probe assertion:
-
-   | Analysis Conclusion | Probe Assertion |
-   |---------------------|-----------------|
-   | "Button exists at /checkout" | `page: "/checkout", selector: "button[type='submit']", expect: "visible"` |
-   | "No spinner currently shown" | `page: "/checkout", selector: ".spinner", expect: "absent"` |
-   | "Form has 3 fields" | `page: "/checkout", selector: "input, select, textarea", expect: "exists"` |
-   | "Component renders at /dashboard" | `page: "/dashboard", selector: "[data-testid='component']", expect: "visible"` |
-
-   **Assertion generation rules:**
-   - Generate 2-5 assertions per affected page (keep it focused)
-   - Prioritize assertions about elements the implementation will modify
-   - Include at least one "existence" check for the primary target element
-   - Include at least one "absence" check for the feature being added (confirms it doesn't exist yet)
-   - **CRITICAL: Assertions MUST target the actual pages being changed** — not just whatever public pages are accessible
-
-   > ⛔ **PAGE TARGETING RULE: Probe the pages you plan to modify.**
+   > ⛔ **`ops-only` GUARD: If the implementation modifies ANY source file, the task is NOT `ops-only`.**
    >
-   > If the analysis identifies changes to `/dashboard`, `/settings`, and `/onboarding`:
-   > - ✅ Generate assertions for `/dashboard`, `/settings`, `/onboarding`
-   > - ❌ Do NOT generate assertions only for `/login` because it's the only public page
-   >
-   > If the target pages require authentication:
-   > 1. Follow the **Auth Resolution Escalation** protocol below to authenticate
-   > 2. Authenticate in the probe's Playwright context BEFORE navigating to protected pages
-   > 3. Generate assertions for the actual protected pages being modified
-   >
-   > **Never declare `probeStatus: "partially-confirmed"` when you only probed public pages**
-   > **but the actual changes target authenticated pages.** That's not "partially confirmed" —
-   > **that's "not probed at all."**
+   > `ops-only` is reserved for tasks where the ONLY actions are CLI commands (deploy, secret rotation, config changes via CLI).
+   > If you modify any source file in the project repo, the task is `source-change`.
 
-2. **Determine probe transport (MANDATORY — read `project.json` BEFORE building spec):**
+   **Write classification to `session.json`:**
 
-   Read `project.json` → `architecture.deployment` and `apps` to determine the correct transport:
-
-   | `architecture.deployment` | Transport | Spec Format |
-   |---------------------------|-----------|-------------|
-   | `web`, `web-*`, `serverless` | `browser` | Browser Probe Spec (below) |
-   | `electron-only`, `desktop`, `tauri` | `electron` | Electron Probe Spec (below) |
-   | `hybrid` (web + desktop) | Both | One probe per transport |
-
-   > ⛔ **CRITICAL: Never use `baseUrl: "http://localhost:{devPort}"` for desktop/Electron apps.**
-   > Desktop apps have NO browser-accessible web server. Using browser transport against localhost
-   > will probe the wrong thing (or nothing at all) and produce false results.
-   > If `architecture.deployment` is `electron-only`, you MUST use `transport: electron`.
-   >
-   > **Failure behavior:** If the generated probe spec contains `baseUrl` for a project with
-   > `architecture.deployment` of `electron-only`/`desktop`/`tauri`, STOP — discard the spec
-   > and regenerate using `transport: electron` with paths from `project.json` → `apps.desktop.testing`.
-
-3. **Build probe spec and invoke `@ui-tester-playwright` with `mode: "analysis-probe"`:**
-
-   **Browser Probe Spec** (web apps only):
-
-   ```yaml
-   <probe-spec>
-     mode: analysis-probe
-     transport: browser
-     baseUrl: "http://localhost:{devPort}"
-     timeout: 5000
-     assertions:
-       - page: "/checkout"
-         description: "Submit button exists"
-         checks:
-           - selector: "button[type='submit']"
-             expect: "visible"
-           - selector: ".spinner"
-             expect: "absent"
-             description: "No loading indicator yet"
-   </probe-spec>
+   ```json
+   {
+     "taskType": "source-change"
+   }
    ```
 
-   **Electron Probe Spec** (desktop apps — use when `architecture.deployment` is `electron-only`):
+   For `ops-with-runtime-impact`, also include:
 
-   > All paths and launch config come from `project.json` → `apps.desktop.testing`.
-   > Never hardcode paths — always read `executablePath`, `launchTarget`, and `devLaunchArgs` from project settings.
-
-   ```yaml
-   <probe-spec>
-     mode: analysis-probe
-     transport: electron
-     launchTarget: # from project.json → apps.desktop.testing.launchTarget
-     executablePath: # from project.json → apps.desktop.testing.executablePath[platform]
-     timeout: 10000
-     zombieCleanup: true
-     assertions:
-       - window: "main"
-         description: "Submit button exists in main window"
-         checks:
-           - selector: "button[type='submit']"
-             expect: "visible"
-           - selector: ".spinner"
-             expect: "absent"
-             description: "No loading indicator yet"
-     electronChecks:
-       - type: "ipc-response"
-         channel: # relevant IPC channel for the change being analyzed
-         expect: "defined"
-   </probe-spec>
+   ```json
+   {
+     "taskType": "ops-with-runtime-impact",
+     "runtimeImpact": "GitHub OAuth flow fails — edge function not deployed",
+     "opsCommands": ["supabase secrets set", "supabase functions deploy"]
+   }
    ```
 
-   > 📚 **SKILL: ui-test-electron** — Load for full Playwright Electron patterns (zombie cleanup, launch, IPC evaluation, auth helpers).
-
-   See `test-ui-verification` skill → "Analysis Probe Mode" for full probe specification format, assertion types, and execution flow (including Architecture-Aware Probe Dispatch and Electron Probe Flow).
-
-4. **Process probe results:**
-
-   | Probe Status | Action |
-   |-------------|--------|
-   | `confirmed` | Proceed to Step 0.2 with `✅ Playwright-confirmed` badge |
-   | `partially-confirmed` | Update analysis with corrections from discrepancies, note in dashboard |
-   | `contradicted` | **Re-probe loop:** Revise code analysis using probe data → generate new assertions → re-run probe (max 2 retries, see below) |
-   | `user-skipped` | Proceed to Step 0.2 with `⚠️ User accepted skip` badge — user explicitly chose to skip probe on authenticated pages |
-
-5. **On contradiction — mandatory re-probe loop:**
-
-   When probe results contradict the code analysis, Builder MUST revise the analysis AND re-probe to confirm the revision is correct — not just revise and proceed.
-
-   **Re-probe loop (max 2 attempts):**
-
-   ```
-   contradicted → revise analysis → generate new assertions → re-run probe
-                   ↑                                              ↓
-                   └──── still contradicted (attempt < 2) ────────┘
-   ```
-
-   **Loop limit:** Maximum 2 re-probe attempts. If still `contradicted` after 2 retries:
-   - Lower confidence to LOW
-   - Force clarifying questions (which restarts analysis)
-   - `contradicted` is a **transient state** — it can never be the final `probeStatus` at the gate
-
-   Each re-probe iteration is logged in the progress indicator:
-
-   ```
-   ═══════════════════════════════════════════════════════════════════════
-                        ⚠️ ANALYSIS CONTRADICTED
-   ═══════════════════════════════════════════════════════════════════════
-
-   Playwright probe found discrepancies with code analysis:
-
-     ❌ Expected button[type='submit'] visible at /checkout
-        Actual: not found (page renders a link instead)
-
-     ❌ Expected .form-container visible at /checkout
-        Actual: hidden (display: none, gated by feature flag)
-
-   ⏳ Revising analysis with probe data...
-   ⏳ Re-probing after analysis revision (attempt 1/2)...
-   ✅ Re-probe confirmed: 3/3 assertions match
-   ═══════════════════════════════════════════════════════════════════════
-   ```
-
-   After successful re-probe resolution:
-   - The revised analysis replaces the original in the dashboard
-   - Discrepancies are listed in a new `🔍 PROBE RESULTS` section
-   - `probeStatus` is updated to `confirmed` or `partially-confirmed`
-
-   After exhausting retries (still contradicted):
-   - Confidence is set to LOW, forcing clarifying questions
-   - The contradictions are shown to the user with the clarifying questions
-   - Answering questions restarts analysis from Step 0.1 (which re-runs the probe)
-
-6. **Progress indicator:**
-
-   Show probe progress inline with the analysis progress:
-
-   ```
-   ═══════════════════════════════════════════════════════════════════════
-                            ANALYZING REQUEST
-   ═══════════════════════════════════════════════════════════════════════
-
-   "Add loading spinner to submit button"
-
-   ⏳ Scanning imports...
-   ⏳ Identifying affected files...
-   ⏳ Checking for downstream impacts...
-   ⏳ Estimating scope...
-   ✅ Code analysis complete
-   ⏳ Running Playwright probe (confirming analysis)...
-   ✅ Probe confirmed: 3/3 assertions match
-
-   ═══════════════════════════════════════════════════════════════════════
-   ```
-
-#### Auth Resolution Escalation (for probing authenticated pages)
-
-When the probe targets pages that require authentication, resolve auth **before** invoking `@ui-tester-playwright`:
-
-1. **Check `project.json` → `authentication`:**
-   ```bash
-   jq '.authentication' docs/project.json
-   ```
-
-2. **If auth is configured** → Load the matching auth skill silently:
-
-   | Provider + Method | Load Skill |
-   |-------------------|------------|
-   | `supabase` + `passwordless-otp` | `auth-supabase-otp` |
-   | `supabase` + `email-password` | `auth-supabase-password` |
-   | `nextauth` + `email-password` | `auth-nextauth-credentials` |
-   | `headless.enabled: true` | `auth-headless` (fastest) |
-   | Any other / `custom` | `auth-generic` |
-
-   Execute the auth skill's login flow. Pass the authenticated session/cookies to the probe context.
-
-3. **If auth is NOT configured** → Load `setup-auth` skill and run it:
-   - `setup-auth` scans the project for auth patterns (package.json deps, code patterns)
-   - It derives the provider and method automatically
-   - It checks for existing env vars (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, etc.)
-   - It writes the `authentication` config to `project.json`
-   - Then loop back to step 2 with the new config
-
-4. **If `setup-auth` fails** → **Ask the user for help:**
-   - "What auth provider does this project use?"
-   - "Can you provide test credentials?"
-   - "Are there env vars I should check?"
-
-5. **If user provides info** → Try again with user-provided guidance (loop back to step 2)
-
-6. **If user cannot help or says "skip"** → Present skip acceptance prompt:
-
-   ```
-   ⚠️ AUTH RESOLUTION FAILED — cannot authenticate for probe
-
-   Attempted:
-     1. project.json auth config → [result]
-     2. setup-auth auto-detection → [result]
-     3. Asked user for help → [result]
-
-   Protected pages NOT probed: /dashboard, /settings
-
-   [S] Skip probe on authenticated pages (proceed with public pages only)
-   [H] Help me configure auth (provide credentials/guidance)
-   [C] Cancel this request
-   ```
-
-   - Only `[S]` from the user sets `probeStatus: "user-skipped"` — Builder cannot set this status autonomously
-   - `[H]` loops back to step 4 with additional user guidance
-   - `[C]` cancels the entire request
-
-**What to NEVER do:**
-- ❌ Ask the user for credentials BEFORE trying autonomous approaches first (steps 1-3)
-- ❌ Suggest the user run `/setup-auth` — Builder should run it itself
-- ❌ Fall back to probing only public pages without attempting all auth approaches first
-- ❌ Set `probeStatus: "user-skipped"` without the user explicitly choosing `[S]`
-- ❌ Silently degrade to public-only probing (the old `degraded-no-auth` behavior)
-
-### Step 0.1c: Implementation Decision Detection (NEW)
+### Step 0.1c: Implementation Decision Detection
 
 > **Purpose:** Surface implicit design/implementation decisions that the user should weigh in on before Builder proceeds. These aren't clarifications about *what* to build (that's Step 0.3) — they're decisions about *how* to build it well.
 >
-> **Trigger:** After Step 0.1b (Playwright probe) completes, before Step 0.2 (dashboard).
+> **Trigger:** After deep-investigation concludes (Step 0.1), before showing the investigation dashboard to the user.
 >
-> **Uses:** Full analysis context — affected files, scope, request type, probe results, task type classification.
+> **Uses:** Full investigation context — findings, evidence, recommended approach, affected files.
 >
-> **Output:** If decisions detected → show questions (see US-002 below). If none → silently skip.
+> **Output:** If decisions detected → show questions (see below). If none → silently skip.
 
 #### When to Skip (No Questions)
 
-Skip decision detection entirely — proceed directly to Step 0.1d — when the request is clearly trivial:
+Skip decision detection entirely — proceed directly to Step 0.2 — when the request is clearly trivial:
 
 | Skip Criterion | Examples |
 |----------------|----------|
@@ -712,7 +266,7 @@ Skip decision detection entirely — proceed directly to Step 0.1d — when the 
 
 **Skip detection is autonomous** — Builder infers whether meaningful implementation decisions exist based on the request and analysis. There is no hardcoded list of "decision-rich" patterns.
 
-**When skipped:** No user-visible output. Flow proceeds directly from 0.1b to 0.1d. Record `implementationDecisions: null` in `session.json`.
+**When skipped:** No user-visible output. Flow proceeds directly to Step 0.2. Record `implementationDecisions: null` in `session.json`.
 
 #### When to Detect Decisions
 
@@ -736,7 +290,7 @@ Run decision detection when the request involves:
 
 1. **Review the analysis context:**
    - Request text, affected files, scope estimate
-   - Probe results (existing UI patterns, component library)
+   - Investigation results (existing patterns, component library)
    - Task type classification
 
 2. **Identify implicit decisions** — things the request doesn't specify but that will significantly affect implementation quality. Focus on decisions where:
@@ -818,7 +372,7 @@ If no decisions detected (or all were skipped), record in `session.json`:
 }
 ```
 
-> **Proceed to Step 0.1c-questions** (below) if decisions were detected. Otherwise, proceed to Step 0.1d.
+> **Proceed to Step 0.1c-questions** (below) if decisions were detected. Otherwise, proceed to Step 0.2.
 
 #### Step 0.1c-questions: Design Decision Questions UI
 
@@ -870,94 +424,62 @@ Type "you decide" to let me choose based on best practices.
 1. **Parse answers** — letter codes or freeform descriptions
 2. **Store choices** in `session.json` → `implementationDecisions.decisions[].userChoice`
 3. **If "you decide"** — Builder selects best-practice defaults and records its choices with brief rationale
-4. **Proceed to Step 0.1d** with decisions resolved
+4. **Proceed to Step 0.2** with decisions resolved
 
-### Step 0.1d: Playwright Analysis Validation (NEW)
+### Step 0.2: Show Investigation Dashboard
 
-> **Purpose:** Visually confirm that the code analysis matches the actual UI state before showing the dashboard. This catches stale analysis, wrong page assumptions, or misidentified components.
->
-> **Trigger:** After Step 0.1c (implementation decisions) completes, before Step 0.2 (dashboard).
->
-> **Applies to:** Every request — all projects get full Playwright verification.
+The investigation dashboard from `deep-investigation` Step 6 IS the analysis dashboard. It includes the investigation findings, evidence classification, and recommended approach/fix.
 
-This step uses the same Playwright probe mechanism as Step 0.1b but with a different focus:
+**After deep-investigation concludes and implementation decisions are resolved (if any), augment the investigation dashboard with:**
 
-- **Step 0.1b** probes to confirm the analysis findings (element existence, absence, state)
-- **Step 0.1d** validates the overall analysis makes sense visually — the right page, the right components, the right context
-
-**Process:**
-
-1. **Open the primary affected page(s)** in Playwright
-2. **Capture the current visual state** — compare against the analysis conclusions
-3. **Validate alignment** — do the affected components, scope, and suggested changes align with what's actually rendered?
-
-| Validation Result | Action |
-|-------------------|--------|
-| Analysis aligns with visual state | Proceed to Step 0.2 — record `visualValidation: "confirmed"` |
-| Minor discrepancies | Adjust analysis, note discrepancies in dashboard, proceed to Step 0.2 |
-| Major contradiction | Re-analyze from updated visual context, lower confidence if needed |
-
-4. **If dev server is not running:** Load `start-dev-server` skill and start it before probing
-5. **Results feed into dashboard:** The PROBE RESULTS section in Step 0.2 reflects both 0.1b and 0.1d findings
-
-> **Note:** If Step 0.1b already provided comprehensive visual confirmation, Step 0.1d may simply validate that no additional pages need checking. The step exists to ensure that the *complete* analysis (including any adjustments from design decisions in 0.1c) is visually grounded.
-
-### Step 0.2: Show Analysis Dashboard
-
-Display results with progressive disclosure. **The pre-analysis screenshot from Step 0.0a MUST be attached.**
+- **Implementation decisions** (from Step 0.1c) — if any were resolved
+- **Story preview** — task breakdown for implementation
+- **Verification plan** — what quality checks will run post-implementation
+- **Scope estimate** — Small / Medium / Large
 
 ```
 ═══════════════════════════════════════════════════════════════════════
-                         ANALYSIS COMPLETE
+                        INVESTIGATION COMPLETE
 ═══════════════════════════════════════════════════════════════════════
 
-📸 CURRENT STATE: [screenshot attached]
-   (screenshot from .tmp/screenshots/pre-analysis/)
+REQUEST: "Add loading spinner to submit button"
 
-📋 REQUEST: "Add loading spinner to submit button"
-
-📊 UNDERSTANDING                          Confidence: HIGH ✅ Playwright-confirmed
+RECOMMENDED APPROACH                              Confidence: HIGH
 ───────────────────────────────────────────────────────────────────────
-Based on visual + code + Playwright probe analysis:
-- The submit button is currently a blue primary button (visible in screenshot)
+Based on investigation:
+- The submit button is a standard Button component (src/components/Button.tsx)
+- Existing Spinner component available in design system (src/components/ui/Spinner.tsx)
 - No loading indicator exists — button stays static during submission
-- Existing Spinner component available in design system
+- Form uses react-hook-form with onSubmit handler (src/pages/Checkout.tsx:45)
 
 Proposed behavior:
 - Button shows loading feedback during form submission
 - Button is non-interactive while submitting (prevents double-submit)
 - Loading indicator is consistent with existing design system
 
-🔍 PROBE RESULTS                                              3/3 ✅
+EVIDENCE
 ───────────────────────────────────────────────────────────────────────
-  ✅ /checkout → button[type='submit'] visible (confirmed)
-  ✅ /checkout → .spinner absent (confirmed: no spinner yet)
-  ✅ /checkout → button[type='submit'] enabled (confirmed)
+  [CONFIRMED] Button component at src/components/Button.tsx:1 accepts
+              variant, disabled, children props (code trace)
+  [CONFIRMED] Spinner exists at src/components/ui/Spinner.tsx:1 with
+              size variants (code trace)
+  [CONFIRMED] onSubmit handler in Checkout.tsx:45 calls API with no
+              loading state management (code trace)
+  [INFERRED]  No other forms in the app use loading indicators — this
+              would be the first (pattern search found 0 existing examples)
+
+ELIMINATED APPROACHES
+───────────────────────────────────────────────────────────────────────
+  CSS-only animation — inconsistent with existing design system components
+  Full-page overlay — overkill for single button
 
 ⚙️ IMPLEMENTATION DECISIONS                                    3 resolved
 ───────────────────────────────────────────────────────────────────────
-  1. State persistence: No — reset on page leave (simpler, user chose 1B)
+  1. State persistence: No — reset on page leave (user chose 1B)
   2. Validation timing: Per-step (user chose 2A)
   3. Success behavior: Show toast and close modal (user chose 4B)
 
 🎯 SCOPE: Small (2 files, no breaking changes)
-
-📁 AFFECTED FILES
-───────────────────────────────────────────────────────────────────────
-• src/components/SubmitButton.tsx (add loading state behavior)
-• src/components/SubmitButton.test.tsx (test loading behavior)
-
-⚠️ CONSEQUENCES: None identified
-
-✅ RECOMMENDED APPROACH
-───────────────────────────────────────────────────────────────────────
-Show loading feedback during form submission; prevent double-submit;
-use existing design system patterns where available
-
-🔀 ALTERNATIVES                                              [D] Details
-───────────────────────────────────────────────────────────────────────
-1. CSS-only animation (simpler but inconsistent with design system)
-2. Full-page overlay (overkill for single button)
 
 📝 STORY PREVIEW
 ───────────────────────────────────────────────────────────────────────
@@ -969,14 +491,13 @@ TSK-003: Loading behavior has unit test coverage
 ───────────────────────────────────────────────────────────────────────
   Task type: source-change
   Source changes: Yes (2 files)
-  Pipeline: typecheck → lint → unit tests → rebuild → Playwright verify
-  Playwright scope: /checkout (submit button loading states)
+  Pipeline: typecheck → lint → unit tests → rebuild
 
 ═══════════════════════════════════════════════════════════════════════
 
 [G] Go ahead — create Task Spec and start
 [F] Show implementation flow chart
-[E] Edit/Clarify — refine understanding  
+[E] Edit/Clarify — refine understanding
 [P] Promote to PRD — hand off to Planner
 [C] Cancel — abort this request
 
@@ -984,38 +505,13 @@ TSK-003: Loading behavior has unit test coverage
 ═══════════════════════════════════════════════════════════════════════
 ```
 
-> ⚠️ **The screenshot is NOT optional.** If screenshot capture failed:
-> - Show error reason (e.g., "Dev server not running", "Remote URL unreachable")
-> - Offer options: `[R] Retry screenshot`, `[S] Skip screenshot (not recommended)`, `[C] Cancel`
-> - If user chooses `[S]`, proceed but note "⚠️ Analysis based on code only — visual state not verified"
-
-> ⚠️ **The Playwright probe is mandatory.** If the probe has not run, do not show the dashboard — go back and run the probe.
-> The probe always runs. There are no skip conditions. There is no config opt-out.
-> Exception: if `probeStatus` is `user-skipped`, the dashboard may be shown (user already explicitly accepted the skip).
-
-**Probe results display in dashboard:**
-
-| Probe Status | Dashboard Badge | Probe Section |
-|-------------|-----------------|---------------|
-| `confirmed` | `Confidence: HIGH ✅ Playwright-confirmed` | `🔍 PROBE RESULTS  N/N ✅` |
-| `partially-confirmed` | `Confidence: HIGH ⚠️ Playwright: N/M confirmed` | `🔍 PROBE RESULTS  N/M ⚠️` with discrepancies listed |
-| `contradicted` | `Confidence: MEDIUM 🔴 Playwright contradicted` | `🔍 PROBE RESULTS  N/M 🔴` with contradictions expanded |
-| `user-skipped` | `Confidence: [original] ⚠️ User accepted skip` | `🔍 PROBE: ⚠️ User accepted skip (auth pages unverified)` |
-
 **Dashboard rules:**
-- **Confidence:** HIGH (clear request) / MEDIUM (some ambiguity) / LOW (needs clarification)
+- **Confidence:** HIGH (clear findings with CONFIRMED evidence) / MEDIUM (some INFERRED gaps) / LOW (mostly INFERRED/ASSUMED)
 - **Scope:** Small (<5 files, no breaking changes) / Medium (5-15 files, minor impacts) / Large (15+ files, breaking changes)
-- **Consequences:** Collapsed if none; expanded if any exist
-- **Implementation Decisions:** Shown between PROBE RESULTS and SCOPE when decisions were resolved in Step 0.1c. Omitted entirely when no decisions were detected (Step 0.1c was skipped). Each decision shows the question summary, the user's choice, and brief rationale. If user chose "you decide", show Builder's choice with "(Builder's recommendation)" label.
-- **Understanding:** The "Proposed behavior" items describe desired behavior changes — what should happen differently. Do not prescribe specific APIs, components, or code patterns. The specialist agent determines the implementation.
-- **Affected Files:** File descriptions state the functional change ("add loading state behavior") — not the mechanism ("add isLoading prop", "remove GeometryReader").
-- **Recommended Approach:** Always shown as its own `✅ RECOMMENDED APPROACH` section; never listed inside Alternatives. Describes the **desired outcome and constraints** — not the implementation mechanism. The specialist agent (@swift-dev, @react-dev, etc.) chooses the technique. Examples:
-  - ✅ "Show loading feedback during form submission; prevent double-submit; use existing design system components"
-  - ✅ "Messages fill available width with consistent padding; no horizontal overflow or layout instability"
-  - ❌ "Use GeometryReader to measure parent width and pass to child views"
-  - ❌ "Use Spinner component with isLoading prop gating visibility"
-- **Story Preview:** Task descriptions describe **what the user should experience or what the code should achieve** — not which API, component, or pattern to use. The implementing agent determines the mechanism.
-- **Alternatives:** Shown as `🔀 ALTERNATIVES` section with non-recommended options only; collapsed if no alternatives exist
+- **Implementation Decisions:** Shown when decisions were resolved in Step 0.1c. Omitted entirely when no decisions were detected.
+- **Verification Plan:** Shows post-implementation quality checks. Does NOT include Playwright — Playwright only runs if user explicitly requests it.
+- **Evidence section:** Always included — shows CONFIRMED/INFERRED/ASSUMED tags from deep-investigation
+- **Eliminated Approaches:** Shows alternatives that were investigated and rejected with evidence
 
 **Dashboard options by confidence level:**
 
@@ -1034,16 +530,23 @@ TSK-003: Loading behavior has unit test coverage
 
 ```
 ═══════════════════════════════════════════════════════════════════════
-                         ANALYSIS COMPLETE
+                        INVESTIGATION COMPLETE
 ═══════════════════════════════════════════════════════════════════════
 
-📋 REQUEST: "Fix the caching issue"
+REQUEST: "Fix the caching issue"
 
-📊 UNDERSTANDING                                    Confidence: MEDIUM
+FINDING                                             Confidence: MEDIUM
 ───────────────────────────────────────────────────────────────────────
-There appears to be a caching issue but I need clarification:
-- Could be browser cache, API cache, or database query cache
+There appears to be a caching issue but investigation found multiple
+possible sources:
+- Browser cache, API cache, or database query cache
 - Multiple components involve caching
+
+EVIDENCE
+───────────────────────────────────────────────────────────────────────
+  [INFERRED]  API middleware includes caching layer (code trace)
+  [INFERRED]  Browser cache headers set in nginx config (code trace)
+  [ASSUMED]   Database query cache may be involved
 
 🎯 SCOPE: Unknown (depends on root cause)
 
@@ -1065,20 +568,22 @@ There appears to be a caching issue but I need clarification:
 
 ```
 ═══════════════════════════════════════════════════════════════════════
-                         ANALYSIS COMPLETE
+                        INVESTIGATION COMPLETE
 ═══════════════════════════════════════════════════════════════════════
 
-📋 REQUEST: "Fix Failed to generate GitHub OAuth URL error"
+REQUEST: "Fix Failed to generate GitHub OAuth URL error"
 
-📊 UNDERSTANDING                          Confidence: HIGH ✅ Playwright-confirmed
+FINDING                                               Confidence: HIGH
 ───────────────────────────────────────────────────────────────────────
 The GitHub OAuth flow fails because Supabase Edge Functions are not
 deployed to the remote project. The functions exist locally but were
 never deployed after the last migration.
 
-🔍 PROBE RESULTS                                              1/1 ✅
+EVIDENCE
 ───────────────────────────────────────────────────────────────────────
-  ✅ /org/create → "Connect GitHub" button visible (confirmed)
+  [CONFIRMED] Edge functions exist locally in supabase/functions/ (file listing)
+  [CONFIRMED] `supabase functions list` shows 0 deployed functions (CLI output)
+  [CONFIRMED] Error log shows "function not found" on OAuth endpoint (log trace)
 
 🎯 SCOPE: Small (ops-only — deploy functions + set secrets)
 
@@ -1092,13 +597,11 @@ never deployed after the last migration.
   Task type: ops-with-runtime-impact
   Source changes: None (ops-only)
   Runtime impact: Yes — GitHub OAuth flow fails without deployed edge functions
-  Pipeline: ops commands → Playwright verify affected behavior
-  Playwright scope: Authenticate → org creation wizard → Connect GitHub
-    → Verify edge function returns valid OAuth URL
+  Pipeline: ops commands only (request Playwright verification if needed)
 
 ═══════════════════════════════════════════════════════════════════════
 
-[G] Go ahead — execute ops commands and verify
+[G] Go ahead — execute ops commands
 [F] Show implementation flow chart
 [E] Edit/Clarify — refine understanding
 [C] Cancel — abort this request
@@ -1111,10 +614,8 @@ never deployed after the last migration.
 >
 > It must always be present, including for ops-only tasks. The plan makes explicit:
 > - Whether source changes exist
-> - Whether Playwright verification will run (and why)
-> - What behavior will be verified
->
-> This prevents Builder from "forgetting" verification after ops commands complete.
+> - What quality checks will run post-implementation (typecheck, lint, tests)
+> - That Playwright is opt-in (only if user explicitly requests)
 
 ### Step 0.2a: Flow Chart Option ([F])
 
@@ -1607,7 +1108,7 @@ Quality checks:
   ✅ Typecheck: passed
   ✅ Lint: passed
   ✅ Unit tests: passed
-  ✅ UI Verification: verified (screenshot captured)
+  ➖ UI Verification: not requested
 
 Progress: 1/4 stories (25%)
 
@@ -1624,9 +1125,9 @@ Progress: 1/4 stories (25%)
 
 | Status | Display | Meaning |
 |--------|---------|---------|
-| `verified` | `✅ UI Verification: verified (screenshot captured)` | Browser test passed |
+| `verified` | `✅ UI Verification: verified` | User requested Playwright verification and it passed |
+| `not-requested` | `➖ UI Verification: not requested` | User did not request Playwright verification |
 | `not-required` | `➖ UI Verification: not required (no UI changes)` | No UI files changed |
-| `settings-disabled` | `➖ UI Verification: disabled (testVerifySettings)` | Setting is `false` in project.json |
 | `skipped` | `⚠️ UI Verification: SKIPPED (added to test debt)` | User chose to skip |
 
 ---
@@ -1723,16 +1224,10 @@ Add visual loading feedback to SubmitButton component:
 
 ✅ VERIFICATION STATUS (per story)
 ───────────────────────────────────────────────────────────────────────
-  TSK-001: ✅ verified (screenshot: submit-button-loading-state.png)
-  TSK-002: ✅ verified (screenshot: submit-button-spinner.png)
-  TSK-003: ✅ verified (screenshot: submit-button-disabled.png)
+  TSK-001: ➖ not requested (Playwright is opt-in for ad-hoc)
+  TSK-002: ➖ not requested
+  TSK-003: ➖ not requested
   TSK-004: ➖ not required (test file only)
-
-📸 SCREENSHOTS CAPTURED
-───────────────────────────────────────────────────────────────────────
-  • .tmp/verification/screenshots/submit-button-loading-state.png
-  • .tmp/verification/screenshots/submit-button-spinner.png
-  • .tmp/verification/screenshots/submit-button-disabled.png
 
 📦 COMMITS MADE
 ───────────────────────────────────────────────────────────────────────
@@ -1764,7 +1259,7 @@ Add visual loading feedback to SubmitButton component:
 | Files Modified | ✅ Yes | Aggregated from all story implementations |
 | Tests Run | ✅ Yes | Count of unit tests + verification tests |
 | Verification Status | ✅ Yes | Per-story: verified / skipped / not-required |
-| Screenshots Captured | ✅ Yes | Paths to any screenshots taken (empty if none) |
+| Screenshots Captured | ❌ No | Only if user requested Playwright verification |
 | Commits Made | ✅ Yes | Git log for this task (hash + message) |
 | Time Taken | ✅ Yes | From session.json `startedAt` to now |
 
@@ -2032,9 +1527,7 @@ Read from `docs/project.json`:
 {
   "agents": {
     "prdRecommendationThreshold": "medium",
-    "analysisTimeoutMs": 10000,
-    "taskSpecEnabled": true,
-    "analysisProbeTimeoutMs": 5000
+    "taskSpecEnabled": true
   }
 }
 ```
@@ -2042,11 +1535,7 @@ Read from `docs/project.json`:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `prdRecommendationThreshold` | `"medium"` | Scope at which PRD is recommended: `small`, `medium`, `large` |
-| `analysisTimeoutMs` | `10000` | Max analysis time in milliseconds |
 | `taskSpecEnabled` | `true` | Set `false` for legacy behavior (not recommended) |
-| `analysisProbeTimeoutMs` | `5000` | Timeout per page for Playwright probe |
-
-> ⛔ **There is no `analysisProbe` toggle.** The probe is mandatory and cannot be disabled via configuration.
 
 ---
 
@@ -2057,43 +1546,41 @@ User: "Add loading spinner to submit button"
 
 Builder:
 ═══════════════════════════════════════════════════════════════════════
-                         ANALYZING REQUEST
+                         INVESTIGATING REQUEST
 ═══════════════════════════════════════════════════════════════════════
 
-⏳ Scanning imports...
-⏳ Identifying affected files...
-⏳ Estimating scope...
-✅ Code analysis complete
-⏳ Running Playwright probe (confirming analysis)...
-✅ Probe confirmed: 3/3 assertions match
+⏳ Observing — gathering context...
+⏳ Forming hypotheses...
+⏳ Running parallel investigation tracks...
+✅ Investigation complete
 
 ═══════════════════════════════════════════════════════════════════════
-                         ANALYSIS COMPLETE
+                        INVESTIGATION COMPLETE
 ═══════════════════════════════════════════════════════════════════════
 
-📋 REQUEST: "Add loading spinner to submit button"
+REQUEST: "Add loading spinner to submit button"
 
-📊 UNDERSTANDING                          Confidence: HIGH ✅ Playwright-confirmed
-Add visual loading feedback to SubmitButton component.
+RECOMMENDED APPROACH                              Confidence: HIGH
+───────────────────────────────────────────────────────────────────────
+Add loading feedback to Button component following existing design
+system patterns. Spinner component already available.
 
-🔍 PROBE RESULTS                                              3/3 ✅
-  ✅ /checkout → button[type='submit'] visible
-  ✅ /checkout → .spinner absent (no spinner yet)
-  ✅ /checkout → button[type='submit'] enabled
+EVIDENCE
+───────────────────────────────────────────────────────────────────────
+  [CONFIRMED] Button component at src/components/Button.tsx
+  [CONFIRMED] Spinner at src/components/ui/Spinner.tsx
+  [CONFIRMED] No loading state in current form submission flow
 
 🎯 SCOPE: Small (2 files, no breaking changes)
-
-📁 AFFECTED FILES
-• src/components/SubmitButton.tsx
-• src/components/SubmitButton.test.tsx
-
-⚠️ CONSEQUENCES: None identified
 
 📝 STORY PREVIEW
 TSK-001: Add loading state
 TSK-002: Show Spinner
 TSK-003: Disable button
 TSK-004: Add unit tests
+
+🔧 VERIFICATION PLAN
+  Pipeline: typecheck → lint → unit tests → rebuild
 
 [G] Go ahead | [F] Flow chart | [E] Edit | [P] Promote to PRD | [C] Cancel
 

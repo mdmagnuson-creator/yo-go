@@ -1,35 +1,41 @@
 ---
 name: deep-investigation
-description: "Hypothesis-driven, multi-track bug investigation. Use when analyzing root causes, tracing data flows, or diagnosing unexpected behavior. Triggers on: bug analysis, root cause investigation, why doesn't X work, data flow tracing, production issue, unexpected behavior."
+description: "Hypothesis-driven analysis for all ad-hoc requests — bugs, features, refactoring, and changes. Use as the standard analysis path for every ad-hoc task. Triggers on: ad-hoc analysis, bug analysis, feature analysis, root cause investigation, why doesn't X work, data flow tracing, production issue, unexpected behavior, add feature, refactor, change behavior."
 ---
 
 # Deep Investigation
 
 > **Load this skill when:**
 >
+> - Handling ANY ad-hoc request (this is the standard analysis path for all ad-hoc work)
 > - Investigating a bug or unexpected behavior
-> - Tracing why data doesn't appear, is wrong, or is stale
+> - Analyzing where and how to add a feature
+> - Planning a refactoring or behavioral change
+> - Tracing data flows, code patterns, or architectural decisions
 > - Diagnosing "it should work but doesn't" problems
 > - Analyzing production issues or user-reported bugs
-> - Any situation where the root cause is not immediately obvious
 >
-> **Do NOT use this skill for:** trivial bugs with obvious fixes (typo, missing import, wrong variable name). If the fix is clear from the error message alone, just fix it.
+> **This skill is loaded for EVERY ad-hoc request.** It replaces the old shallow analysis (grep → probe → dashboard) with a rigorous, hypothesis-driven approach that works for bugs, features, and everything in between.
 >
-> **Different from `@debugger`:** The `debugger` agent is for production incident triage — pulling ticket context, searching logs, and identifying likely defect areas from external signals. This skill is for hypothesis-driven code and data investigation where you need to prove the root cause with evidence.
+> **Different from `@debugger`:** The `debugger` agent is for production incident triage — pulling ticket context, searching logs, and identifying likely defect areas from external signals. This skill is for hypothesis-driven code and data investigation where you need to prove your analysis with evidence.
 
 ---
 
 ## Why This Skill Exists
 
-The default investigation pattern is broken:
+The default analysis pattern is shallow:
 
 ```
-User reports bug → Builder sends single @explore → @explore reads some code →
-@explore returns narrative → Builder fills gaps with assumptions → presents
-"root cause" that's mostly INFERRED → implements fix for wrong thing
+User requests change → Builder does quick grep → Builder presents
+surface-level understanding → implements based on assumptions →
+fix is wrong or feature is built in the wrong place
 ```
 
-This skill enforces a structured, multi-track, hypothesis-driven process that separates what's CONFIRMED from what's INFERRED — and refuses to conclude without real evidence.
+This skill enforces a structured, multi-track, hypothesis-driven process that works for ALL ad-hoc requests — bugs, features, refactoring, and changes alike. It separates what's CONFIRMED from what's INFERRED — and refuses to conclude without real evidence.
+
+**For bugs:** This means proving the root cause before fixing.
+**For features:** This means understanding existing patterns, tracing related code, and confirming the right approach before building.
+**For refactoring:** This means understanding current behavior and dependencies before changing anything.
 
 ---
 
@@ -83,7 +89,9 @@ SYMPTOMS:
 
 ## Step 2: Hypothesize
 
-Form **2-3 candidate hypotheses** for the root cause. Each must be specific and testable — not vague.
+Form **2-3 candidate hypotheses or approaches**. Each must be specific and testable — not vague.
+
+**For bugs** — hypothesize the root cause:
 
 | Quality | Example |
 |---------|---------|
@@ -91,17 +99,34 @@ Form **2-3 candidate hypotheses** for the root cause. Each must be specific and 
 | Too specific | "Line 47 of comments.ts has a typo" |
 | Right level | "The dashboard query filters by `updated_at` but comments don't update the parent record's `updated_at`" |
 
+**For features** — hypothesize the best implementation approach:
+
+| Quality | Example |
+|---------|---------|
+| Too vague | "Add it somewhere in the settings" |
+| Too specific | "Add a toggle at line 47 of Settings.tsx" |
+| Right level | "Dark mode toggle belongs in the theme context, following the existing pattern used by font-size preferences" |
+
+**For refactoring** — hypothesize the best strategy:
+
+| Quality | Example |
+|---------|---------|
+| Too vague | "Clean up the code" |
+| Right level | "Extract the shared validation logic from 3 form components into a useFormValidation hook, following the existing useFormState pattern" |
+
 **Rules:**
-- Minimum 2 hypotheses, maximum 4
-- Each must explain ALL observed symptoms, not just some
+- Minimum 2 hypotheses/approaches, maximum 4
+- Each must be specific enough to investigate and confirm/contradict with evidence
 - At least one hypothesis should challenge the obvious assumption
-- If you can only think of one, you haven't investigated enough — look at the problem from the data side, the code side, and the infrastructure side
+- If you can only think of one, you haven't investigated enough — look at the problem from the data side, the code side, and the architecture side
 
 ---
 
 ## Step 3: Design Tests
 
-For each hypothesis, fill out this template:
+For each hypothesis/approach, fill out this template:
+
+**For bugs (root cause investigation):**
 
 ```
 HYPOTHESIS: [one sentence — what's wrong and why]
@@ -110,26 +135,34 @@ IF FALSE:   [what specific evidence would contradict this?]
 TEST:       [concrete action — query, log check, code trace, API call]
 ```
 
-**Example:**
+**For features and refactoring (approach investigation):**
+
+```
+APPROACH:        [one sentence — where and how to implement]
+ADVANTAGES:      [why this approach is good — existing patterns, simplicity, consistency]
+RISKS:           [what could go wrong — breaking changes, inconsistency, performance]
+INVESTIGATION:   [concrete action — trace existing patterns, check consumers, verify assumptions]
+```
+
+**Bug example:**
 
 ```
 HYPOTHESIS: Dashboard query uses a materialized view that isn't refreshed on comment creation
 IF TRUE:    The materialized view's last refresh timestamp is older than recent comments
 IF FALSE:   The materialized view was refreshed after the most recent comment
 TEST:       Query the materialized view metadata for last refresh time; compare with latest comment created_at
-
-HYPOTHESIS: Dashboard API endpoint caches responses and the cache TTL is too long
-IF TRUE:    Response headers show Cache-Control with long max-age; same response returns regardless of new data
-IF FALSE:   API returns fresh data on each call with no cache headers
-TEST:       Curl the dashboard API directly, check response headers, add a comment, curl again, compare responses
-
-HYPOTHESIS: Comment creation writes to a different schema/table than what the dashboard reads
-IF TRUE:    Dashboard query reads from table X, but comment insert writes to table Y
-IF FALSE:   Both read and write target the same table with matching filters
-TEST:       Trace the write path (comment creation) and read path (dashboard query) end-to-end
 ```
 
-**Quality check:** If your IF TRUE and IF FALSE sections are vague ("we'd see an error" / "we wouldn't see an error"), the test isn't specific enough. What error? Where? What value?
+**Feature example:**
+
+```
+APPROACH: Add dark mode toggle to the existing ThemeContext, following the font-size preference pattern
+ADVANTAGES: Consistent with existing pattern; ThemeContext already propagates to all components; CSS variables are already in place
+RISKS: ThemeContext may not persist to localStorage — font-size doesn't persist either; some components may use hardcoded colors
+INVESTIGATION: Trace ThemeContext consumers; check if CSS variables cover all color tokens; check localStorage persistence in existing preferences
+```
+
+**Quality check:** If your IF TRUE/IF FALSE (bugs) or ADVANTAGES/RISKS (features) sections are vague ("we'd see an error" / "it might break"), the test isn't specific enough. What error? Where? What breaks and why?
 
 ---
 
@@ -141,9 +174,13 @@ Launch **at minimum 2-3 of these tracks in parallel**. Never send a single @expl
 
 **Agent:** @explore
 
-**Objective:** Trace the full code path end-to-end — both the write/producer side AND the read/consumer side.
+**Objective:** Trace the relevant code paths end-to-end.
 
-**Delegation template:**
+**For bugs:** Trace both the write/producer side AND the read/consumer side of the data flow.
+**For features:** Trace existing patterns that the new feature should follow, and identify integration points.
+**For refactoring:** Trace all consumers of the code being refactored to understand blast radius.
+
+**Delegation template (bugs):**
 
 ```
 Trace the complete data flow for [feature]:
@@ -166,13 +203,36 @@ Report each finding with its source (file:line) and include the actual code snip
 If a struct decodes data, list ALL its fields — omitted fields are a common root cause.
 ```
 
+**Delegation template (features):**
+
+```
+Analyze existing patterns for [feature area]:
+
+EXISTING PATTERNS:
+- How do similar features work in this codebase? (find 2-3 analogous features)
+- What patterns do they follow? (component structure, state management, data flow)
+- What shared infrastructure exists? (contexts, hooks, utilities, design system components)
+
+INTEGRATION POINTS:
+- Where would this feature connect to the existing code? (routes, navigation, layouts)
+- What data does it need? (API endpoints, database tables, state stores)
+- What components can be reused? (design system, shared components)
+
+CONSTRAINTS:
+- Are there architectural boundaries to respect? (module boundaries, layer restrictions)
+- Are there conventions that apply? (naming, file structure, test patterns)
+
+Report each finding with its source (file:line) and include the actual code snippet.
+```
+
 > **Never accept "the code looks correct" as a finding.** The question is not whether the code looks correct — it's whether it actually produces the expected behavior. Code that "looks correct" but doesn't work is the entire reason we're investigating.
 
-### Track 2: Data Verification
+### Track 2: Data & Pattern Verification
 
 **Agent:** @explore
 
-**Objective:** Query ACTUAL data state using available tools.
+**Objective (bugs):** Query ACTUAL data state using available tools.
+**Objective (features):** Verify assumptions about existing patterns, data structures, and infrastructure.
 
 **Tool discovery is mandatory.** Before designing queries, @explore MUST check `project.json` to determine what's available:
 
@@ -190,7 +250,7 @@ If a struct decodes data, list ALL its fields — omitted fields are a common ro
 - `supabase projects list` — is the project linked? What's the project ref?
 - `ls <project>/supabase/migrations/` — what tables exist? What columns were added recently?
 
-**Delegation template:**
+**Delegation template (bugs):**
 
 ```
 Verify the actual data state for [feature].
@@ -220,13 +280,42 @@ Do NOT report "data should be in table X" without querying table X.
 Do NOT report "the column exists" without checking if it has non-null data.
 ```
 
+**Delegation template (features):**
+
+```
+Verify assumptions about [feature area].
+
+STEP 1 — Tool discovery:
+- Read project.json → integrations, database, stack sections
+- Check available CLIs and infrastructure
+
+STEP 2 — Verify each assumption:
+For every claim about "how the codebase works" or "what patterns exist," find concrete evidence.
+
+Specific checks:
+1. [Verify the assumed pattern actually exists — find real examples]
+2. [Verify the data structures/APIs we plan to use exist and work as expected]
+3. [Verify there are no conflicting patterns or conventions]
+4. [Check if similar features have tests — what patterns do they follow?]
+
+STEP 3 — Report with evidence:
+For EVERY finding, include:
+- The file:line where you found the evidence
+- The actual code snippet
+- Your interpretation
+
+Do NOT report "the codebase uses pattern X" without citing specific files.
+Do NOT report "this API exists" without showing its signature and usage.
+```
+
 > **Every claim about data state MUST be backed by a query.** "The data should be in the comments table" is INFERRED. "I ran `SELECT count(*) FROM comments WHERE created_at > '2026-03-01'` and got 47 rows" is CONFIRMED.
 
-### Track 3: Runtime Evidence
+### Track 3: Runtime / Current State Evidence
 
 **Agent:** @explore
 
-**Objective:** Check what actually happened at runtime — logs, console output, network requests, error tracking.
+**Objective (bugs):** Check what actually happened at runtime — logs, console output, network requests, error tracking.
+**Objective (features):** Observe the current state of the affected area — what exists now, what the user sees, what the current behavior is.
 
 **What to check depends on the project:**
 
@@ -238,7 +327,7 @@ Do NOT report "the column exists" without checking if it has non-null data.
 | Error tracking | Sentry, Bugsnag, etc. via API or dashboard | Unhandled exceptions, frequency, stack traces |
 | Database logs | `pg_stat_activity`, slow query log | Failed queries, lock contention, deadlocks |
 
-**Delegation template:**
+**Delegation template (bugs):**
 
 ```
 Gather runtime evidence for [feature]:
@@ -255,6 +344,21 @@ For EVERY check, report:
 
 Do NOT say "the logs show normal behavior" without including the log lines.
 Report what ACTUALLY happened at runtime — not what the code says should happen.
+```
+
+**Delegation template (features):**
+
+```
+Observe the current state of [affected area]:
+
+1. What does the user currently see in this area? (describe the current UI/behavior)
+2. What existing functionality is adjacent to where the new feature will go?
+3. Are there any existing UI elements, routes, or state that the feature will interact with?
+4. Check for any existing configuration, feature flags, or settings related to [area]
+
+For EVERY observation, report:
+- What you found and where (file:line or runtime observation)
+- Whether this is from code analysis (INFERRED) or actual runtime/data check (CONFIRMED)
 ```
 
 ### Track 4: Comparative Analysis (Optional but Valuable)
@@ -306,9 +410,11 @@ When investigation tracks return, score each hypothesis against the evidence.
 - "The cache TTL is set to 1 hour in config" → **INFERRED** (config could be overridden at runtime)
 - "I called the API and the response had Cache-Control: max-age=3600" → **CONFIRMED**
 
-### Hypothesis Scoring
+### Hypothesis/Approach Scoring
 
-For each hypothesis, list the evidence and classify it:
+For each hypothesis or approach, list the evidence and classify it:
+
+**Bug example:**
 
 ```
 HYPOTHESIS 1: Dashboard uses materialized view that isn't refreshed
@@ -368,9 +474,11 @@ Form new hypotheses from whatever the escalation reveals, then go back to Step 3
 
 ## Step 6: Conclude
 
-Present the root cause with supporting evidence and confidence level.
+Present the finding (root cause for bugs, recommended approach for features) with supporting evidence and confidence level.
 
 ### Investigation Dashboard
+
+**For bugs:**
 
 ```
 ═══════════════════════════════════════════════════════════════════════
@@ -423,22 +531,80 @@ VERIFICATION
 ═══════════════════════════════════════════════════════════════════════
 ```
 
+**For features:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+                        INVESTIGATION COMPLETE
+═══════════════════════════════════════════════════════════════════════
+
+REQUEST: Add dark mode toggle to settings
+
+RECOMMENDED APPROACH                              Confidence: HIGH
+───────────────────────────────────────────────────────────────────────
+Add toggle to ThemeContext following the existing font-size preference
+pattern. CSS variables already cover all color tokens. Toggle persists
+to localStorage via the existing usePersistedState hook.
+
+EVIDENCE
+───────────────────────────────────────────────────────────────────────
+  [CONFIRMED] ThemeContext exists at src/contexts/ThemeContext.tsx:1
+              with provider wrapping entire app (src/App.tsx:12)
+  [CONFIRMED] Font-size preference uses usePersistedState hook
+              (src/hooks/usePersistedState.ts:1) — same pattern works
+  [CONFIRMED] CSS variables for colors defined in src/styles/tokens.css
+              with dark-mode variants already present (lines 45-120)
+  [INFERRED]  3 components use hardcoded colors instead of CSS variables:
+              Header.tsx:23, Sidebar.tsx:45, Footer.tsx:12
+
+ELIMINATED APPROACHES
+───────────────────────────────────────────────────────────────────────
+  Tailwind dark: class — CONTRADICTED by project not using Tailwind
+  CSS media query only — CONTRADICTED by need for user toggle (not just
+    system preference)
+
+IMPLEMENTATION PLAN
+───────────────────────────────────────────────────────────────────────
+  1. Add isDarkMode state + toggle to ThemeContext
+  2. Persist via usePersistedState (existing pattern)
+  3. Apply data-theme attribute to document root
+  4. Fix 3 hardcoded color components (Header, Sidebar, Footer)
+  5. Add toggle UI to Settings page
+
+VERIFICATION
+───────────────────────────────────────────────────────────────────────
+  After implementation: Toggle dark mode → all pages render correctly
+  in both modes → preference persists across page reload
+
+═══════════════════════════════════════════════════════════════════════
+
+[G] Go ahead — implement the plan
+[V] Run additional verification on a specific finding
+[?] Ask questions about the evidence or findings
+
+> _
+═══════════════════════════════════════════════════════════════════════
+```
+
 ---
 
 ## Rules
 
-> These rules are non-negotiable. They exist because past investigations failed by violating them.
+> These rules are non-negotiable. They exist because past work failed by violating them.
 
 ### 1. Never conclude with only INFERRED evidence
 
-At least one piece of CONFIRMED evidence is required to present a root cause. If all you have is code analysis, run queries or check logs to confirm.
+At least one piece of CONFIRMED evidence is required to present a conclusion — whether it's a root cause (bugs) or a recommended approach (features). If all you have is code analysis, run queries, check actual files, or verify patterns exist to confirm.
 
 **Wrong:** "The code reads from table X so the data must be there"
 **Right:** "I queried table X and found 0 rows matching the filter" (CONFIRMED)
 
+**Wrong:** "The codebase probably uses context for state management"
+**Right:** "I found ThemeContext at src/contexts/ThemeContext.tsx with 12 consumers" (CONFIRMED)
+
 ### 2. Always trace BOTH sides of a data flow
 
-If the bug is "data doesn't appear," investigate BOTH where data is written AND where data is read. The bug is almost always in the gap between them.
+If the issue is "data doesn't appear," investigate BOTH where data is written AND where data is read. If the request is a feature, investigate BOTH where similar features live AND how they integrate with the rest of the system. The insight is almost always in the gap between them.
 
 **Wrong:** "I traced the comment creation code and it correctly inserts into the table"
 **Right:** "Comment inserts into `comments` table (confirmed via query), but dashboard reads from `dashboard_summary` materialized view (confirmed via code trace + query comparison)"
@@ -469,46 +635,48 @@ Minimum 2 parallel tracks. A single @explore returning a single narrative is how
 
 ### When This Skill Is Loaded
 
-This skill is loaded by the `adhoc-workflow` skill during task type classification (Step 0.1a). When the task is classified as a bug investigation rather than a feature implementation, adhoc-workflow loads this skill and hands off to its flow.
+This skill is loaded by the `adhoc-workflow` skill for **every ad-hoc request**. It is the standard analysis path — not a special case for bugs only.
 
 | Request Pattern | Load This Skill? |
 |-----------------|------------------|
 | "Why doesn't X work?" | Yes |
 | "X is broken / not showing / returns wrong data" | Yes |
 | "Users are reporting [unexpected behavior]" | Yes |
-| "Add feature X" | No — use adhoc-workflow |
-| "Fix the typo in X" | No — obvious fix |
-| "X throws error Y" with obvious cause | No — just fix it |
+| "Add feature X" | Yes |
+| "Refactor Y" | Yes |
+| "Change the behavior of Z" | Yes |
+| "Fix the typo in X" | Yes (lightweight — 2 tracks, quick conclude) |
+| "X throws error Y" with obvious cause | Yes (lightweight — may conclude quickly) |
 
 ### Sequencing with Ad-Hoc Workflow
 
-This skill runs **during Phase 0 of adhoc-workflow** — specifically replacing the standard analysis with a deeper investigation:
+This skill runs **during Phase 0 of adhoc-workflow** — replacing the old shallow analysis with rigorous, hypothesis-driven investigation for all requests:
 
 ```
 adhoc-workflow Phase 0
     │
-    ├── Standard analysis (simple requests, feature changes)
-    │
-    └── Deep investigation (bug analysis) ◄── THIS SKILL
+    └── Deep investigation (ALL ad-hoc requests) ◄── THIS SKILL
             │
-            ├── Hypothesize
+            ├── Observe (gather context)
+            ├── Hypothesize (2-3 approaches)
             ├── Parallel investigation tracks
             ├── Evaluate evidence
+            ├── Implementation decisions (Step 0.1c from adhoc-workflow)
             └── Present investigation dashboard
                     │
-                    └── [G] Go ahead → adhoc-workflow Phase 1 (implement fix)
+                    └── [G] Go ahead → adhoc-workflow Phase 1 (implement)
 ```
 
-After the user chooses `[G] Go ahead`, control returns to adhoc-workflow Phase 1 for implementation. The investigation findings (root cause, evidence, recommended fix) are passed as context for the implementation delegation.
+After the user chooses `[G] Go ahead`, control returns to adhoc-workflow Phase 1 for implementation. The investigation findings (root cause/recommended approach, evidence, implementation plan) are passed as context for the implementation delegation.
 
 ### Analysis Dashboard Integration
 
-The investigation dashboard (Step 6) replaces the standard ANALYSIS COMPLETE dashboard for bug investigations. It shows:
+The investigation dashboard (Step 6) IS the analysis dashboard for all ad-hoc requests. It shows:
 
-- Hypotheses with evidence classification (CONFIRMED / INFERRED / ASSUMED)
-- Eliminated hypotheses with contradiction evidence
+- Hypotheses/approaches with evidence classification (CONFIRMED / INFERRED / ASSUMED)
+- Eliminated hypotheses/approaches with contradiction evidence
 - Confidence level (HIGH / MEDIUM / LOW)
-- Recommended fix options
+- Recommended fix (bugs) or implementation plan (features)
 
 The **[G] gate** clearly shows the user which claims are CONFIRMED vs INFERRED, so they can make an informed decision about proceeding.
 
@@ -548,15 +716,16 @@ Recommended: Run [specific verification steps] before proceeding.
 |--------------|----------------|------------------------------|
 | Single explore agent, single narrative | Misses alternative explanations; confirmation bias | Minimum 2-3 parallel tracks with competing hypotheses |
 | "Code shows X should work" | Code can be dead, overridden, conditional, or simply wrong | Requires CONFIRMED evidence from queries or runtime |
-| Investigating only the suspected component | Bug is often in the gap between components | Traces BOTH read and write sides of every data flow |
+| Investigating only the suspected component | Bug is often in the gap between components; feature often needs to integrate with multiple systems | Traces BOTH sides of every data flow; maps full integration surface for features |
 | Accepting plausible narratives | Plausible ≠ true; sounds right ≠ is right | Evidence classification forces explicit proof |
-| Presenting INFERRED as CONFIRMED | User thinks root cause is proven when it's actually a guess | Every finding tagged with evidence classification |
-| Missing the real bug | Single angle → single narrative → wrong fix | Multiple tracks + hypothesis testing → correct root cause |
+| Presenting INFERRED as CONFIRMED | User thinks analysis is proven when it's actually a guess | Every finding tagged with evidence classification |
+| Missing the real issue | Single angle → single narrative → wrong fix or wrong approach | Multiple tracks + hypothesis testing → correct conclusion |
 | Silently dropping contradicted hypotheses | User doesn't know what was eliminated or why | Explicit ELIMINATED section with contradiction evidence |
+| Shallow feature analysis | "Just add it here" without understanding existing patterns | Parallel pattern discovery + data verification → informed approach |
 
 ---
 
-## Example: Minimal Investigation
+## Example: Minimal Investigation (Bug)
 
 Even for quick investigations, the structure applies. Here's a minimal version:
 
@@ -580,4 +749,26 @@ TRACKS:
 [Results come back, evaluate, conclude]
 ```
 
-The overhead is minimal. The value — not fixing the wrong thing — is significant.
+## Example: Minimal Investigation (Feature)
+
+```
+REQUEST: Add a "copy to clipboard" button to code blocks
+
+APPROACH 1: Use existing IconButton component + navigator.clipboard API
+ADVANTAGES: Consistent with existing icon buttons; clipboard API is standard
+RISKS: navigator.clipboard may need HTTPS; existing CodeBlock may not have a wrapper element
+INVESTIGATION: Check if IconButton exists; check CodeBlock component structure; check if other copy features exist
+
+APPROACH 2: Use a third-party copy library (react-copy-to-clipboard)
+ADVANTAGES: Handles edge cases (fallback for older browsers)
+RISKS: New dependency; may not match existing component patterns
+INVESTIGATION: Check package.json for existing copy utilities; check bundle size policy
+
+TRACKS:
+  Track 1 (Code): @explore — trace CodeBlock component structure, find IconButton pattern
+  Track 2 (Pattern): @explore — find other "action buttons on content" patterns in the codebase
+
+[Results come back, evaluate, conclude]
+```
+
+The overhead is minimal. The value — not building the wrong thing — is significant.
