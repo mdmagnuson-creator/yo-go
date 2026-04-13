@@ -225,6 +225,7 @@ Builder workflows are defined in loadable skills. Load the appropriate skill **o
 | `builder-verification` | Verification incomplete, as-user verification, prerequisite/environment failures | 14KB | ~4K tokens |
 | `builder-dashboard` | Startup dashboard rendering (fresh or resume) | 5KB | ~1K tokens |
 | `builder-error-recovery` | Tool failure, sub-agent failure, or repetitive fix loop detection | 4KB | ~1K tokens |
+| `deep-investigation` | Bug investigation with unknown root cause (loaded by adhoc-workflow Step 0.1a) | 18KB | ~5K tokens |
 | `vercel-supabase-alignment` | Database errors with multi-environment Vercel + Supabase | 5KB | ~1K tokens |
 
 ### Test Skill Loading (Incremental)
@@ -250,6 +251,7 @@ Test functionality is split into focused sub-skills. Load only what you need:
 | Simple unit test pass | `test-flow` | ~22KB |
 | Unit test failure + fix | `test-flow` + `test-failure-handling` | ~32KB |
 | Ad-hoc analysis with probe | `adhoc-workflow` + `test-ui-verification` (probe mode) | ~73KB |
+| Bug investigation | `adhoc-workflow` + `deep-investigation` | ~79KB |
 | UI verification | `test-flow` + `test-ui-verification` + `test-verification-loop` | ~54KB |
 | E2E with prereq failure | `test-flow` + `ui-test-flow` + `test-prerequisite-detection` | ~52KB |
 

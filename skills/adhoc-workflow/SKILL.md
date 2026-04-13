@@ -340,8 +340,22 @@ Based on the analysis, determine the task type:
 | Task Type | When | Verification Pipeline |
 |-----------|------|----------------------|
 | `source-change` | Implementation requires modifying source files (`.ts`, `.tsx`, `.go`, etc.) | Standard: typecheck → test → build → Playwright |
+| `bug-investigation` | Root cause is unknown — user reports unexpected behavior, data issues, or "it should work but doesn't" | Load `deep-investigation` skill — follows its own flow |
 | `ops-with-runtime-impact` | Fix requires only CLI/ops commands (deploy, secrets, infra) AND the original issue is **browser-visible** (CORS, auth, API errors, UI behavior) | Reduced: skip typecheck/build, but **run Playwright** against affected behavior |
 | `ops-only` | Fix requires only CLI/ops commands AND has **no browser-visible impact** (CI config, log rotation, secret rotation for non-app services) | None: mark complete after ops commands succeed |
+
+> **Bug investigation routing:** When `taskType` is `bug-investigation`, load the `deep-investigation` skill and follow its investigation flow (Steps 1-6) instead of continuing to Step 0.1b. The investigation dashboard replaces the standard ANALYSIS COMPLETE dashboard. After the user chooses `[G] Go ahead`, return to this workflow at Phase 1 for implementation with the investigation findings as context.
+>
+> **Classification hint:** If the user's request matches any of these patterns, classify as `bug-investigation`:
+> - "Why doesn't X work?"
+> - "X is broken / not showing / returns wrong data"
+> - "Users are reporting [unexpected behavior]"
+> - The root cause is genuinely unclear from the initial analysis
+>
+> **Do NOT classify as `bug-investigation` when:**
+> - The bug has an obvious fix (typo, missing import, wrong variable name)
+> - The error message directly points to the fix
+> - The user says "fix X" and the fix is clear from context
 
 > ⛔ **`ops-only` GUARD: If the implementation modifies ANY source file, the task is NOT `ops-only`.**
 >
@@ -378,6 +392,8 @@ Ask: "Was the user's original issue visible in the browser or app UI?"
   "verificationTarget": "Authenticate, open org creation wizard, click Connect GitHub — verify OAuth URL returned"
 }
 ```
+
+**If `taskType` is `bug-investigation`:** Load the `deep-investigation` skill now and follow its flow. Do NOT proceed to Step 0.1b — the investigation skill has its own analysis process that replaces the standard Playwright probe and analysis dashboard.
 
 ### Step 0.1b: Playwright Analysis Confirmation (MANDATORY)
 

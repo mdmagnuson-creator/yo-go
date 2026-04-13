@@ -550,6 +550,137 @@ Planner uses `docs/planner-state.json` with `uiTodos` and `currentTask` for resu
 | Move to Ready (`R`) | One todo per PRD moved | PRD converted/moved and registry status set to `ready` |
 | Planning updates (`U`) | One todo per planning-scope update file | Update applied or explicitly skipped/redirected |
 
+## State Hygiene — Incremental Decision Persistence
+
+> ⛔ **CRITICAL: Write decisions to `planner-state.json` immediately, not in batches.**
+>
+> Large writes at the end of a session or topic cluster are the primary cause of data loss at compaction — the write either fails silently (oldString mismatch) or compaction hits before it happens.
+
+The `planner-state.json` file must be updated incrementally. The correct rhythm is:
+
+1. User answers a question or confirms a decision
+2. **Immediately** write that decision to `lockedDecisions` in `planner-state.json`
+3. Verify the file is valid JSON: `python3 -c "import json; json.load(open('docs/planner-state.json'))"`
+4. Update `updatedAt` and `lastUserMessage` on every write
+5. Only then ask the next question
+
+### Planner-Specific State Fields
+
+In addition to the common `uiTodos` and `currentTask` fields (see `session-state` skill), planner adds these fields to `planner-state.json`:
+
+```json
+{
+  "uiTodos": { "..." },
+  "currentTask": { "..." },
+  "lockedDecisions": [
+    {
+      "questionNumber": 1,
+      "question": "What notification channels should we support initially?",
+      "answer": "B — Email + in-app",
+      "decidedAt": "2026-04-13T14:30:00Z"
+    },
+    {
+      "questionNumber": 2,
+      "question": "Should notifications be real-time or batched?",
+      "answer": "C — User-configurable",
+      "decidedAt": "2026-04-13T14:31:00Z"
+    }
+  ],
+  "resumePrompt": "Refining prd-notifications. User confirmed email+in-app channels (Q1) and user-configurable delivery (Q2). Next: ask about notification preferences UI layout.",
+  "updatedAt": "2026-04-13T14:31:00Z",
+  "lastUserMessage": "1B, 2C"
+}
+```
+
+| Field | Purpose | Update frequency |
+|-------|---------|-----------------|
+| `lockedDecisions` | Array of confirmed user decisions | After every user answer |
+| `resumePrompt` | Current stopping-point description for compaction recovery | After every write |
+| `updatedAt` | ISO timestamp of last state write | Every write |
+| `lastUserMessage` | Summary of last user input | Every write |
+
+### Write Failure Handling
+
+If a write fails (oldString not found, JSON parse error, etc.):
+
+1. **STOP immediately** — do not proceed to the next question
+2. Re-read the file to get current content
+3. Retry the write with correct content
+4. Only continue the conversation after the write succeeds
+
+Never proceed with an unwritten decision. An unwritten decision is a lost decision.
+
+### Resume Prompt Requirements
+
+The `resumePrompt` field must reflect the **current** stopping point after every write — not just at the end of a session. If compaction hits mid-session, the `resumePrompt` should already describe exactly where we are:
+
+- Which PRD is being refined
+- Which decisions have been locked
+- What the next question or action should be
+- Any pending user input needed
+
+**Wrong:** Updating `resumePrompt` only at the end of a session
+**Right:** Updating `resumePrompt` after every decision is written
+
+## Question Format — Numbered Options with Recommendations
+
+> ⛔ **CRITICAL: Every question Planner asks must follow this format.**
+>
+> Unstructured questions slow down the conversation and make it harder for the user to respond quickly.
+
+When asking the user a clarifying or scoping question, always:
+
+1. **Number each question** sequentially within the current session/topic
+2. **Provide lettered options** (A, B, C, D) for each question
+3. **Include a recommended option** with brief reasoning
+
+### Format Template
+
+```
+1. [Question text]?
+   A. [Option A]
+   B. [Option B]
+   C. [Option C]
+   D. [Option D]
+   
+   Recommended: [Letter] — [brief reason why]
+
+2. [Question text]?
+   A. [Option A]
+   B. [Option B]
+   C. [Option C]
+   
+   Recommended: [Letter] — [brief reason why]
+```
+
+### Example
+
+```
+1. What notification channels should we support initially?
+   A. Email only
+   B. Email + in-app
+   C. Email + in-app + push
+   D. All of the above
+
+   Recommended: B — covers the two highest-value channels without the complexity of push notification infrastructure
+
+2. Should notifications be real-time or batched?
+   A. Real-time (instant delivery)
+   B. Batched (daily digest)
+   C. User-configurable (both, user chooses)
+
+   Recommended: C — gives users control, and the batching infrastructure is needed anyway for digest emails
+```
+
+### Rules
+
+- Minimum 2 options, maximum 5 per question
+- Options should be mutually exclusive where possible
+- The recommended option must have a concrete reason, not a generic "best practice" justification
+- If the user's answer doesn't match any option (e.g., "something between B and C"), treat that as a new locked decision and move on
+- Group related questions together but still number them individually
+- The user can respond with shorthand like "1B, 2C" for speed
+
 6. **Check project capabilities:**
    - If the project does not have an agent system (`hasAgentSystem: false`), inform the user that PRD-based workflows are not available for this project, but offer to help with general planning tasks
 
