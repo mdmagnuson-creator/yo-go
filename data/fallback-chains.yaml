@@ -30,6 +30,20 @@ chains:
     description: "Marketing, legal, and public-facing pages"
 
   # ═══════════════════════════════════════════════════════════════════════
+  # NATIVE / MOBILE
+  # ═══════════════════════════════════════════════════════════════════════
+
+  swift-native:
+    primary: swift-dev
+    alternatives: [developer]
+    description: "Swift/SwiftUI/AppKit/UIKit implementation for Apple platforms"
+
+  xcuitest:
+    primary: swift-dev
+    alternatives: [developer]
+    description: "XCUITest UI tests for native Apple apps"
+
+  # ═══════════════════════════════════════════════════════════════════════
   # BACKEND IMPLEMENTATION
   # ═══════════════════════════════════════════════════════════════════════
   
@@ -139,6 +153,8 @@ retry:
 #    - *.spec.ts (in e2e/) → playwright-tests
 #    - *.test.tsx → react-tests
 #    - *.test.ts (in src/) → jest-tests
+#    - *.swift → swift-native
+#    - *UITests* → xcuitest
 #    - Dockerfile* → docker
 #    - *.tf → terraform
 #    - *.yaml (in cloudformation/) → cloudformation

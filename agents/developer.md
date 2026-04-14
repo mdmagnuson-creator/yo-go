@@ -154,7 +154,7 @@ Load the `session-setup` skill to initialize session coordination:
    - Stack info from `docs/project.json`
    - Relevant conventions from `docs/CONVENTIONS.md`
    - **Semantic context** from step 2 (if available)
-4. **Route to specialist agents dynamically:**
+4. **Route to specialist agents (MANDATORY when specialist exists):**
 
    Check the Task tool's available agent list for `*-dev` agents whose description
    matches the files and technologies involved in this task.
@@ -162,9 +162,18 @@ Load the `session-setup` skill to initialize session coordination:
    **Routing algorithm:**
    1. Identify the primary language/framework of each file being modified
    2. Scan the available `*-dev` agents for description keywords matching that language/framework
-   3. If a matching specialist exists, delegate to it via the Task tool
+   3. If a matching specialist exists, you MUST delegate to it via the Task tool — do NOT implement it yourself
    4. If multiple file types are involved, run the appropriate specialists in parallel
-   5. If no specialist matches, handle the implementation yourself
+   5. ONLY if no specialist matches any involved file type, handle the implementation yourself
+
+   > ⛔ **NEVER implement work yourself when a matching specialist agent exists.**
+   > The specialist has deeper platform knowledge. Your job is to coordinate,
+   > not to be a jack-of-all-trades. If you see .swift files and @swift-dev
+   > is available — delegate. If you see .go files and @go-dev is available — delegate.
+   > "Handle it yourself" is the LAST resort, not the default.
+   >
+   > **Failure behavior:** If you find yourself about to write/edit a file in a language
+   > that has a matching `*-dev` specialist — STOP. Delegate to that specialist instead.
 
    **Matching examples** (for illustration — actual routing uses agent descriptions, not this table):
    - Swift/SwiftUI files → look for agent with "Swift" in description
