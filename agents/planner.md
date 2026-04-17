@@ -1105,6 +1105,51 @@ When a feature in project A requires work in related project B:
 - ✅ You may create `docs/pending-prds/` directory if it doesn't exist
 - ✅ You may commit pending PRDs to related projects (planning artifacts only)
 
+## Session Handoff
+
+When asked to produce a handoff, update session state, or write a copy/paste
+message for the next session:
+
+1. Load the session-handoff skill
+2. Write all five fields to the project's planner-state.json
+3. Verify the file is valid JSON
+4. Produce the copy/paste message using the standard template below
+
+Never produce a prose history dump. Never write resumePrompt as the handoff.
+
+The five fields — all required:
+
+  currentIntent       What we are trying to achieve right now. 2-3 sentences.
+                      What are we pointed at, not what did we do.
+  recentDecisions     What was just decided. Most recent first. Max 10 items.
+                      One sentence each. Only what the next session must act on.
+  nextAction          One sentence. Unambiguous. The next session acts on this
+                      before reading anything else.
+  processState        Current stage/mode and what governs behavior at this stage.
+                      Must include what is NOT allowed right now.
+  activeConstraints   Older rules still binding. The ones a fresh session is most
+                      likely to violate. Max 5. These are persistent, not new.
+
+Standard copy/paste template:
+
+  Resuming Planner session for [project].
+
+  Project: [path]
+
+  Read docs/planner-state.json — all five of these before doing anything:
+    1. processState.currentStage    what work mode we are in and what is allowed
+    2. processState.nextAction      exactly what to do right now
+    3. currentIntent                what we are trying to achieve
+    4. recentDecisions              what was just decided — honor these, do not re-litigate
+    5. activeConstraints            older rules still binding on the current work
+
+  If you need more context, read deeper into the file system:
+    - docs/planner-state.json in full
+    - the specific phase file named in processState.nextAction
+    - docs/CONVENTIONS.md sections relevant to the current work
+
+  Then confirm the next action with me before starting.
+
 ## What You Never Do
 
 - ❌ Run @developer or any implementation agent

@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-14T20:00:00Z",
+  "generatedAt": "2026-04-17T00:31:29Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
     "total": 65,
@@ -162,7 +162,7 @@
           {
             "name": "api-critic",
             "file": "agents/api-critic.md",
-            "description": "Reviews API design for usability \u2014 confusing endpoints, inconsistent conventions, missing pagination, poor error responses"
+            "description": "Reviews API design for usability — confusing endpoints, inconsistent conventions, missing pagination, poor error responses"
           },
           {
             "name": "backend-aws-critic",
@@ -177,7 +177,7 @@
           {
             "name": "comment-critic",
             "file": "agents/comment-critic.md",
-            "description": "Reviews comments and removes noise \u2014 flags obvious comments that just restate the code"
+            "description": "Reviews comments and removes noise — flags obvious comments that just restate the code"
           },
           {
             "name": "copy-critic",
@@ -197,7 +197,7 @@
           {
             "name": "exploit-critic",
             "file": "agents/exploit-critic.md",
-            "description": "Adversarial review that attempts to exploit code \u2014 finds injection, auth bypass, privilege escalation, and data exfiltration paths"
+            "description": "Adversarial review that attempts to exploit code — finds injection, auth bypass, privilege escalation, and data exfiltration paths"
           },
           {
             "name": "frontend-critic",
@@ -217,7 +217,7 @@
           {
             "name": "oddball-critic",
             "file": "agents/oddball-critic.md",
-            "description": "Reviews code for consistency with the existing codebase \u2014 flags patterns that look different from established conventions"
+            "description": "Reviews code for consistency with the existing codebase — flags patterns that look different from established conventions"
           },
           {
             "name": "policy-testability-critic",
@@ -237,7 +237,7 @@
           {
             "name": "quality-critic",
             "file": "agents/quality-critic.md",
-            "description": "Reviews UI for quality beyond correctness \u2014 visual regression, CLS, accessibility, and performance"
+            "description": "Reviews UI for quality beyond correctness — visual regression, CLS, accessibility, and performance"
           },
           {
             "name": "requirements-critic",
@@ -247,7 +247,7 @@
           {
             "name": "security-critic",
             "file": "agents/security-critic.md",
-            "description": "Reviews code for security scan findings \u2014 CSP, CORS, XSRF, SSRF, dependency CVEs, and compliance issues"
+            "description": "Reviews code for security scan findings — CSP, CORS, XSRF, SSRF, dependency CVEs, and compliance issues"
           },
           {
             "name": "semantic-critic",
@@ -359,7 +359,7 @@
     }
   },
   "skills": {
-    "total": 72,
+    "total": 73,
     "categories": {
       "workflow": {
         "description": "Workflow and lifecycle skills",
@@ -417,7 +417,7 @@
           {
             "name": "test-flow",
             "path": "skills/test-flow/SKILL.md",
-            "description": "Unified test orchestrator \u2014 skip gate, activity resolution, quality check pipeline, completion prompt, and tier-2 skill loading. Triggers on: generate tests, run tests, test failures, E2E deferral, test flow."
+            "description": "Unified test orchestrator — skip gate, activity resolution, quality check pipeline, completion prompt, and tier-2 skill loading. Triggers on: generate tests, run tests, test failures, E2E deferral, test flow."
           },
           {
             "name": "test-verification-loop",
@@ -458,6 +458,11 @@
             "name": "verification-contracts",
             "path": "skills/verification-contracts/SKILL.md",
             "description": "Create verification contracts for task completion. Defines success criteria, edge cases, and test activities. Triggers on: verification contract, success criteria, task verification."
+          },
+          {
+            "name": "session-handoff",
+            "path": "skills/session-handoff/SKILL.md",
+            "description": "Produce a Planner session handoff by writing the five structured fields to planner-state.json and emitting the standard copy/paste message for the next session. Use when asked to produce a handoff, update session state, or write a copy/paste message for the next Planner session."
           }
         ]
       },
@@ -732,7 +737,7 @@
           {
             "name": "electron-build-deploy",
             "path": "skills/electron-build-deploy/SKILL.md",
-            "description": "Build, deploy, and relaunch Electron desktop apps before Playwright verification. Provides explicit kill \u2192 copy \u2192 relaunch command sequence. Triggers on: test-flow Step 3.5 with apps.desktop.buildDeploy configured."
+            "description": "Build, deploy, and relaunch Electron desktop apps before Playwright verification. Provides explicit kill → copy → relaunch command sequence. Triggers on: test-flow Step 3.5 with apps.desktop.buildDeploy configured."
           },
           {
             "name": "session-monitor",
@@ -759,12 +764,12 @@
       {
         "name": "builder-config.schema",
         "file": "schemas/builder-config.schema.json",
-        "description": "Builder configuration schema for session log system \u2014 lean execution thresholds, context budgets, and chunk settings"
+        "description": "Builder configuration schema for session log system — lean execution thresholds, context budgets, and chunk settings"
       },
       {
         "name": "chunk.schema",
         "file": "schemas/chunk.schema.json",
-        "description": "Schema for session log chunks \u2014 story/task execution records with carry-forward context"
+        "description": "Schema for session log chunks — story/task execution records with carry-forward context"
       },
       {
         "name": "ui-test-audit-manifest.schema",
@@ -799,7 +804,7 @@
       {
         "name": "session.schema",
         "file": "schemas/session.schema.json",
-        "description": "Schema for persistent session logs \u2014 session metadata, chunk references, and git integration"
+        "description": "Schema for persistent session logs — session metadata, chunk references, and git integration"
       },
       {
         "name": "skill-mapping.schema",
@@ -1045,6 +1050,12 @@
     "entries": [
       {
         "type": "feat",
+        "scope": "skills,agents",
+        "description": "add session-handoff skill and Session Handoff section to planner — enforces five-field structured handoff written to planner-state.json",
+        "hash": "pending"
+      },
+      {
+        "type": "feat",
         "scope": "data",
         "description": "add swift-native and xcuitest fallback chains to fallback-chains.yaml with Swift file pattern detection",
         "hash": "pending"
@@ -1130,25 +1141,25 @@
       {
         "type": "feat",
         "scope": "agents,data",
-        "description": "add XCUITest/Swift routing to tester agent \u2014 native Apple platform detection (swiftui/appkit/uikit), .swift file delegation to @swift-dev, XCUITest delegation prompt template, xcodebuild test execution guidance; fix skill-mapping.json xcuitest skill reference and add native Apple platform/routing/suggestion entries",
+        "description": "add XCUITest/Swift routing to tester agent — native Apple platform detection (swiftui/appkit/uikit), .swift file delegation to @swift-dev, XCUITest delegation prompt template, xcodebuild test execution guidance; fix skill-mapping.json xcuitest skill reference and add native Apple platform/routing/suggestion entries",
         "hash": "5f88788"
       },
       {
         "type": "feat",
         "scope": "agents,skills,schemas",
-        "description": "add XCUITest support \u2014 new ui-test-xcuitest skill for native macOS/iOS testing, update swift-dev with XCUITest test writing capability, update swift-critic with XCUITest review criteria (Section 8), add swift/kotlin/dart to project schema language enum",
+        "description": "add XCUITest support — new ui-test-xcuitest skill for native macOS/iOS testing, update swift-dev with XCUITest test writing capability, update swift-critic with XCUITest review criteria (Section 8), add swift/kotlin/dart to project schema language enum",
         "hash": "c87e9e8"
       },
       {
         "type": "refactor",
         "scope": "skills",
-        "description": "reduce analysis depth in adhoc-workflow Step 0.1 \u2014 rename to Behavior-Focused Analysis, use direct search tools (grep/glob/semantic_search) instead of @explore delegation, replace deep AST/semantic/checklist methods with locate-area/side-effect-check/scope-estimate, add explicit NOT-do list to prevent deep exploration during analysis phase",
+        "description": "reduce analysis depth in adhoc-workflow Step 0.1 — rename to Behavior-Focused Analysis, use direct search tools (grep/glob/semantic_search) instead of @explore delegation, replace deep AST/semantic/checklist methods with locate-area/side-effect-check/scope-estimate, add explicit NOT-do list to prevent deep exploration during analysis phase",
         "hash": "4ccf342"
       },
       {
         "type": "fix",
         "scope": "skills",
-        "description": "extend outcome-only analysis to UNDERSTANDING section, AFFECTED FILES, and Step 0.1 presentation rule \u2014 closes gap where mechanisms leaked through dashboard sections not covered by initial edit",
+        "description": "extend outcome-only analysis to UNDERSTANDING section, AFFECTED FILES, and Step 0.1 presentation rule — closes gap where mechanisms leaked through dashboard sections not covered by initial edit",
         "hash": "37bef0d"
       },
       {
@@ -1160,31 +1171,31 @@
       {
         "type": "feat",
         "scope": "agents",
-        "description": "enforce mandatory delegation in Builder \u2014 all source code reading to @explore, all code writing to @developer, with identity lock, write scope restrictions, and investigation protocol",
+        "description": "enforce mandatory delegation in Builder — all source code reading to @explore, all code writing to @developer, with identity lock, write scope restrictions, and investigation protocol",
         "hash": "839eaa7"
       },
       {
         "type": "feat",
         "scope": "agents",
-        "description": "add soul personality layer to Builder and Planner \u2014 tone, voice, communication style directives with read-at-startup pattern",
+        "description": "add soul personality layer to Builder and Planner — tone, voice, communication style directives with read-at-startup pattern",
         "hash": "23d9c0c"
       },
       {
         "type": "refactor",
         "scope": "agents",
-        "description": "revert desktop mode detection and postChangeActions removal \u2014 restore builder postChangeActions pipeline (Step 4.5) and skill references across adhoc-workflow, builder-delegation, post-completion, prd-workflow, test-flow",
+        "description": "revert desktop mode detection and postChangeActions removal — restore builder postChangeActions pipeline (Step 4.5) and skill references across adhoc-workflow, builder-delegation, post-completion, prd-workflow, test-flow",
         "hash": "5bac879"
       },
       {
         "type": "feat",
         "scope": "agents",
-        "description": "add Step 4.5 (postChangeActions) to builder Story Processing Pipeline \u2014 mandatory post-commit execution with trigger evaluation and failure modes",
+        "description": "add Step 4.5 (postChangeActions) to builder Story Processing Pipeline — mandatory post-commit execution with trigger evaluation and failure modes",
         "hash": "b63cc1b"
       },
       {
         "type": "feat",
         "scope": "skills",
-        "description": "add Step 1.5 (postChangeActions) to adhoc-workflow Phase 2 Ship \u2014 mirrors Pipeline Step 4.5 for ad-hoc commit flow",
+        "description": "add Step 1.5 (postChangeActions) to adhoc-workflow Phase 2 Ship — mirrors Pipeline Step 4.5 for ad-hoc commit flow",
         "hash": "b63cc1b"
       },
       {
@@ -1202,25 +1213,25 @@
       {
         "type": "feat",
         "scope": "schemas",
-        "description": "add postChangeActions configuration to project.schema.json \u2014 pending-update, agent, command, notify action types with trigger conditions (always, files-changed-in, feature-change, user-facing-change)",
+        "description": "add postChangeActions configuration to project.schema.json — pending-update, agent, command, notify action types with trigger conditions (always, files-changed-in, feature-change, user-facing-change)",
         "hash": "37faa43"
       },
       {
         "type": "refactor",
         "scope": "schemas",
-        "description": "remove support-article, tools, marketing from workflow step enums in project.schema.json and workflow-defaults.schema.json \u2014 replaced by postChangeActions",
+        "description": "remove support-article, tools, marketing from workflow step enums in project.schema.json and workflow-defaults.schema.json — replaced by postChangeActions",
         "hash": "37faa43"
       },
       {
         "type": "refactor",
         "scope": "data",
-        "description": "remove support-article/tools/marketing conditionalSteps and stepReference entries from workflow-defaults.json \u2014 replaced by postChangeActions",
+        "description": "remove support-article/tools/marketing conditionalSteps and stepReference entries from workflow-defaults.json — replaced by postChangeActions",
         "hash": "37faa43"
       },
       {
         "type": "feat",
         "scope": "skills",
-        "description": "add Section 5.5 Post-Change Actions (After Commit) to test-flow \u2014 trigger evaluation, action execution, and error handling",
+        "description": "add Section 5.5 Post-Change Actions (After Commit) to test-flow — trigger evaluation, action execution, and error handling",
         "hash": "37faa43"
       },
       {
@@ -1256,37 +1267,37 @@
       {
         "type": "refactor",
         "scope": "schemas",
-        "description": "fix toolkit-structure.json schema entries \u2014 replace deleted builder-state.schema with session.schema, chunk.schema, builder-config.schema (total 16\u219218)",
+        "description": "fix toolkit-structure.json schema entries — replace deleted builder-state.schema with session.schema, chunk.schema, builder-config.schema (total 16→18)",
         "hash": "37faa43"
       },
       {
         "type": "feat",
         "scope": "agents",
-        "description": "add session log git integration section to builder \u2014 cross-machine resume, active session housekeeping, commit strategy (US-005)",
+        "description": "add session log git integration section to builder — cross-machine resume, active session housekeeping, commit strategy (US-005)",
         "hash": "ff6cfd3"
       },
       {
         "type": "feat",
         "scope": "agents",
-        "description": "add unified compaction recovery protocol to builder \u2014 single protocol for compaction + resume, session discovery (US-004)",
+        "description": "add unified compaction recovery protocol to builder — single protocol for compaction + resume, session discovery (US-004)",
         "hash": "e3deacc"
       },
       {
         "type": "feat",
         "scope": "skills",
-        "description": "add compaction recovery section to session-log skill \u2014 targeted file reads, recovery message format (US-004)",
+        "description": "add compaction recovery section to session-log skill — targeted file reads, recovery message format (US-004)",
         "hash": "e3deacc"
       },
       {
         "type": "feat",
         "scope": "agents",
-        "description": "add lean execution mode to builder \u2014 automatic context shedding, chunk transitions, carry-forward rules (US-003)",
+        "description": "add lean execution mode to builder — automatic context shedding, chunk transitions, carry-forward rules (US-003)",
         "hash": "23577f7"
       },
       {
         "type": "feat",
         "scope": "skills",
-        "description": "add chunk transition protocol and context shedding to session-log skill \u2014 max context budget, multi-task grouping (US-003)",
+        "description": "add chunk transition protocol and context shedding to session-log skill — max context budget, multi-task grouping (US-003)",
         "hash": "23577f7"
       },
       {
@@ -1298,19 +1309,19 @@
       {
         "type": "feat",
         "scope": "skills",
-        "description": "create session-log skill \u2014 replaces builder-state with persistent session logs, commit ordering, heartbeat, branchless trunk semantics (US-002)",
+        "description": "create session-log skill — replaces builder-state with persistent session logs, commit ordering, heartbeat, branchless trunk semantics (US-002)",
         "hash": "d931c4e"
       },
       {
         "type": "refactor",
         "scope": "agents",
-        "description": "migrate builder, developer, toolkit from builder-state to session-log \u2014 delete builder-state schema and skill (US-002)",
+        "description": "migrate builder, developer, toolkit from builder-state to session-log — delete builder-state schema and skill (US-002)",
         "hash": "d931c4e"
       },
       {
         "type": "feat",
         "scope": "schemas",
-        "description": "add buildDeploy configuration to project.schema.json \u2014 buildCommand, buildOutputApp, testApp, triggerPaths, autoDeployAfterStory, buildTimeoutMs",
+        "description": "add buildDeploy configuration to project.schema.json — buildCommand, buildOutputApp, testApp, triggerPaths, autoDeployAfterStory, buildTimeoutMs",
         "hash": "37fb22b"
       },
       {
@@ -1328,7 +1339,7 @@
       {
         "type": "feat",
         "scope": "skills",
-        "description": "create electron-build-deploy skill \u2014 explicit kill \u2192 copy \u2192 relaunch command sequence for Electron apps before Playwright verification",
+        "description": "create electron-build-deploy skill — explicit kill → copy → relaunch command sequence for Electron apps before Playwright verification",
         "hash": "c905a17"
       },
       {
@@ -1340,25 +1351,25 @@
       {
         "type": "docs",
         "scope": "prds",
-        "description": "promote prd-electron-build-deploy from draft to ready \u2014 6 stories, all open questions resolved, macOS only v1",
+        "description": "promote prd-electron-build-deploy from draft to ready — 6 stories, all open questions resolved, macOS only v1",
         "hash": "c905a17"
       },
       {
         "type": "feat",
         "scope": "skills",
-        "description": "add oauth-callback-diagnostic skill \u2014 generalized OAuth redirect_uri mismatch diagnostic for any provider/app type",
+        "description": "add oauth-callback-diagnostic skill — generalized OAuth redirect_uri mismatch diagnostic for any provider/app type",
         "hash": "f7bf6ab"
       },
       {
         "type": "docs",
         "scope": "prds",
-        "description": "add draft PRD prd-electron-build-deploy \u2014 automate Electron build-deploy cycle in test-flow",
+        "description": "add draft PRD prd-electron-build-deploy — automate Electron build-deploy cycle in test-flow",
         "hash": "f7bf6ab"
       },
       {
         "type": "fix",
         "scope": "skills",
-        "description": "reset top-level verificationContract/verificationResults/pendingTests at all task boundaries \u2014 prevents stale verification state from causing test-flow skips",
+        "description": "reset top-level verificationContract/verificationResults/pendingTests at all task boundaries — prevents stale verification state from causing test-flow skips",
         "hash": "e942c76"
       },
       {
@@ -1370,13 +1381,13 @@
       {
         "type": "fix",
         "scope": "skills",
-        "description": "add staleness check to test-flow Verification Contract Integration \u2014 contracts predating current story are discarded",
+        "description": "add staleness check to test-flow Verification Contract Integration — contracts predating current story are discarded",
         "hash": "e942c76"
       },
       {
         "type": "refactor",
         "scope": "skills",
-        "description": "remove all competing Playwright gate mechanisms \u2014 testVerifySettings is now sole gate (US-001 through US-013)",
+        "description": "remove all competing Playwright gate mechanisms — testVerifySettings is now sole gate (US-001 through US-013)",
         "hash": "e1c442f"
       },
       {
@@ -1394,7 +1405,7 @@
       {
         "type": "fix",
         "scope": "skills",
-        "description": "add launchTarget resolution to e2e-electron skill \u2014 tests now read project.json to determine test directory, launch pattern (dev vs installed-app), and Playwright config",
+        "description": "add launchTarget resolution to e2e-electron skill — tests now read project.json to determine test directory, launch pattern (dev vs installed-app), and Playwright config",
         "hash": "b82557e"
       },
       {
@@ -1412,37 +1423,37 @@
       {
         "type": "fix",
         "scope": "skills",
-        "description": "consolidate E2E write+run into atomic operation in test-flow \u2014 eliminate separate [R]/[S] prompt after test generation",
+        "description": "consolidate E2E write+run into atomic operation in test-flow — eliminate separate [R]/[S] prompt after test generation",
         "hash": "b82557e"
       },
       {
         "type": "fix",
         "scope": "skills",
-        "description": "add condition evaluation to postChangeWorkflow handler in test-ui-verification \u2014 steps with files-changed-in conditions are now skipped when unmatched",
+        "description": "add condition evaluation to postChangeWorkflow handler in test-ui-verification — steps with files-changed-in conditions are now skipped when unmatched",
         "hash": "b82557e"
       },
       {
         "type": "fix",
         "scope": "skills",
-        "description": "strengthen webContent remote no-rebuild rule in test-ui-verification and test-flow \u2014 explicit table mapping change types to actions for remote desktop apps",
+        "description": "strengthen webContent remote no-rebuild rule in test-ui-verification and test-flow — explicit table mapping change types to actions for remote desktop apps",
         "hash": "b82557e"
       },
       {
         "type": "fix",
         "scope": "skills",
-        "description": "add failure behavior self-check to adhoc-workflow probe dispatch \u2014 if generated spec contains baseUrl for desktop app, STOP and regenerate with electron transport",
+        "description": "add failure behavior self-check to adhoc-workflow probe dispatch — if generated spec contains baseUrl for desktop app, STOP and regenerate with electron transport",
         "hash": "bb9d519"
       },
       {
         "type": "fix",
         "scope": "skills",
-        "description": "Electron probe spec in adhoc-workflow now references project.json paths instead of template placeholders \u2014 always read executablePath/launchTarget from apps.desktop.testing",
+        "description": "Electron probe spec in adhoc-workflow now references project.json paths instead of template placeholders — always read executablePath/launchTarget from apps.desktop.testing",
         "hash": "bb9d519"
       },
       {
         "type": "fix",
         "scope": "skills",
-        "description": "add architecture-aware probe dispatch to adhoc-workflow \u2014 Electron apps now get transport:electron spec instead of browser-only baseUrl",
+        "description": "add architecture-aware probe dispatch to adhoc-workflow — Electron apps now get transport:electron spec instead of browser-only baseUrl",
         "hash": "18d0fb8"
       },
       {
@@ -1463,13 +1474,13 @@
           {
             "type": "fix",
             "scope": "skills",
-            "description": "add probe-inapplicability rationalizations to NO-BYPASS RULE \u2014 close IPC/main-process/code-analysis-is-definitive bypass paths in adhoc-workflow",
+            "description": "add probe-inapplicability rationalizations to NO-BYPASS RULE — close IPC/main-process/code-analysis-is-definitive bypass paths in adhoc-workflow",
             "hash": "c56851f"
           },
           {
             "type": "fix",
             "scope": "skills",
-            "description": "add ops-only guard \u2014 source file modifications can never be classified as ops-only to avoid probe in adhoc-workflow",
+            "description": "add ops-only guard — source file modifications can never be classified as ops-only to avoid probe in adhoc-workflow",
             "hash": "c56851f"
           },
           {
@@ -1535,7 +1546,7 @@
           {
             "type": "refactor",
             "scope": "skills",
-            "description": "remove isUIProject() gate \u2014 all projects get full Playwright verification across 7 files (PRD adhoc-design-decisions US-012)",
+            "description": "remove isUIProject() gate — all projects get full Playwright verification across 7 files (PRD adhoc-design-decisions US-012)",
             "hash": "61b8c05"
           },
           {
@@ -1571,13 +1582,13 @@
           {
             "type": "feat",
             "scope": "agents",
-            "description": "remove skipped from builder.md probe gate \u2014 accept only confirmed, partially-confirmed, user-skipped (PRD mandatory-probe-enforcement US-001)",
+            "description": "remove skipped from builder.md probe gate — accept only confirmed, partially-confirmed, user-skipped (PRD mandatory-probe-enforcement US-001)",
             "hash": "0c2de58"
           },
           {
             "type": "feat",
             "scope": "agents",
-            "description": "remove Electron-specific qualifier from builder.md prohibitions \u2014 universal never-skip language (PRD mandatory-probe-enforcement US-002)",
+            "description": "remove Electron-specific qualifier from builder.md prohibitions — universal never-skip language (PRD mandatory-probe-enforcement US-002)",
             "hash": "0c2de58"
           },
           {
@@ -1619,7 +1630,7 @@
           {
             "type": "feat",
             "scope": "skills",
-            "description": "add contradicted \u2192 re-probe loop (max 2 attempts) in adhoc-workflow (PRD mandatory-probe-enforcement US-009)",
+            "description": "add contradicted → re-probe loop (max 2 attempts) in adhoc-workflow (PRD mandatory-probe-enforcement US-009)",
             "hash": "0c2de58"
           },
           {
@@ -1684,7 +1695,7 @@
           {
             "type": "feat",
             "scope": "skills",
-            "description": "remove E2E deferral for UI projects \u2014 deferred resolves as immediate when isUIProject() in test-activity-resolution and test-e2e-flow (PRD mandatory-playwright-between-stories US-002)",
+            "description": "remove E2E deferral for UI projects — deferred resolves as immediate when isUIProject() in test-activity-resolution and test-e2e-flow (PRD mandatory-playwright-between-stories US-002)",
             "hash": "943abed"
           },
           {
