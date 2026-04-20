@@ -1,7 +1,7 @@
 ---
 description: Investigates production issues by pulling ticket context, searching logs, and identifying likely defect areas
 mode: subagent
-model: github-copilot/claude-opus-4.5
+model: github-copilot/gpt-5.4
 temperature: 0.1
 tools:
   "*": true

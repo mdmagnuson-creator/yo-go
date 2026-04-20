@@ -1,7 +1,7 @@
 ---
 description: Reviews backend Java code for API design, concurrency, error handling, and best practices (Netty, Lambda)
 mode: subagent
-model: github-copilot/claude-opus-4.5
+model: github-copilot/gpt-5.4
 temperature: 0.3
 tools:
   "*": true

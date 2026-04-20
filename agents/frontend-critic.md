@@ -1,7 +1,7 @@
 ---
 description: Reviews frontend code for component design, performance, styling, and best practices
 mode: subagent
-model: github-copilot/claude-opus-4.5
+model: github-copilot/gpt-5.4
 temperature: 0.3
 tools:
   "*": true

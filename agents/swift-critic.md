@@ -1,7 +1,7 @@
 ---
 description: Reviews Swift/SwiftUI code for layout correctness, view lifecycle, data flow, multiplatform issues, XCUITest quality, and Apple platform best practices
 mode: subagent
-model: github-copilot/claude-opus-4.5
+model: github-copilot/gpt-5.4
 temperature: 0.3
 tools:
   "*": true

@@ -1,7 +1,7 @@
 ---
 description: Augments a ticket with a dev plan
 mode: subagent
-model: github-copilot/claude-opus-4.5
+model: github-copilot/gpt-5.4
 temperature: 0.5
 tools:
   "read": true

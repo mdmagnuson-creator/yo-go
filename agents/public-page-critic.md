@@ -1,7 +1,7 @@
 ---
 description: Reviews public-facing pages for conversion optimization, accessibility, mobile UX, and brand consistency
 mode: subagent
-model: github-copilot/claude-opus-4.5
+model: github-copilot/gpt-5.4
 temperature: 0.3
 tools:
   "*": true

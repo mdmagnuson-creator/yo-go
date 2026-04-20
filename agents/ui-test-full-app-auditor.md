@@ -1,7 +1,6 @@
 ---
 description: Autonomous UI test auditor that analyzes apps and generates comprehensive test coverage
 mode: primary
-model: github-copilot/claude-opus-4.5
 temperature: 0.2
 tools:
   "*": true

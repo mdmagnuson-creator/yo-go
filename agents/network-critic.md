@@ -1,7 +1,7 @@
 ---
 description: Reviews code making network requests for resilience, blocking behavior, and lock-during-IO problems
 mode: subagent
-model: github-copilot/claude-opus-4.5
+model: github-copilot/gpt-5.4
 temperature: 0.3
 tools:
   "*": true

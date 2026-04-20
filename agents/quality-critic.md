@@ -1,7 +1,7 @@
 ---
 description: Reviews UI for quality beyond correctness — visual regression, CLS, accessibility, and performance
 mode: subagent
-model: github-copilot/claude-opus-4.5
+model: github-copilot/gpt-5.4
 temperature: 0.2
 tools:
   "*": true

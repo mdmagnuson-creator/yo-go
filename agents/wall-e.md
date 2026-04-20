@@ -1,7 +1,7 @@
 ---
 description: Cleans up a workspace
 mode: subagent
-model: github-copilot/claude-opus-4.5
+model: github-copilot/gpt-5.4
 temperature: 0.1
 tools:
     "*": true
