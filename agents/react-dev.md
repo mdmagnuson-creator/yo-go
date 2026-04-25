@@ -1,7 +1,7 @@
 ---
 description: Implements React tasks specializing in UI consistency, Tailwind CSS, and TypeScript
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.2
 tools:
   "*": true

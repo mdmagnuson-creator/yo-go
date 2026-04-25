@@ -1,7 +1,7 @@
 ---
 description: Reviews code calling AWS services for unhandled failure modes, missing permissions, and SDK misuse
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.3
 tools:
   "*": true

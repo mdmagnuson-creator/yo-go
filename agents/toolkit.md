@@ -385,7 +385,7 @@ When the user wants a new agent:
 
 1. **Clarify the agent's purpose** — what does it do?
 2. **Determine the mode** — `primary` (user-invokable) or `subagent` (called by other agents)
-3. **Determine the model** — typically `github-copilot/gpt-5.4` for complex subagent tasks. Primary agents should NOT specify a `model:` — they inherit the user's currently selected model.
+3. **Determine the model** — typically `github-copilot/gpt-5.5` for complex subagent tasks. Primary agents should NOT specify a `model:` — they inherit the user's currently selected model.
 4. **Determine tools needed** — `"*": true` for full access, or specific tools
 5. **Write the agent file** to `agents/[name].md` with proper frontmatter
 6. **Ensure project context loading** — all agents should load `projects.json` → `project.json` → `CONVENTIONS.md`

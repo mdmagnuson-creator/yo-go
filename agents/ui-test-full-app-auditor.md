@@ -1,6 +1,6 @@
 ---
 description: Autonomous UI test auditor that analyzes apps and generates comprehensive test coverage
-mode: primary
+mode: subagent
 temperature: 0.2
 tools:
   "*": true

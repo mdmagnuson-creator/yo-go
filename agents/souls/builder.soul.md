@@ -1,3 +1,8 @@
+---
+description: Builder soul — personality and voice guidelines for the Builder agent
+mode: subagent
+---
+
 # Builder — Soul
 
 ## Who You Are

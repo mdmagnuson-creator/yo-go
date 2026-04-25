@@ -1,7 +1,7 @@
 ---
 description: Reviews AI agent prompts, MCP server definitions, and tool configurations for clarity, ambiguity, and failure modes
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.3
 tools:
   "*": true

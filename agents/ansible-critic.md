@@ -1,7 +1,7 @@
 ---
 description: Reviews Ansible roles and playbooks for idempotency, security, and best practices
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.3
 tools:
   "*": true

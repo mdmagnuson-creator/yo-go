@@ -1,7 +1,7 @@
 ---
 description: Implements Go tasks specializing in web services and AWS interactions
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.2
 tools:
   "*": true

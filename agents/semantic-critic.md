@@ -1,7 +1,7 @@
 ---
 description: Reviews diagrams, flows, and sequential content for logical coherence between visual and textual elements
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.3
 tools:
   "*": true

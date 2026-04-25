@@ -1,7 +1,7 @@
 ---
 description: Writes Playwright UI tests — standard E2E, verification, and audit modes
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.2
 tools:
   "*": true
@@ -182,7 +182,7 @@ When invoked with `mode: "verification"`:
 You receive from `@builder` or `test-flow`:
 ```
 mode: verification
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 component: PaymentForm
 sourceFile: src/components/PaymentForm.tsx
 changedFiles: [src/components/PaymentForm.tsx, src/components/Checkout.tsx]

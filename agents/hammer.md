@@ -1,7 +1,7 @@
 ---
 description: Implements one task to fix issues with pull requests
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.4
 tools:
   "*": true

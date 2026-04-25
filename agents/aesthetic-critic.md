@@ -1,7 +1,7 @@
 ---
 description: Reviews UI styling changes against the project's design system for visual consistency and dark mode correctness
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.3
 tools:
   "*": true

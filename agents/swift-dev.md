@@ -1,7 +1,7 @@
 ---
 description: Implements Swift tasks specializing in SwiftUI layout, multiplatform (macOS/iOS), native Apple patterns, and XCUITest UI test generation
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.2
 tools:
   "*": true

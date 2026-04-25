@@ -1,7 +1,7 @@
 ---
 description: Explores web applications to find bugs through adversarial testing
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.3
 tools:
   "*": true

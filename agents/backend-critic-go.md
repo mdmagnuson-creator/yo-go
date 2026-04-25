@@ -1,7 +1,7 @@
 ---
 description: Reviews backend Go code for API design, concurrency, error handling, and best practices (Gin, Lambda)
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.3
 tools:
   "*": true

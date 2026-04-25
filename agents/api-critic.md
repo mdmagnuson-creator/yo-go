@@ -1,7 +1,7 @@
 ---
 description: Reviews API design for usability — confusing endpoints, inconsistent conventions, missing pagination, poor error responses
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.3
 tools:
   "*": true

@@ -1,7 +1,7 @@
 ---
 description: Coordinates QA testing by dispatching explorer and browser-tester subagents
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.1
 tools:
   "read": true

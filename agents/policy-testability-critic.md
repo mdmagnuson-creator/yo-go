@@ -1,7 +1,7 @@
 ---
 description: Flags non-testable MUST/CRITICAL/NEVER rules and suggests enforceable rewrites
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.2
 tools:
   "*": true

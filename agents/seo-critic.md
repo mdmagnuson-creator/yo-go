@@ -1,7 +1,7 @@
 ---
 description: Reviews public pages for SEO - meta tags, headings, structured data, page speed, and search engine best practices
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.3
 tools:
   "*": true

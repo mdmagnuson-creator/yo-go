@@ -1,7 +1,7 @@
 ---
 description: Reviews Tailwind CSS usage for project-specific design system patterns and dark mode conventions
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.3
 tools:
   "*": true

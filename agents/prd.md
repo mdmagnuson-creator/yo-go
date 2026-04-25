@@ -1,7 +1,7 @@
 ---
 description: Augments a ticket with a dev plan
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.5
 tools:
   "read": true

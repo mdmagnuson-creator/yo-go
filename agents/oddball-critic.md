@@ -1,7 +1,7 @@
 ---
 description: Reviews code for consistency with the existing codebase — flags patterns that look different from established conventions
 mode: subagent
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 temperature: 0.3
 tools:
   "*": true
