@@ -1,14 +1,19 @@
 {
   "$schema": "https://opencode.ai/schemas/toolkit-structure.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-25T00:00:00Z",
+  "generatedAt": "2026-04-29T00:00:00Z",
   "repository": "https://github.com/mdmagnuson-creator/yo-go",
   "agents": {
-    "total": 65,
+    "total": 66,
     "categories": {
       "primary": {
         "description": "User-invokable primary agents",
         "agents": [
+          {
+            "name": "agent-unleashed",
+            "file": "agents/agent-unleashed.md",
+            "description": "Unrestricted general-purpose agent — plan, build, research, ship. Full tool access, minimal process. Use when you want maximum LLM judgment."
+          },
           {
             "name": "builder",
             "file": "agents/builder.md",
@@ -1049,10 +1054,28 @@
     "generatedFrom": "git log --since=30 days",
     "entries": [
       {
+        "type": "feat",
+        "scope": "agents",
+        "description": "add @agent-unleashed primary agent — minimal rules, full tool access, capability menu",
+        "hash": "pending"
+      },
+      {
+        "type": "chore",
+        "scope": "config",
+        "description": "upgrade explore agent from gpt-5.4 to gpt-5.5",
+        "hash": "4e2e54c"
+      },
+      {
+        "type": "chore",
+        "scope": "agents",
+        "description": "upgrade all subagents from gpt-5.4 to gpt-5.5",
+        "hash": "e89be6f"
+      },
+      {
         "type": "chore",
         "scope": "agents,config",
-        "description": "switch subagent default model from claude-opus-4.5 to gpt-5.4; remove model: from primary agents so they inherit user-selected model",
-        "hash": "pending"
+        "description": "switch subagent default model to gpt-5.4",
+        "hash": "c315ce3"
       },
       {
         "type": "feat",
@@ -1111,34 +1134,6 @@
         "scope": "skills",
         "description": "add session-monitor skill — real-time Helm session observability via [UI] debug log tailing",
         "hash": "3ffa084"
-      },
-      {
-        "type": "docs",
-        "description": "add draft PRD for eliminating ad-hoc ceremony and strengthening core Builder",
-        "hash": "0495655"
-      },
-      {
-        "type": "fix",
-        "scope": "builder",
-        "description": "add code-first investigation order to bug investigation protocol",
-        "hash": "6749764"
-      },
-      {
-        "type": "fix",
-        "scope": "agents,skills",
-        "description": "make planner stories conventions-aware",
-        "hash": "5405a77"
-      },
-      {
-        "type": "fix",
-        "description": "pin subagent models to claude-opus-4.5 to prevent 4.6 inheritance",
-        "hash": "15f22ca"
-      },
-      {
-        "type": "chore",
-        "scope": "agents",
-        "description": "upgrade all subagents from gpt-5.4 to gpt-5.5",
-        "hash": "pending"
       }
     ]
   }
